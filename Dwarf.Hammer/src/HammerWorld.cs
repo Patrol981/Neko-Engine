@@ -142,6 +142,7 @@ public class HammerWorld {
 
     List<(BodyId, BodyId)> oldContacts;
     List<(BodyId, BodyId)> removedContacts;
+
     lock (_hammerWorldLock) {
       oldContacts = [.. _contactMap.Keys];
       removedContacts = [.. oldContacts.Where(x => !Bodies.ContainsKey(x.Item1))];
@@ -149,6 +150,8 @@ public class HammerWorld {
     }
 
     for (int i = 0; i < spriteValues.Length; i++) {
+      if (spriteValues.Length != spriteKeys.Length) continue;
+
       var sprite1 = spriteValues[i];
       var sprite1Id = spriteKeys[i];
 
@@ -188,7 +191,10 @@ public class HammerWorld {
         _contactMap.Remove(pair);
       }
       foreach (var pair in oldContacts) {
-        var threshold = Bodies[pair.Item1].AABB.Width + Bodies[pair.Item2].AABB.Width;
+        var g1 = Bodies.TryGetValue(pair.Item1, out var t1);
+        var g2 = Bodies.TryGetValue(pair.Item2, out var t2);
+        if (!g2 || g1) continue;
+        var threshold = t1?.AABB.Width + t1?.AABB.Width;
         var dist = Vector2.Distance(Bodies[pair.Item1].Position, Bodies[pair.Item2].Position);
         if (dist > threshold) {
           _hammerInstance?.OnContactExit?.Invoke(pair.Item1, pair.Item2);
