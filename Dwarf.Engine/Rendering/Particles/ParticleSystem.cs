@@ -82,7 +82,7 @@ public class ParticleSystem : SystemBase {
 
     _currentCapacity = requiredCapacity;
 
-    _descriptorPool = new DescriptorPool.Builder((VulkanDevice)_device)
+    _descriptorPool = new VulkanDescriptorPool.Builder((VulkanDevice)_device)
       .SetMaxSets((uint)s_particles.Count)
       .AddPoolSize(DescriptorType.UniformBuffer, (uint)s_particles.Count)
       .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
@@ -92,7 +92,7 @@ public class ParticleSystem : SystemBase {
     _texturesCount = s_textures.Count;
 
     if (_texturesCount > 0) {
-      _texturePool = new DescriptorPool.Builder((VulkanDevice)_device)
+      _texturePool = new VulkanDescriptorPool.Builder((VulkanDevice)_device)
       .SetMaxSets((uint)_texturesCount)
       .AddPoolSize(DescriptorType.SampledImage, (uint)_texturesCount)
       .AddPoolSize(DescriptorType.Sampler, (uint)_texturesCount)

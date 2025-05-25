@@ -229,8 +229,8 @@ public class Skybox : IDisposable {
   private VkPipelineLayout _pipelineLayout;
   private VulkanPipeline _pipeline = null!;
 
-  private DescriptorPool _descriptorPool = null!;
-  private DescriptorPool _texturePool = null!;
+  private VulkanDescriptorPool _descriptorPool = null!;
+  private VulkanDescriptorPool _texturePool = null!;
   private readonly DescriptorSetLayout _textureSetLayout = null!;
 
   private VkDescriptorSet _textureSet = VkDescriptorSet.Null;
@@ -392,13 +392,13 @@ public class Skybox : IDisposable {
   }
 
   private void CreateBuffers() {
-    _descriptorPool = new DescriptorPool.Builder(_device)
+    _descriptorPool = new VulkanDescriptorPool.Builder(_device)
       .SetMaxSets(1000)
       .AddPoolSize(DescriptorType.UniformBufferDynamic, 1000)
       .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
       .Build();
 
-    _texturePool = new DescriptorPool.Builder(_device)
+    _texturePool = new VulkanDescriptorPool.Builder(_device)
       .SetMaxSets(6)
       .AddPoolSize(DescriptorType.CombinedImageSampler, 1)
       .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)

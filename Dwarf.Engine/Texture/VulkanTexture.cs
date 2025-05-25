@@ -177,7 +177,7 @@ public class VulkanTexture : ITexture {
 
   public unsafe void BuildDescriptor(
     DescriptorSetLayout descriptorSetLayout,
-    DescriptorPool descriptorPool,
+    VulkanDescriptorPool descriptorPool,
     uint dstBindingStartIndex = 0
   ) {
     VkDescriptorSet descriptorSet = new();
@@ -271,7 +271,7 @@ public class VulkanTexture : ITexture {
     _textureDescriptor = descriptorSet;
   }
 
-  public unsafe void AddDescriptor(DescriptorSetLayout descriptorSetLayout, DescriptorPool descriptorPool) {
+  public unsafe void AddDescriptor(DescriptorSetLayout descriptorSetLayout, VulkanDescriptorPool descriptorPool) {
     if (descriptorSetLayout.GetDescriptorSetLayout().IsNull) throw new ArgumentException("Layout is null");
 
     VkDescriptorSet descriptorSet = new();

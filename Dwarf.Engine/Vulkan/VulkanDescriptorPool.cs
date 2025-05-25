@@ -7,22 +7,22 @@ using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Vulkan;
 
-public class DescriptorPool : IDescriptorPool {
+public class VulkanDescriptorPool : IDescriptorPool {
   private VkDescriptorPool _descriptorPool;
   public class Builder {
-    private readonly VulkanDevice _device;
+    private readonly IDevice _device;
     private VkDescriptorPoolSize[] _poolSizes = [];
     private uint _maxSets = 1000;
     private VkDescriptorPoolCreateFlags _poolFlags = 0;
 
-    public Builder(VulkanDevice device, uint maxSets, VkDescriptorPoolCreateFlags poolFlags, VkDescriptorPoolSize[] poolSizes) {
+    public Builder(IDevice device, uint maxSets, VkDescriptorPoolCreateFlags poolFlags, VkDescriptorPoolSize[] poolSizes) {
       this._device = device;
       this._maxSets = maxSets;
       this._poolSizes = poolSizes;
       this._poolFlags = poolFlags;
     }
 
-    public Builder(VulkanDevice device) {
+    public Builder(IDevice device) {
       this._device = device;
     }
 
@@ -47,13 +47,13 @@ public class DescriptorPool : IDescriptorPool {
       return this;
     }
 
-    public DescriptorPool Build() {
-      return new DescriptorPool(_device, _maxSets, _poolFlags, _poolSizes);
+    public VulkanDescriptorPool Build() {
+      return new VulkanDescriptorPool(_device, _maxSets, _poolFlags, _poolSizes);
     }
   }
 
-  public unsafe DescriptorPool(
-    VulkanDevice device,
+  public unsafe VulkanDescriptorPool(
+    IDevice device,
     uint maxSets,
     VkDescriptorPoolCreateFlags poolFlags,
     VkDescriptorPoolSize[] poolSizes
@@ -116,7 +116,7 @@ public class DescriptorPool : IDescriptorPool {
     return _descriptorPool.Handle;
   }
 
-  public VulkanDevice Device { get; }
+  public IDevice Device { get; }
 
   public unsafe void Dispose() {
     vkDestroyDescriptorPool(Device.LogicalDevice, _descriptorPool);

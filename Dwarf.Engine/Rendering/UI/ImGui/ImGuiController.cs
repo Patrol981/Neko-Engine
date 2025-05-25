@@ -40,7 +40,7 @@ public partial class ImGuiController : IDisposable {
   protected VkPipelineConfigInfo _pipelineConfigInfo = default!;
   protected VkPipelineLayout _systemPipelineLayout = VkPipelineLayout.Null;
   protected VulkanPipeline _systemPipeline = null!;
-  protected DescriptorPool _systemDescriptorPool = null!;
+  protected VulkanDescriptorPool _systemDescriptorPool = null!;
   protected DescriptorSetLayout _systemSetLayout = null!;
   protected VkDescriptorSet _systemDescriptorSet = VkDescriptorSet.Null;
   protected VulkanDescriptorWriter _descriptorWriter = null!;
@@ -87,7 +87,7 @@ public partial class ImGuiController : IDisposable {
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)
       .Build();
 
-    _systemDescriptorPool = new DescriptorPool.Builder(_device)
+    _systemDescriptorPool = new VulkanDescriptorPool.Builder(_device)
       .SetMaxSets(10000)
       .AddPoolSize(DescriptorType.SampledImage, 1000)
       .AddPoolSize(DescriptorType.Sampler, 1000)
@@ -599,7 +599,7 @@ public partial class ImGuiController : IDisposable {
     );
   }
 
-  public DescriptorPool GetDescriptorPool() {
+  public VulkanDescriptorPool GetDescriptorPool() {
     return _systemDescriptorPool;
   }
 

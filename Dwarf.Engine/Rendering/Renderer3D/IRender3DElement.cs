@@ -8,6 +8,7 @@ using Dwarf.Vulkan;
 using Vortice.Vulkan;
 
 namespace Dwarf.Rendering.Renderer3D;
+
 public interface IRender3DElement : IDrawable {
   int NodesCount { get; }
   int MeshedNodesCount { get; }
@@ -21,7 +22,7 @@ public interface IRender3DElement : IDrawable {
   DwarfBuffer Ssbo { get; }
   Matrix4x4[] InverseMatrices { get; }
   VkDescriptorSet SkinDescriptor { get; }
-  void BuildDescriptors(DescriptorSetLayout descriptorSetLayout, DescriptorPool descriptorPool);
+  void BuildDescriptors(IDescriptorSetLayout descriptorSetLayout, IDescriptorPool descriptorPool);
   Entity GetOwner();
   Guid GetTextureIdReference(int index = 0);
   float CalculateHeightOfAnModel();

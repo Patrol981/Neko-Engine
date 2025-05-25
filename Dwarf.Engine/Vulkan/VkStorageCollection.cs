@@ -20,13 +20,13 @@ public struct StorageData {
 public class VkStorageCollection : IStorageCollection {
   private readonly VulkanDevice _device = null!;
   private readonly nint _allocator = IntPtr.Zero;
-  private readonly DescriptorPool _dynamicPool = null!;
+  private readonly VulkanDescriptorPool _dynamicPool = null!;
 
   public VkStorageCollection(nint allocator, VulkanDevice device) {
     _device = device;
     _allocator = allocator;
 
-    _dynamicPool = new DescriptorPool.Builder(_device)
+    _dynamicPool = new VulkanDescriptorPool.Builder(_device)
       .SetMaxSets(30)
       .AddPoolSize(DescriptorType.StorageBuffer, 30)
       .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet | DescriptorPoolCreateFlags.UpdateAfterBind)
@@ -75,7 +75,7 @@ public class VkStorageCollection : IStorageCollection {
       var bufferInfo = mapWholeBuffer ?
         storage.Buffers[i].GetDescriptorBufferInfo() :
         storage.Buffers[i].GetDescriptorBufferInfo(bufferSize * bufferCount);
-      _ = new VulkanDescriptorWriter((DescriptorSetLayout)layout, (DescriptorPool)pool)
+      _ = new VulkanDescriptorWriter((DescriptorSetLayout)layout, (VulkanDescriptorPool)pool)
         .WriteBuffer(0, &bufferInfo)
         .Build(out storage.Descriptors[i]);
     }

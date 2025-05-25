@@ -119,7 +119,7 @@ public class PostProcessingSystem : SystemBase {
   public void Setup(SystemConfiguration systemConfiguration) {
     _device.WaitQueue();
 
-    _descriptorPool = new DescriptorPool.Builder((VulkanDevice)_device)
+    _descriptorPool = new VulkanDescriptorPool.Builder((VulkanDevice)_device)
       .SetMaxSets(4)
       .AddPoolSize(DescriptorType.SampledImage, 10)
       .AddPoolSize(DescriptorType.Sampler, 10)

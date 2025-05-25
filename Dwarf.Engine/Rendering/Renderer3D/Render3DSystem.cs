@@ -225,7 +225,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
 
     Logger.Info("Recreating Renderer 3D");
 
-    _descriptorPool = new DescriptorPool.Builder((VulkanDevice)_device)
+    _descriptorPool = new VulkanDescriptorPool.Builder((VulkanDevice)_device)
       .SetMaxSets(10000)
       .AddPoolSize(DescriptorType.SampledImage, 1000)
       .AddPoolSize(DescriptorType.Sampler, 1000)

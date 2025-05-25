@@ -46,7 +46,7 @@ public class VulkanSwapchain : IDisposable {
   private unsafe VkFence* _imagesInFlight;
 
   // private Swapchain _oldSwapchain = null!;
-  private DescriptorPool _descriptorPool = null!;
+  private VulkanDescriptorPool _descriptorPool = null!;
   private DescriptorSetLayout _inputAttachmentsLayout = null!;
   private DescriptorSetLayout _postProcessLayout = null!;
   // private VkDescriptorSet[] _colorDescriptors;
@@ -923,7 +923,7 @@ public class VulkanSwapchain : IDisposable {
       .AddBinding(1, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       .Build();
 
-    _descriptorPool = new DescriptorPool.Builder(_device)
+    _descriptorPool = new VulkanDescriptorPool.Builder(_device)
       .SetMaxSets(100)
       .AddPoolSize(DescriptorType.InputAttachment, 10)
       .AddPoolSize(DescriptorType.CombinedImageSampler, 20)

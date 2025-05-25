@@ -6,9 +6,9 @@ namespace Dwarf.Vulkan;
 
 public class VulkanDescriptorWriter {
   private readonly unsafe DescriptorSetLayout _setLayout;
-  private readonly unsafe DescriptorPool _pool;
+  private readonly unsafe VulkanDescriptorPool _pool;
   private VkWriteDescriptorSet[] _writes = [];
-  public VulkanDescriptorWriter(DescriptorSetLayout setLayout, DescriptorPool pool) {
+  public VulkanDescriptorWriter(DescriptorSetLayout setLayout, VulkanDescriptorPool pool) {
     _setLayout = setLayout;
     _pool = pool;
   }

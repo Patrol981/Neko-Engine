@@ -19,7 +19,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
   private readonly Application _application;
 
   private VkCommandBuffer[] _commandBuffers = [];
-  private DescriptorPool _descriptorPool = null!;
+  private VulkanDescriptorPool _descriptorPool = null!;
   private uint _imageIndex = 0;
 
   private VkFence[] _waitFences = [];
@@ -125,7 +125,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
       .AddBinding(1, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       .Build();
 
-    _descriptorPool = new DescriptorPool.Builder(_device)
+    _descriptorPool = new VulkanDescriptorPool.Builder(_device)
       .SetMaxSets(100)
       .AddPoolSize(DescriptorType.InputAttachment, 10)
       .AddPoolSize(DescriptorType.CombinedImageSampler, 20)

@@ -220,12 +220,12 @@ public class MeshRenderer : Component, IRender3DElement, ICollision {
     }
   }
 
-  public void BuildDescriptors(DescriptorSetLayout descriptorSetLayout, DescriptorPool descriptorPool) {
+  public void BuildDescriptors(IDescriptorSetLayout descriptorSetLayout, IDescriptorPool descriptorPool) {
     unsafe {
       var range = Ssbo.GetDescriptorBufferInfo(Ssbo.GetAlignmentSize());
       range.range = Ssbo.GetAlignmentSize();
 
-      _ = new VulkanDescriptorWriter(descriptorSetLayout, descriptorPool)
+      _ = new VulkanDescriptorWriter((DescriptorSetLayout)descriptorSetLayout, (VulkanDescriptorPool)descriptorPool)
       .WriteBuffer(0, &range)
       .Build(out _skinDescriptor);
     }

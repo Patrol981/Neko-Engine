@@ -31,7 +31,7 @@ public class ResourceInitializer {
     ref IDescriptorPool globalPool,
     ref Dictionary<string, IDescriptorSetLayout> descriptorSetLayouts
   ) {
-    globalPool = new DescriptorPool.Builder((VulkanDevice)device)
+    globalPool = new VulkanDescriptorPool.Builder((VulkanDevice)device)
       .SetMaxSets(10)
       .AddPoolSize(DescriptorType.UniformBuffer, (uint)renderer.MAX_FRAMES_IN_FLIGHT)
       .AddPoolSize(DescriptorType.CombinedImageSampler, (uint)renderer.MAX_FRAMES_IN_FLIGHT)

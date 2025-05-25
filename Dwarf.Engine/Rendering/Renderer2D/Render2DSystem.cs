@@ -55,7 +55,7 @@ public class Render2DSystem : SystemBase {
       DescriptorSetLayouts = descriptorSetLayouts,
     });
 
-    _descriptorPool = new DescriptorPool.Builder((VulkanDevice)_device)
+    _descriptorPool = new VulkanDescriptorPool.Builder(_device)
       .SetMaxSets(MAX_SETS)
       .AddPoolSize(DescriptorType.SampledImage, MAX_SETS)
       .AddPoolSize(DescriptorType.Sampler, MAX_SETS)
@@ -80,7 +80,7 @@ public class Render2DSystem : SystemBase {
 
     if (_texturesCount > MAX_SETS) {
       _descriptorPool?.Dispose();
-      _descriptorPool = new DescriptorPool.Builder((VulkanDevice)_device)
+      _descriptorPool = new VulkanDescriptorPool.Builder((VulkanDevice)_device)
       .SetMaxSets((uint)_texturesCount)
       .AddPoolSize(DescriptorType.SampledImage, (uint)_texturesCount)
       .AddPoolSize(DescriptorType.Sampler, (uint)_texturesCount)
