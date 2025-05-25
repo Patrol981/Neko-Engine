@@ -28,7 +28,7 @@ public class ParticleSystem : SystemBase {
     IDevice device,
     IRenderer renderer,
     VkDescriptorSetLayout globalSetLayout,
-    PipelineConfigInfo configInfo = null!
+    VkPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
     _textureLayout = new DescriptorSetLayout.Builder(device)
       .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.Fragment)

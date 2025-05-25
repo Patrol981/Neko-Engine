@@ -3,7 +3,8 @@ using Dwarf.Vulkan;
 using Vortice.Vulkan;
 
 namespace Dwarf.Rendering.Lightning;
-public class PipelinePointLightProvider : PipelineProvider {
+
+public class PipelinePointLightProvider : VkPipelineProvider {
   public override unsafe VkVertexInputBindingDescription* GetBindingDescsFunc() {
     return null;
 

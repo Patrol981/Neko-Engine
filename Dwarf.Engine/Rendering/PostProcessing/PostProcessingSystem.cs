@@ -74,7 +74,7 @@ public class PostProcessingSystem : SystemBase {
     IRenderer renderer,
     SystemConfiguration systemConfiguration,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
-    PipelineConfigInfo configInfo = null!
+    VkPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
     _textureManager = Application.Instance.TextureManager;
 

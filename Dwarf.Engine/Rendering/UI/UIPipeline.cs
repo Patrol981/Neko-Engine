@@ -1,8 +1,9 @@
 using Vortice.Vulkan;
 
 namespace Dwarf.Vulkan;
-public class UIPipeline : PipelineConfigInfo {
-  public override PipelineConfigInfo GetConfigInfo() {
+
+public class UIPipeline : VkPipelineConfigInfo {
+  public override VkPipelineConfigInfo GetConfigInfo() {
     var configInfo = base.GetConfigInfo();
     configInfo.DepthStencilInfo.front.compareOp = VkCompareOp.Never;
     configInfo.DepthStencilInfo.front.passOp = VkStencilOp.Keep;

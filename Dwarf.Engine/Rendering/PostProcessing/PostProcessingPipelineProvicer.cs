@@ -6,7 +6,8 @@ using Dwarf.Vulkan;
 using Vortice.Vulkan;
 
 namespace Dwarf.Rendering.PostProcessing;
-public class PostProcessingPipelineProvider : PipelineProvider {
+
+public class PostProcessingPipelineProvider : VkPipelineProvider {
   public override unsafe VkVertexInputBindingDescription* GetBindingDescsFunc() {
     return null;
   }

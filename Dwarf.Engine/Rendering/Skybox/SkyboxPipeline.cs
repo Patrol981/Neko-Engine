@@ -1,6 +1,7 @@
 namespace Dwarf.Vulkan;
-public class SkyboxPipeline : PipelineConfigInfo {
-  public override PipelineConfigInfo GetConfigInfo() {
+
+public class SkyboxPipeline : VkPipelineConfigInfo {
+  public override VkPipelineConfigInfo GetConfigInfo() {
     var configInfo = base.GetConfigInfo();
     configInfo.RasterizationInfo.cullMode = Vortice.Vulkan.VkCullModeFlags.Back;
     configInfo.DepthStencilInfo.depthWriteEnable = false;

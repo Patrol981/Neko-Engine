@@ -34,7 +34,7 @@ public partial class ImGuiController {
     VkRenderPass renderPass,
     string vertexName,
     string fragmentName,
-    PipelineProvider pipelineProvider
+    VkPipelineProvider pipelineProvider
   ) {
     _systemPipeline?.Dispose();
     _pipelineConfigInfo ??= new ImGuiPipeline();

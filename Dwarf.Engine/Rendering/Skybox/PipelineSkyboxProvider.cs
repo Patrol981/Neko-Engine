@@ -7,7 +7,7 @@ using Vortice.Vulkan;
 
 namespace Dwarf;
 
-public class PipelineSkyboxProvider : PipelineProvider {
+public class PipelineSkyboxProvider : VkPipelineProvider {
   public override unsafe VkVertexInputBindingDescription* GetBindingDescsFunc() {
     var bindingDescriptions = new VkVertexInputBindingDescription[1];
     bindingDescriptions[0].binding = 0;

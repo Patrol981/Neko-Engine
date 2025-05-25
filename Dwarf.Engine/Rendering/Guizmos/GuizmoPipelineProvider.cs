@@ -3,7 +3,8 @@ using Dwarf.Vulkan;
 using Vortice.Vulkan;
 
 namespace Dwarf.Rendering.Guizmos;
-public class GuizmoPipelineProvider : PipelineProvider {
+
+public class GuizmoPipelineProvider : VkPipelineProvider {
   public override unsafe VkVertexInputBindingDescription* GetBindingDescsFunc() {
     return null;
   }

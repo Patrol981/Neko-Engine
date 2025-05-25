@@ -23,13 +23,13 @@ public struct PipelineConfigInfoStruct {
   public uint Subpass;
 }
 
-public class Pipeline : IDisposable {
+public class Pipeline : IPipeline {
   private readonly IDevice _device;
 
   private VkPipeline _graphicsPipeline;
   private VkShaderModule _vertexShaderModule;
   private VkShaderModule _fragmentShaderModule;
-  private readonly PipelineProvider _pipelineProvider;
+  private readonly VkPipelineProvider _pipelineProvider;
 
   private readonly object _pipelineLock = new();
 
@@ -37,8 +37,8 @@ public class Pipeline : IDisposable {
     IDevice device,
     string vertexName,
     string fragmentName,
-    PipelineConfigInfo configInfo,
-    PipelineProvider pipelineProvider,
+    VkPipelineConfigInfo configInfo,
+    VkPipelineProvider pipelineProvider,
     VkFormat depthFormat,
     VkFormat colorFormat
   ) {
@@ -47,7 +47,7 @@ public class Pipeline : IDisposable {
     CreateGraphicsPipeline(vertexName, fragmentName, configInfo, depthFormat, colorFormat);
   }
 
-  public void Bind(VkCommandBuffer commandBuffer) {
+  public void Bind(nint commandBuffer) {
     lock (_pipelineLock) {
       vkCmdBindPipeline(commandBuffer, VkPipelineBindPoint.Graphics, _graphicsPipeline);
     }
@@ -56,7 +56,7 @@ public class Pipeline : IDisposable {
   private unsafe void CreateGraphicsPipeline(
     string vertexName,
     string fragmentName,
-    PipelineConfigInfo configInfo,
+    VkPipelineConfigInfo configInfo,
     VkFormat depthFormat,
     VkFormat colorFormat
   ) {

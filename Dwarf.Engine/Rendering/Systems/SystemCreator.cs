@@ -49,7 +49,7 @@ public class SystemCreator {
     IDevice device,
     IRenderer renderer,
     Dictionary<string, IDescriptorSetLayout> layouts,
-    PipelineConfigInfo configInfo = null!
+    VkPipelineConfigInfo configInfo = null!
   ) {
     var hasRenderer3D = flags.HasFlag(SystemCreationFlags.Renderer3D);
     var hasRenderer2D = flags.HasFlag(SystemCreationFlags.Renderer2D);

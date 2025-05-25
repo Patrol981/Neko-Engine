@@ -19,7 +19,7 @@ public class RenderDebugSystem : SystemBase, IRenderSystem {
     IDevice device,
     IRenderer renderer,
     VkDescriptorSetLayout globalSetLayout,
-    PipelineConfigInfo configInfo = null!
+    VkPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
 
     VkDescriptorSetLayout[] descriptorSetLayouts = [

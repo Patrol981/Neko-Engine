@@ -3,7 +3,7 @@ using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Vulkan;
 
-public class PipelineConfigInfo {
+public class VkPipelineConfigInfo {
   public VkPipelineViewportStateCreateInfo ViewportInfo;
   public VkPipelineInputAssemblyStateCreateInfo InputAssemblyInfo;
   public VkPipelineRasterizationStateCreateInfo RasterizationInfo;
@@ -25,7 +25,7 @@ public class PipelineConfigInfo {
   /// This method is overridable, so there is no need to write all that stuff all over again if want to
   /// make small changes to the pipeline
   /// </summary>
-  public virtual unsafe PipelineConfigInfo GetConfigInfo() {
+  public virtual unsafe VkPipelineConfigInfo GetConfigInfo() {
     var configInfo = this;
 
     // configInfo.InputAssemblyInfo.sType = VkStructureType.PipelineInputAssemblyStateCreateInfo;

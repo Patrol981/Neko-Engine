@@ -60,7 +60,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
     IDevice device,
     IRenderer renderer,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
-    PipelineConfigInfo configInfo = null!
+    VkPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
     _setLayout = new DescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBufferDynamic, ShaderStageFlags.AllGraphics)

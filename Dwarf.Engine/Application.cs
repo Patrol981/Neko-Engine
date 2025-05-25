@@ -66,7 +66,7 @@ public class Application {
     _onLoad = eventCallback;
   }
 
-  public PipelineConfigInfo CurrentPipelineConfig = new PipelineConfigInfo();
+  public VkPipelineConfigInfo CurrentPipelineConfig = new VkPipelineConfigInfo();
 
   private EventCallback? _onUpdate;
   private EventCallback? _onRender;

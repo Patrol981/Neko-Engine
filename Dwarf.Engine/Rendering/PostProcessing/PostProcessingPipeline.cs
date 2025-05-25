@@ -3,8 +3,8 @@ using Vortice.Vulkan;
 
 namespace Dwarf.Rendering.PostProcessing;
 
-public class PostProcessingPipeline : PipelineConfigInfo {
-  public override PipelineConfigInfo GetConfigInfo() {
+public class PostProcessingPipeline : VkPipelineConfigInfo {
+  public override VkPipelineConfigInfo GetConfigInfo() {
     var configInfo = base.GetConfigInfo();
 
     configInfo.ColorBlendInfo.attachmentCount = 1;

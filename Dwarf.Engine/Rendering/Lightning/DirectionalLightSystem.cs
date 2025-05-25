@@ -15,7 +15,7 @@ public class DirectionalLightSystem : SystemBase {
     IDevice device,
     IRenderer renderer,
     IDescriptorSetLayout globalSetLayout,
-    PipelineConfigInfo configInfo = null!
+    VkPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
     VkDescriptorSetLayout[] descriptorSetLayouts = [
       globalSetLayout.GetDescriptorSetLayoutPointer(),

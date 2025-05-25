@@ -4,7 +4,7 @@ using Vortice.Vulkan;
 
 namespace Dwarf.Rendering.Particles;
 
-public class ParticlePipelineProvider : PipelineProvider {
+public class ParticlePipelineProvider : VkPipelineProvider {
   public override unsafe VkVertexInputBindingDescription* GetBindingDescsFunc() {
     return null;
   }

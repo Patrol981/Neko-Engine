@@ -1,8 +1,9 @@
 ﻿using Vortice.Vulkan;
 
 namespace Dwarf.Vulkan;
-public class LinePipeline : PipelineConfigInfo {
-  public override PipelineConfigInfo GetConfigInfo() {
+
+public class VkLinePipeline : VkPipelineConfigInfo {
+  public override VkPipelineConfigInfo GetConfigInfo() {
     var configInfo = base.GetConfigInfo();
     configInfo.InputAssemblyInfo.topology = VkPrimitiveTopology.LineList;
     return configInfo;

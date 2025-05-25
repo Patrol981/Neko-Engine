@@ -30,7 +30,7 @@ public class PipelineInputData<T> where T : struct {
   public VkDescriptorSetLayout[] DescriptorSetLayouts = [];
   public string VertexName = string.Empty;
   public string FragmentName = string.Empty;
-  public PipelineProvider PipelineProvider { get; set; } = null!;
+  public VkPipelineProvider PipelineProvider { get; set; } = null!;
   public VkRenderPass RenderPass { get; set; } = VkRenderPass.Null;
 }
 
@@ -39,7 +39,7 @@ public class PipelineInputData {
   public VkDescriptorSetLayout[] DescriptorSetLayouts = [];
   public string VertexName = string.Empty;
   public string FragmentName = string.Empty;
-  public PipelineProvider PipelineProvider { get; set; } = null!;
+  public VkPipelineProvider PipelineProvider { get; set; } = null!;
   public VkRenderPass RenderPass { get; set; } = VkRenderPass.Null;
 }
 
@@ -50,7 +50,7 @@ public abstract class SystemBase {
   protected readonly IDevice _device = null!;
   protected readonly nint _allocator = IntPtr.Zero;
   protected readonly IRenderer _renderer = null!;
-  protected PipelineConfigInfo _pipelineConfigInfo;
+  protected VkPipelineConfigInfo _pipelineConfigInfo;
   protected Dictionary<string, PipelineData> _pipelines = [];
 
   protected DescriptorPool _descriptorPool = null!;
@@ -65,7 +65,7 @@ public abstract class SystemBase {
     nint allocator,
     IDevice device,
     IRenderer renderer,
-    PipelineConfigInfo configInfo = null!
+    VkPipelineConfigInfo configInfo = null!
   ) {
     _allocator = allocator;
     _device = device;
@@ -133,11 +133,11 @@ public abstract class SystemBase {
     VkRenderPass renderPass,
     string vertexName,
     string fragmentName,
-    PipelineProvider pipelineProvider,
+    VkPipelineProvider pipelineProvider,
     VkPipelineLayout pipelineLayout,
     out Pipeline pipeline
   ) {
-    _pipelineConfigInfo ??= new PipelineConfigInfo();
+    _pipelineConfigInfo ??= new VkPipelineConfigInfo();
     var pipelineConfig = _pipelineConfigInfo.GetConfigInfo();
     var colorFormat = _renderer.DynamicSwapchain.ColorFormat;
     var depthFormat = _renderer.DepthFormat;

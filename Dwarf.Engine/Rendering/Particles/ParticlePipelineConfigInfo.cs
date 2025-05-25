@@ -3,8 +3,8 @@ using Vortice.Vulkan;
 
 namespace Dwarf.Rendering.Particles;
 
-public class ParticlePipelineConfigInfo : PipelineConfigInfo {
-  public override PipelineConfigInfo GetConfigInfo() {
+public class ParticlePipelineConfigInfo : VkPipelineConfigInfo {
+  public override VkPipelineConfigInfo GetConfigInfo() {
     var configInfo = base.GetConfigInfo();
 
     configInfo.DepthStencilInfo.depthWriteEnable = true;

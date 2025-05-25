@@ -23,7 +23,7 @@ public class ShadowRenderSystem : SystemBase {
     IRenderer renderer,
     SystemConfiguration systemConfiguration,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
-    PipelineConfigInfo configInfo = null!
+    VkPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
     _application = Application.Instance;
 

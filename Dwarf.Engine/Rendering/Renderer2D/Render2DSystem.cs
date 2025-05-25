@@ -30,7 +30,7 @@ public class Render2DSystem : SystemBase {
     IDevice device,
     IRenderer renderer,
     VkDescriptorSetLayout globalSetLayout,
-    PipelineConfigInfo configInfo = null!
+    VkPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
     _setLayout = new DescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)

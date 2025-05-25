@@ -225,7 +225,7 @@ public class Skybox : IDisposable {
   private readonly Transform _transform;
   private readonly MaterialComponent _material;
 
-  private PipelineConfigInfo _pipelineConfigInfo = null!;
+  private VkPipelineConfigInfo _pipelineConfigInfo = null!;
   private VkPipelineLayout _pipelineLayout;
   private Pipeline _pipeline = null!;
 
@@ -436,7 +436,7 @@ public class Skybox : IDisposable {
     VkRenderPass renderPass,
     string vertexName,
     string fragmentName,
-    PipelineProvider pipelineProvider
+    VkPipelineProvider pipelineProvider
   ) {
     _pipeline?.Dispose();
     _pipelineConfigInfo ??= new SkyboxPipeline();
