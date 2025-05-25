@@ -1,9 +1,10 @@
+using Dwarf.AbstractionLayer;
 using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Vulkan;
 
-public class VkPipelineConfigInfo {
+public class VkPipelineConfigInfo : IPipelineConfigInfo {
   public VkPipelineViewportStateCreateInfo ViewportInfo;
   public VkPipelineInputAssemblyStateCreateInfo InputAssemblyInfo;
   public VkPipelineRasterizationStateCreateInfo RasterizationInfo;
@@ -16,8 +17,8 @@ public class VkPipelineConfigInfo {
   public VkDynamicState[] DynamicStatesEnables = new VkDynamicState[0];
   public VkPipelineDynamicStateCreateInfo DynamicStateInfo;
 
-  public VkPipelineLayout PipelineLayout;
-  public VkRenderPass RenderPass;
+  public ulong PipelineLayout { get; set; }
+  public ulong RenderPass { get; set; } = VkRenderPass.Null;
   public uint Subpass;
 
   /// <summary>
@@ -25,7 +26,7 @@ public class VkPipelineConfigInfo {
   /// This method is overridable, so there is no need to write all that stuff all over again if want to
   /// make small changes to the pipeline
   /// </summary>
-  public virtual unsafe VkPipelineConfigInfo GetConfigInfo() {
+  public virtual unsafe IPipelineConfigInfo GetConfigInfo() {
     var configInfo = this;
 
     // configInfo.InputAssemblyInfo.sType = VkStructureType.PipelineInputAssemblyStateCreateInfo;

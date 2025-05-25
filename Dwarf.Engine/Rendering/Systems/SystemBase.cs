@@ -13,7 +13,7 @@ namespace Dwarf;
 
 public class PipelineData {
   public VkPipelineLayout PipelineLayout;
-  public Pipeline Pipeline = null!;
+  public IPipeline Pipeline = null!;
 
   public unsafe void Dispose(IDevice device) {
     Pipeline.Dispose();
@@ -50,7 +50,8 @@ public abstract class SystemBase {
   protected readonly IDevice _device = null!;
   protected readonly nint _allocator = IntPtr.Zero;
   protected readonly IRenderer _renderer = null!;
-  protected VkPipelineConfigInfo _pipelineConfigInfo;
+  // protected VkPipelineConfigInfo _pipelineConfigInfo;
+  protected IPipelineConfigInfo _pipelineConfigInfo;
   protected Dictionary<string, PipelineData> _pipelines = [];
 
   protected DescriptorPool _descriptorPool = null!;
@@ -130,20 +131,57 @@ public abstract class SystemBase {
   }
 
   protected unsafe void CreatePipeline(
-    VkRenderPass renderPass,
+    ulong renderPass,
     string vertexName,
     string fragmentName,
-    VkPipelineProvider pipelineProvider,
-    VkPipelineLayout pipelineLayout,
-    out Pipeline pipeline
+    IPipelineProvider pipelineProvider,
+    ulong pipelineLayout,
+    out IPipeline pipeline
   ) {
-    _pipelineConfigInfo ??= new VkPipelineConfigInfo();
+    // _pipelineConfigInfo ??= new VkPipelineConfigInfo();
+    _pipelineConfigInfo = PipelineFactory.GetOrCreatePipelineConfigInfo(Application.Instance, _pipelineConfigInfo);
+
+    switch (_device.RenderAPI) {
+      case RenderAPI.Vulkan:
+        CreateVkPipeline(vertexName, fragmentName, pipelineLayout, pipelineProvider, out pipeline);
+        break;
+      case RenderAPI.Metal:
+        throw new NotImplementedException();
+      default:
+        throw new NotImplementedException();
+    }
+
+    // pipeline = PipelineFactory.CreatePipeline(
+    //   Application.Instance,
+    //   vertexName,
+    //   fragmentName,
+    //   ref _pipelineConfigInfo,
+    //   ref pipelineProvider,
+    //   pipelineLayout
+    // );
+  }
+
+  private unsafe void CreateVkPipeline(
+    string vertexName,
+    string fragmentName,
+    ulong pipelineLayout,
+    IPipelineProvider pipelineProvider,
+    out IPipeline pipeline
+  ) {
     var pipelineConfig = _pipelineConfigInfo.GetConfigInfo();
     var colorFormat = _renderer.DynamicSwapchain.ColorFormat;
     var depthFormat = _renderer.DepthFormat;
     pipelineConfig.RenderPass = VkRenderPass.Null;
     pipelineConfig.PipelineLayout = pipelineLayout;
-    pipeline = new Pipeline(_device, vertexName, fragmentName, pipelineConfig, pipelineProvider, depthFormat, colorFormat);
+    pipeline = new VulkanPipeline(
+      _device,
+      vertexName,
+      fragmentName,
+      pipelineConfig,
+      (VkPipelineProvider)pipelineProvider,
+      depthFormat,
+      colorFormat
+    );
   }
 
   protected void AddPipelineData<T>(PipelineInputData<T> pipelineInput) where T : struct {

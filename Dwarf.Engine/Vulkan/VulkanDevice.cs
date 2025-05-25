@@ -473,6 +473,7 @@ public class VulkanDevice : IDevice {
     void* userData
   ) {
     VkUtf8String message = new(pCallbackData->pMessage);
+    var msg = message.ToString();
     if (messageTypes == VkDebugUtilsMessageTypeFlagsEXT.Validation) {
       if (messageSeverity == VkDebugUtilsMessageSeverityFlagsEXT.Error) {
         Logger.Error($"[Vulkan]: Validation: {messageSeverity} - {message}");

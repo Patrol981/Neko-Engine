@@ -57,8 +57,8 @@ public class Render2DSystem : SystemBase {
 
     _descriptorPool = new DescriptorPool.Builder((VulkanDevice)_device)
       .SetMaxSets(MAX_SETS)
-      .AddPoolSize(DescriptorType.SampledImage, (uint)_texturesCount)
-      .AddPoolSize(DescriptorType.Sampler, (uint)_texturesCount)
+      .AddPoolSize(DescriptorType.SampledImage, MAX_SETS)
+      .AddPoolSize(DescriptorType.Sampler, MAX_SETS)
       .SetPoolFlags(DescriptorPoolCreateFlags.None)
       .Build();
 

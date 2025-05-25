@@ -4,8 +4,8 @@ namespace Dwarf.Vulkan;
 
 public class UIPipeline : VkPipelineConfigInfo {
   public override VkPipelineConfigInfo GetConfigInfo() {
-    var configInfo = base.GetConfigInfo();
-    configInfo.DepthStencilInfo.front.compareOp = VkCompareOp.Never;
+    var configInfo = base.GetConfigInfo() as VkPipelineConfigInfo;
+    configInfo!.DepthStencilInfo.front.compareOp = VkCompareOp.Never;
     configInfo.DepthStencilInfo.front.passOp = VkStencilOp.Keep;
     configInfo.DepthStencilInfo.front.failOp = VkStencilOp.Keep;
     configInfo.DepthStencilInfo.front.depthFailOp = VkStencilOp.Keep;

@@ -227,7 +227,7 @@ public class Skybox : IDisposable {
 
   private VkPipelineConfigInfo _pipelineConfigInfo = null!;
   private VkPipelineLayout _pipelineLayout;
-  private Pipeline _pipeline = null!;
+  private VulkanPipeline _pipeline = null!;
 
   private DescriptorPool _descriptorPool = null!;
   private DescriptorPool _texturePool = null!;
@@ -445,7 +445,7 @@ public class Skybox : IDisposable {
     pipelineConfig.PipelineLayout = _pipelineLayout;
     var colorFormat = _renderer.DynamicSwapchain.ColorFormat;
     var depthFormat = _renderer.DepthFormat;
-    _pipeline = new Pipeline(
+    _pipeline = new VulkanPipeline(
       _device,
       vertexName,
       fragmentName,

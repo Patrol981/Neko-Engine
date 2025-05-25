@@ -43,7 +43,7 @@ public partial class ImGuiController {
     pipelineConfig.PipelineLayout = _systemPipelineLayout;
     var colorFormat = _renderer.DynamicSwapchain.ColorFormat;
     var depthFormat = _renderer.DepthFormat;
-    _systemPipeline = new Pipeline(
+    _systemPipeline = new VulkanPipeline(
       _device,
       vertexName,
       fragmentName,

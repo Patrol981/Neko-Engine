@@ -39,7 +39,7 @@ public partial class ImGuiController : IDisposable {
   // system based
   protected VkPipelineConfigInfo _pipelineConfigInfo = default!;
   protected VkPipelineLayout _systemPipelineLayout = VkPipelineLayout.Null;
-  protected Pipeline _systemPipeline = null!;
+  protected VulkanPipeline _systemPipeline = null!;
   protected DescriptorPool _systemDescriptorPool = null!;
   protected DescriptorSetLayout _systemSetLayout = null!;
   protected VkDescriptorSet _systemDescriptorSet = VkDescriptorSet.Null;

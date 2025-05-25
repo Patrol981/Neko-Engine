@@ -6,24 +6,7 @@ using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Vulkan;
 
-public struct PipelineConfigInfoStruct {
-  public VkPipelineViewportStateCreateInfo ViewportInfo;
-  public VkPipelineInputAssemblyStateCreateInfo InputAssemblyInfo;
-  public VkPipelineRasterizationStateCreateInfo RasterizationInfo;
-  public VkPipelineMultisampleStateCreateInfo MultisampleInfo;
-  public VkPipelineColorBlendAttachmentState ColorBlendAttachment;
-  public VkPipelineColorBlendStateCreateInfo ColorBlendInfo;
-  public VkPipelineDepthStencilStateCreateInfo DepthStencilInfo;
-
-  public VkDynamicState[] DynamicStatesEnables;
-  public VkPipelineDynamicStateCreateInfo DynamicStateInfo;
-
-  public VkPipelineLayout PipelineLayout;
-  public VkRenderPass RenderPass;
-  public uint Subpass;
-}
-
-public class Pipeline : IPipeline {
+public class VulkanPipeline : IPipeline {
   private readonly IDevice _device;
 
   private VkPipeline _graphicsPipeline;
@@ -33,18 +16,18 @@ public class Pipeline : IPipeline {
 
   private readonly object _pipelineLock = new();
 
-  public Pipeline(
+  public VulkanPipeline(
     IDevice device,
     string vertexName,
     string fragmentName,
-    VkPipelineConfigInfo configInfo,
+    IPipelineConfigInfo configInfo,
     VkPipelineProvider pipelineProvider,
     VkFormat depthFormat,
     VkFormat colorFormat
   ) {
     _device = device;
     _pipelineProvider = pipelineProvider;
-    CreateGraphicsPipeline(vertexName, fragmentName, configInfo, depthFormat, colorFormat);
+    CreateGraphicsPipeline(vertexName, fragmentName, (VkPipelineConfigInfo)configInfo, depthFormat, colorFormat);
   }
 
   public void Bind(nint commandBuffer) {
@@ -64,7 +47,6 @@ public class Pipeline : IPipeline {
       colorAttachmentCount = 1,
       pColorAttachmentFormats = &colorFormat,
       depthAttachmentFormat = depthFormat,
-      // stencilAttachmentFormat = depthFormat
     };
 
     var vertexPath = Path.Combine(AppContext.BaseDirectory, "CompiledShaders/Vulkan", $"{vertexName}.spv");
@@ -76,38 +58,34 @@ public class Pipeline : IPipeline {
     CreateShaderModule(fragmentCode, out _fragmentShaderModule);
 
     VkUtf8String entryPoint = "main"u8;
-    VkPipelineShaderStageCreateInfo[] shaderStages = new VkPipelineShaderStageCreateInfo[2];
-
-    //vertex
-    // shaderStages[0].sType = VkStructureType.PipelineShaderStageCreateInfo;
-    shaderStages[0] = new();
-    shaderStages[0].stage = VkShaderStageFlags.Vertex;
-    shaderStages[0].module = _vertexShaderModule;
-    shaderStages[0].pName = entryPoint;
-    shaderStages[0].flags = 0;
-    shaderStages[0].pNext = null;
-
-    //fragment
-    // shaderStages[1].sType = VkStructureType.PipelineShaderStageCreateInfo;
-    shaderStages[1] = new();
-    shaderStages[1].stage = VkShaderStageFlags.Fragment;
-    shaderStages[1].module = _fragmentShaderModule;
-    shaderStages[1].pName = entryPoint;
-    shaderStages[1].flags = 0;
-    shaderStages[1].pNext = null;
-
+    VkPipelineShaderStageCreateInfo[] shaderStages =
+    [
+      new() {
+        stage = VkShaderStageFlags.Vertex,
+        module = _vertexShaderModule,
+        pName = entryPoint,
+        flags = 0,
+        pNext = null
+      },
+      new() {
+        stage = VkShaderStageFlags.Fragment,
+        module = _fragmentShaderModule,
+        pName = entryPoint,
+        flags = 0,
+        pNext = null
+      },
+    ];
     var bindingDescriptions = _pipelineProvider.GetBindingDescsFunc();
     var attributeDescriptions = _pipelineProvider.GetAttribDescsFunc();
 
-    var vertexInputInfo = new VkPipelineVertexInputStateCreateInfo();
-    // vertexInputInfo.sType = VkStructureType.PipelineVertexInputStateCreateInfo;
-    vertexInputInfo.vertexAttributeDescriptionCount = _pipelineProvider.GetAttribsLength();
-    vertexInputInfo.vertexBindingDescriptionCount = _pipelineProvider.GetBindingsLength();
-    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
-    vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions;
+    var vertexInputInfo = new VkPipelineVertexInputStateCreateInfo {
+      vertexAttributeDescriptionCount = _pipelineProvider.GetAttribsLength(),
+      vertexBindingDescriptionCount = _pipelineProvider.GetBindingsLength(),
+      pVertexAttributeDescriptions = attributeDescriptions,
+      pVertexBindingDescriptions = bindingDescriptions
+    };
 
     var pipelineInfo = new VkGraphicsPipelineCreateInfo();
-    // pipelineInfo.sType = VkStructureType.GraphicsPipelineCreateInfo;
     pipelineInfo.stageCount = 2;
     fixed (VkPipelineShaderStageCreateInfo* ptr = shaderStages) {
       pipelineInfo.pStages = ptr;
@@ -131,17 +109,8 @@ public class Pipeline : IPipeline {
       pipelineInfo.pDynamicState = dynamicStateInfo;
       pipelineInfo.pNext = dynamicRenderInfo;
     }
-    // pipelineInfo.pInputAssemblyState = &configInfo.InputAssemblyInfo;
-    // pipelineInfo.pViewportState = &configInfo.ViewportInfo;
-    // pipelineInfo.pRasterizationState = &configInfo.RasterizationInfo;
-    // pipelineInfo.pMultisampleState = &configInfo.MultisampleInfo;
-    // pipelineInfo.pColorBlendState = &configInfo.ColorBlendInfo;
-    // pipelineInfo.pDepthStencilState = &configInfo.DepthStencilInfo;
-    // pipelineInfo.pDynamicState = &configInfo.DynamicStateInfo;
 
     pipelineInfo.layout = configInfo.PipelineLayout;
-    // pipelineInfo.renderPass = configInfo.RenderPass;
-    // pipelineInfo.subpass = configInfo.Subpass;
 
     pipelineInfo.basePipelineIndex = -1;
     pipelineInfo.basePipelineHandle = VkPipeline.Null;

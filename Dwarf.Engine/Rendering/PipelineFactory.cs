@@ -9,10 +9,9 @@ public static class PipelineFactory {
     Application app,
     string vertexName,
     string fragmentName,
-    object pipelineConfigInfo,
-    object pipelineProvider,
-    object depthFormat,
-    object colorFormat
+    ref IPipelineConfigInfo pipelineConfigInfo,
+    ref IPipelineProvider pipelineProvider,
+    ulong pipelineLayout
   ) {
     switch (app.CurrentAPI) {
       case RenderAPI.Vulkan:
@@ -20,10 +19,9 @@ public static class PipelineFactory {
           app,
           vertexName,
           fragmentName,
-          pipelineConfigInfo,
-          pipelineProvider,
-          depthFormat,
-          colorFormat
+          ref pipelineConfigInfo,
+          ref pipelineProvider,
+          pipelineLayout
         );
       case RenderAPI.Metal:
         throw new NotImplementedException();
@@ -32,23 +30,43 @@ public static class PipelineFactory {
     }
   }
 
-  private static IPipeline CreateVkPipeline(
+  public static IPipelineConfigInfo GetOrCreatePipelineConfigInfo(Application app, IPipelineConfigInfo pipelineConfigInfo) {
+    if (pipelineConfigInfo != null) return pipelineConfigInfo;
+
+    switch (app.CurrentAPI) {
+      case RenderAPI.Vulkan:
+        return new VkPipelineConfigInfo();
+      case RenderAPI.Metal:
+        throw new NotImplementedException();
+      default:
+        throw new NotImplementedException();
+    }
+  }
+
+  private static VulkanPipeline CreateVkPipeline(
     Application app,
     string vertexName,
     string fragmentName,
-    object pipelineConfigInfo,
-    object pipelineProvider,
-    object depthFormat,
-    object colorFormat
+    ref IPipelineConfigInfo pipelineConfigInfo,
+    ref IPipelineProvider pipelineProvider,
+    ulong pipelineLayout
   ) {
-    return new Vulkan.Pipeline(
+    var pipelineConfig = pipelineConfigInfo;
+    // var info = pipelineConfig.GetConfigInfo();
+    var colorFormat = app.Renderer.DynamicSwapchain.ColorFormat;
+    var depthFormat = app.Renderer.DepthFormat;
+
+    // pipelineConfig.RenderPass = VkRenderPass.Null;
+    pipelineConfig.PipelineLayout = pipelineLayout;
+
+    return new VulkanPipeline(
       app.Device,
       vertexName,
       fragmentName,
       (VkPipelineConfigInfo)pipelineConfigInfo,
       (VkPipelineProvider)pipelineProvider,
-      (VkFormat)depthFormat,
-      (VkFormat)colorFormat
+      depthFormat,
+      colorFormat
     );
   }
 }

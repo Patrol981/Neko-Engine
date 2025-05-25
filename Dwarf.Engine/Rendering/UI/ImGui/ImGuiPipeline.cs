@@ -6,10 +6,10 @@ namespace Dwarf.Rendering.UI;
 
 public class ImGuiPipeline : VkPipelineConfigInfo {
   public override unsafe VkPipelineConfigInfo GetConfigInfo() {
-    var configInfo = base.GetConfigInfo();
+    var configInfo = base.GetConfigInfo() as VkPipelineConfigInfo;
     var frontFace = VkFrontFace.CounterClockwise;
 
-    configInfo.InputAssemblyInfo = VkUtils.PipelineInputAssemblyStateCreateInfo(
+    configInfo!.InputAssemblyInfo = VkUtils.PipelineInputAssemblyStateCreateInfo(
       VkPrimitiveTopology.TriangleList,
       0,
       false
