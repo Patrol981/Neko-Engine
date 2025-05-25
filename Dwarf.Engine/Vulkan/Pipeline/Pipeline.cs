@@ -67,8 +67,8 @@ public class Pipeline : IDisposable {
       // stencilAttachmentFormat = depthFormat
     };
 
-    var vertexPath = Path.Combine(AppContext.BaseDirectory, "CompiledShaders", $"{vertexName}.spv");
-    var fragmentPath = Path.Combine(AppContext.BaseDirectory, "CompiledShaders", $"{fragmentName}.spv");
+    var vertexPath = Path.Combine(AppContext.BaseDirectory, "CompiledShaders/Vulkan", $"{vertexName}.spv");
+    var fragmentPath = Path.Combine(AppContext.BaseDirectory, "CompiledShaders/Vulkan", $"{fragmentName}.spv");
     var vertexCode = File.ReadAllBytes(vertexPath);
     var fragmentCode = File.ReadAllBytes(fragmentPath);
 
