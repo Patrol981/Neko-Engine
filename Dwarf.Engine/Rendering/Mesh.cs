@@ -10,7 +10,7 @@ namespace Dwarf.Rendering;
 
 public class Mesh : IDisposable, ICloneable {
   private readonly IDevice _device = null!;
-  private readonly VmaAllocator _vmaAllocator = VmaAllocator.Null;
+  private readonly nint _allocator = IntPtr.Zero;
 
   public Vertex[] Vertices = [];
   public uint[] Indices = [];
@@ -30,8 +30,8 @@ public class Mesh : IDisposable, ICloneable {
 
   public BoundingBox BoundingBox;
 
-  public Mesh(VmaAllocator vmaAllocator, IDevice device, Matrix4x4 matrix = default) {
-    _vmaAllocator = vmaAllocator;
+  public Mesh(nint allocator, IDevice device, Matrix4x4 matrix = default) {
+    _allocator = allocator;
     _device = device;
     Matrix = matrix;
   }
@@ -50,7 +50,7 @@ public class Mesh : IDisposable, ICloneable {
     }
 
     var stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       vertexSize,
       VertexCount,
@@ -66,7 +66,7 @@ public class Mesh : IDisposable, ICloneable {
     }
 
     VertexBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       vertexSize,
       VertexCount,
@@ -87,7 +87,7 @@ public class Mesh : IDisposable, ICloneable {
     ulong indexSize = sizeof(uint);
 
     var stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       indexSize,
       IndexCount,
@@ -103,7 +103,7 @@ public class Mesh : IDisposable, ICloneable {
     }
 
     IndexBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       indexSize,
       IndexCount,
@@ -120,7 +120,7 @@ public class Mesh : IDisposable, ICloneable {
     TextureIdReference = textureManager.GetTextureIdLocal(texturePath);
 
     if (TextureIdReference == Guid.Empty) {
-      var texture = await TextureLoader.LoadFromPath(_vmaAllocator, _device, texturePath);
+      var texture = await TextureLoader.LoadFromPath(_allocator, _device, texturePath);
       textureManager.AddTextureLocal(texture);
       TextureIdReference = textureManager.GetTextureIdLocal(texturePath);
 
@@ -161,7 +161,7 @@ public class Mesh : IDisposable, ICloneable {
   }
 
   public object Clone() {
-    var clone = new Mesh(_vmaAllocator, _device) {
+    var clone = new Mesh(_allocator, _device) {
       Vertices = Vertices,
       Indices = Indices,
 

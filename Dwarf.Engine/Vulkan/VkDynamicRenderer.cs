@@ -11,9 +11,9 @@ using Vortice.Vulkan;
 
 using static Vortice.Vulkan.Vulkan;
 
-namespace Dwarf.Rendering;
+namespace Dwarf.Vulkan;
 
-public unsafe class DynamicRenderer : IRenderer {
+public unsafe class VkDynamicRenderer : IRenderer {
   private readonly IWindow _window = null!;
   private readonly VulkanDevice _device;
   private readonly Application _application;
@@ -45,7 +45,7 @@ public unsafe class DynamicRenderer : IRenderer {
   }
   private Semaphores[] _semaphores = [];
 
-  public DynamicRenderer(Application application) {
+  public VkDynamicRenderer(Application application) {
     _application = application;
     _window = _application.Window;
     _device = (VulkanDevice)_application.Device;

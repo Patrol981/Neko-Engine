@@ -9,18 +9,19 @@ using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf;
+
 public class CubeMapTexture : VulkanTexture {
   private readonly string[] _paths = [];
   private PackedTexture _cubemapPack;
 
   public CubeMapTexture(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     VulkanDevice device,
     int width,
     int height,
     string[] paths,
     string textureName = ""
-  ) : base(vmaAllocator, device, width, height, textureName) {
+  ) : base(allocator, device, width, height, textureName) {
     _paths = paths;
 
     var textures = ImageUtils.LoadTextures(_paths);
@@ -34,7 +35,7 @@ public class CubeMapTexture : VulkanTexture {
 
   public new void SetTextureData(byte[] data) {
     var stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       (ulong)_cubemapPack.Size,
       BufferUsage.TransferSrc,
@@ -57,7 +58,7 @@ public class CubeMapTexture : VulkanTexture {
 
   public new void SetTextureData(nint dataPtr) {
     var stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       (ulong)_cubemapPack.Size,
       BufferUsage.TransferSrc,

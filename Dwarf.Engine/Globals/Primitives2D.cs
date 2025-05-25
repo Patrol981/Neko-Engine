@@ -6,7 +6,7 @@ namespace Dwarf.Globals;
 public static class Primitives2D {
   public static Mesh CreateQuad2D(Vector2 min, Vector2 max) {
     var app = Application.Instance;
-    var mesh = new Mesh(app.VmaAllocator, app.Device) {
+    var mesh = new Mesh(app.Allocator, app.Device) {
       Vertices = new Vertex[4],
       Indices = [
         0, 1, 2,

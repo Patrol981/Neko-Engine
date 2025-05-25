@@ -69,13 +69,13 @@ public class PostProcessingSystem : SystemBase {
   private readonly ITexture[] _inputTextures = [];
 
   public PostProcessingSystem(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     IRenderer renderer,
     SystemConfiguration systemConfiguration,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     PipelineConfigInfo configInfo = null!
-  ) : base(vmaAllocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
     _textureManager = Application.Instance.TextureManager;
 
     _setLayout = new DescriptorSetLayout.Builder(_device)

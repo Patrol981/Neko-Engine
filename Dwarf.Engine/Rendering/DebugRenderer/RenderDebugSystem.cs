@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
-
+using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Globals;
 using Dwarf.Physics;
@@ -12,14 +12,15 @@ using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Rendering.DebugRenderer;
+
 public class RenderDebugSystem : SystemBase, IRenderSystem {
   public RenderDebugSystem(
-    VmaAllocator vmaAllocator,
-    VulkanDevice device,
+    nint allocator,
+    IDevice device,
     IRenderer renderer,
     VkDescriptorSetLayout globalSetLayout,
     PipelineConfigInfo configInfo = null!
-  ) : base(vmaAllocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
 
     VkDescriptorSetLayout[] descriptorSetLayouts = [
       globalSetLayout,

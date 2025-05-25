@@ -48,7 +48,7 @@ public abstract class SystemBase {
   public const string DefaultPipelineName = "main";
 
   protected readonly IDevice _device = null!;
-  protected readonly VmaAllocator _vmaAllocator = VmaAllocator.Null;
+  protected readonly nint _allocator = IntPtr.Zero;
   protected readonly IRenderer _renderer = null!;
   protected PipelineConfigInfo _pipelineConfigInfo;
   protected Dictionary<string, PipelineData> _pipelines = [];
@@ -62,12 +62,12 @@ public abstract class SystemBase {
   protected int _texturesCount = 0;
 
   public SystemBase(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     IRenderer renderer,
     PipelineConfigInfo configInfo = null!
   ) {
-    _vmaAllocator = vmaAllocator;
+    _allocator = allocator;
     _device = device;
     _renderer = renderer;
 

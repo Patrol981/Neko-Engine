@@ -18,7 +18,7 @@ public class Sprite {
   public const int SPRITE_COUNT_AUTO = 0;
 
   private readonly IDevice _device;
-  private readonly VmaAllocator _vmaAllocator;
+  private readonly nint _allocator;
   private readonly TextureManager _textureManager;
   private readonly IRenderer _renderer;
 
@@ -36,7 +36,7 @@ public class Sprite {
 
   public Sprite() {
     _device = null!;
-    _vmaAllocator = VmaAllocator.Null;
+    _allocator = IntPtr.Zero;
     _textureManager = null!;
     _renderer = null!;
   }
@@ -50,7 +50,7 @@ public class Sprite {
     int flip = 1
   ) {
     _device = app.Device;
-    _vmaAllocator = app.VmaAllocator;
+    _allocator = app.Allocator;
     _textureManager = app.TextureManager;
     _renderer = app.Renderer;
 
@@ -73,7 +73,7 @@ public class Sprite {
     int flip = 1
   ) {
     _device = app.Device;
-    _vmaAllocator = app.VmaAllocator;
+    _allocator = app.Allocator;
     _textureManager = app.TextureManager;
     _renderer = app.Renderer;
 
@@ -95,7 +95,7 @@ public class Sprite {
     int flip = 1
   ) {
     _device = app.Device;
-    _vmaAllocator = app.VmaAllocator;
+    _allocator = app.Allocator;
     _textureManager = app.TextureManager;
     _renderer = app.Renderer;
 
@@ -216,7 +216,7 @@ public class Sprite {
     int vertexCount = quadCount * 4;
     int indexCount = quadCount * 6;
 
-    _spriteMesh = new(_vmaAllocator, _device) {
+    _spriteMesh = new(_allocator, _device) {
       Vertices = new Vertex[vertexCount],
       Indices = new uint[indexCount]
     };
@@ -264,7 +264,7 @@ public class Sprite {
   }
 
   private void CreateSpriteVertexBox(float? vertexSize = null) {
-    _spriteMesh = new(_vmaAllocator, _device) {
+    _spriteMesh = new(_allocator, _device) {
       Vertices = new Vertex[4]
     };
     _spriteMesh.Vertices[0] = new Vertex {

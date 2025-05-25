@@ -26,12 +26,12 @@ public class Render2DSystem : SystemBase {
   // private int _texCount = -1;
 
   public Render2DSystem(
-    VmaAllocator vmaAllocator,
-    VulkanDevice device,
+    nint allocator,
+    IDevice device,
     IRenderer renderer,
     VkDescriptorSetLayout globalSetLayout,
     PipelineConfigInfo configInfo = null!
-  ) : base(vmaAllocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
     _setLayout = new DescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
       .Build();
@@ -90,7 +90,7 @@ public class Render2DSystem : SystemBase {
 
     // _spriteBuffer?.Dispose();
     // _spriteBuffer = new DwarfBuffer(
-    //   _vmaAllocator,
+    //   _allocator,
     //   _device,
     //   (ulong)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>(),
     //   (uint)_texturesCount,

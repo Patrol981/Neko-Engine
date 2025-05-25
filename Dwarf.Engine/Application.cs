@@ -25,6 +25,23 @@ public class Application {
   public static Application Instance { get; private set; } = null!;
   public delegate void EventCallback();
 
+  public IDevice Device { get; internal set; } = null!;
+  public IWindow Window { get; } = null!;
+  public IRenderer Renderer { get; } = null!;
+  public TextureManager TextureManager => _textureManager;
+  public nint Allocator { get; internal set; }
+  public Mutex Mutex { get; private set; }
+  public FrameInfo FrameInfo => _currentFrame;
+  public DirectionalLight DirectionalLight = DirectionalLight.New();
+  public ImGuiController GuiController { get; private set; } = null!;
+  public SystemCollection Systems { get; } = null!;
+  public IStorageCollection StorageCollection { get; private set; } = null!;
+  public Scene CurrentScene { get; private set; } = null!;
+  public bool UseImGui { get; } = true;
+  public unsafe GlobalUniformBufferObject GlobalUbo => *_ubo;
+
+  public const int MAX_POINT_LIGHTS_COUNT = 128;
+
   public void SetUpdateCallback(EventCallback eventCallback) {
     _onUpdate = eventCallback;
   }
@@ -90,6 +107,7 @@ public class Application {
   public RenderAPI CurrentAPI { get; private set; }
   public bool VSync { get; init; } = false;
   public bool Fullscreen { get; init; } = false;
+  public bool Debug { get; init; } = false;
   public readonly object ApplicationLock = new object();
 
   public const int ThreadTimeoutTimeMS = 1000;
@@ -99,7 +117,7 @@ public class Application {
   public bool UseFog = true;
 
   public Application(
-    string appName = "Dwarf Vulkan",
+    string appName = "Dwarf App",
     Vector2I windowSize = default!,
     SystemCreationFlags systemCreationFlags = SystemCreationFlags.Renderer3D,
     SystemConfiguration? systemConfiguration = default,
@@ -111,6 +129,7 @@ public class Application {
     CurrentAPI = RenderAPI.Vulkan;
     VSync = vsync;
     Fullscreen = fullscreen;
+    Debug = debugMode;
 
     VulkanDevice.s_EnableValidationLayers = debugMode;
 
@@ -122,14 +141,14 @@ public class Application {
     Device = new VulkanDevice(Window);
 
     ResourceInitializer.VkInitAllocator(Device, out var allocator);
-    VmaAllocator = allocator;
+    Allocator = allocator.Handle;
 
     // Renderer = new Renderer(Window, Device);
-    Renderer = new DynamicRenderer(this);
+    Renderer = new VkDynamicRenderer(this);
     Systems = new SystemCollection();
-    StorageCollection = new VkStorageCollection(VmaAllocator, (VulkanDevice)Device);
+    StorageCollection = new VkStorageCollection(Allocator, (VulkanDevice)Device);
 
-    _textureManager = new(VmaAllocator, Device);
+    _textureManager = new(Allocator, Device);
     _systemCreationFlags = systemCreationFlags;
 
     systemConfiguration ??= SystemConfiguration.Default;
@@ -217,7 +236,7 @@ public class Application {
     _skybox?.Dispose();
     _textureManager.DisposeLocal();
 
-    StorageCollection = new VkStorageCollection(VmaAllocator, (VulkanDevice)Device);
+    StorageCollection = new VkStorageCollection(Allocator, (VulkanDevice)Device);
     Mutex.ReleaseMutex();
     await Init();
 
@@ -257,7 +276,7 @@ public class Application {
     _onLoadPrimaryResources?.Invoke();
 
     if (UseImGui) {
-      GuiController = new(VmaAllocator, Device, Renderer);
+      GuiController = new(Allocator, Device, Renderer);
       await GuiController.Init((int)Window.Extent.Width, (int)Window.Extent.Height);
     }
 
@@ -346,7 +365,7 @@ public class Application {
       this,
       _systemCreationFlags,
       _systemConfiguration,
-      VmaAllocator,
+      Allocator,
       Device,
       Renderer,
       _descriptorSetLayouts,
@@ -385,7 +404,7 @@ public class Application {
 
     List<List<ITexture>> textures = [];
     for (int i = 0; i < paths.Count; i++) {
-      var t = await TextureManager.AddTextures(VmaAllocator, Device, [.. paths[i]]);
+      var t = await TextureManager.AddTextures(Allocator, Device, [.. paths[i]]);
       textures.Add([.. t]);
     }
 
@@ -545,7 +564,7 @@ public class Application {
 
     Systems.ValidateSystems(
         _entities.ToArray(),
-        VmaAllocator, Device, Renderer,
+        Allocator, Device, Renderer,
         _descriptorSetLayouts,
         CurrentPipelineConfig,
         ref _textureManager
@@ -840,8 +859,9 @@ public class Application {
     Systems?.Dispose();
     Renderer?.Dispose();
     Window?.Dispose();
-    if (VmaAllocator.IsNotNull) {
-      vmaDestroyAllocator(VmaAllocator);
+    if (Allocator != IntPtr.Zero) {
+      Logger.Info("[ALLOCATION] Disposing Allocator");
+      vmaDestroyAllocator(Allocator);
     }
     Device?.Dispose();
   }
@@ -895,24 +915,6 @@ public class Application {
 
     System.Environment.Exit(1);
   }
-
-  public IDevice Device { get; } = null!;
-  public Mutex Mutex { get; private set; }
-  public IWindow Window { get; } = null!;
-  public TextureManager TextureManager => _textureManager;
-  // public Renderer Renderer { get; } = null!;
-  public DynamicRenderer Renderer { get; } = null!;
-  public VmaAllocator VmaAllocator { get; private set; }
-  public FrameInfo FrameInfo => _currentFrame;
-  public DirectionalLight DirectionalLight = DirectionalLight.New();
-  public ImGuiController GuiController { get; private set; } = null!;
-  public SystemCollection Systems { get; } = null!;
-  public IStorageCollection StorageCollection { get; private set; } = null!;
-  public Scene CurrentScene { get; private set; } = null!;
-  public bool UseImGui { get; } = true;
-  public unsafe GlobalUniformBufferObject GlobalUbo => *_ubo;
-
-  public const int MAX_POINT_LIGHTS_COUNT = 128;
 
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
   public unsafe static explicit operator nint(Application app) {

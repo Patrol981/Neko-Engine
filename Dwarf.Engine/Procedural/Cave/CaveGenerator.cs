@@ -206,7 +206,7 @@ public class CaveGenerator {
 
       var wallVertices = new List<Vector3>();
       var wallTriangles = new List<uint>();
-      wallMesh = new Mesh(app.VmaAllocator, app.Device, Matrix4x4.Identity);
+      wallMesh = new Mesh(app.Allocator, app.Device, Matrix4x4.Identity);
 
       foreach (var outline in Outlines) {
         for (int i = 0; i < outline.Count - 1; i++) {
@@ -846,7 +846,7 @@ public class CaveGenerator {
     grid.GenerateMesh();
 
     var app = Application.Instance;
-    mesh = new Mesh(app.VmaAllocator, app.Device, Matrix4x4.Identity) {
+    mesh = new Mesh(app.Allocator, app.Device, Matrix4x4.Identity) {
       Vertices = grid.Vertices.Select(x => {
         return new Vertex() {
           Position = x,

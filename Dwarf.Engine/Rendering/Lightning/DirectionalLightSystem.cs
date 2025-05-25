@@ -8,16 +8,17 @@ using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Rendering.Lightning;
+
 public class DirectionalLightSystem : SystemBase {
   public DirectionalLightSystem(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     IRenderer renderer,
-    VkDescriptorSetLayout globalSetLayout,
+    IDescriptorSetLayout globalSetLayout,
     PipelineConfigInfo configInfo = null!
-  ) : base(vmaAllocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
     VkDescriptorSetLayout[] descriptorSetLayouts = [
-      globalSetLayout,
+      globalSetLayout.GetDescriptorSetLayoutPointer(),
     ];
 
     AddPipelineData(new() {

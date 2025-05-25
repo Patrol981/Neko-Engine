@@ -15,7 +15,7 @@ namespace Dwarf.Physics;
 
 public class Rigidbody2D : Component, IDisposable {
   private readonly Application _app;
-  private readonly VmaAllocator _vmaAllocator = VmaAllocator.Null;
+  private readonly nint _allocator = IntPtr.Zero;
   public IPhysicsBody2D PhysicsBody2D { get; private set; } = null!;
   private Mesh? _collisionShape;
   public Vector2 Min { get; private set; } = Vector2.Zero;
@@ -28,7 +28,7 @@ public class Rigidbody2D : Component, IDisposable {
 
   public Rigidbody2D() {
     _app = Application.Instance;
-    _vmaAllocator = _app.VmaAllocator;
+    _allocator = _app.Allocator;
     PrimitiveType = PrimitiveType.Box;
   }
 
@@ -38,7 +38,7 @@ public class Rigidbody2D : Component, IDisposable {
     MotionType motionType
   ) {
     _app = app;
-    _vmaAllocator = _app.VmaAllocator;
+    _allocator = _app.Allocator;
     MotionType = motionType;
     PrimitiveType = primitiveType;
   }
@@ -51,7 +51,7 @@ public class Rigidbody2D : Component, IDisposable {
     Vector2 max
   ) {
     _app = app;
-    _vmaAllocator = _app.VmaAllocator;
+    _allocator = _app.Allocator;
     PrimitiveType = primitiveType;
     MotionType = motionType;
     Min = min;
@@ -83,7 +83,7 @@ public class Rigidbody2D : Component, IDisposable {
       _ => throw new NotImplementedException(),
     };
 
-    Owner.AddComponent(new ColliderMesh(_app.VmaAllocator, _app.Device, _collisionShape!));
+    Owner.AddComponent(new ColliderMesh(_app.Allocator, _app.Device, _collisionShape!));
   }
 
   private Mesh GetFromOwner() {

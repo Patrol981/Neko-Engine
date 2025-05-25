@@ -24,12 +24,12 @@ public class ParticleSystem : SystemBase {
   private TextureManager _textureManager = null!;
 
   public ParticleSystem(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     IRenderer renderer,
     VkDescriptorSetLayout globalSetLayout,
     PipelineConfigInfo configInfo = null!
-  ) : base(vmaAllocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
     _textureLayout = new DescriptorSetLayout.Builder(device)
       .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.Fragment)
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)

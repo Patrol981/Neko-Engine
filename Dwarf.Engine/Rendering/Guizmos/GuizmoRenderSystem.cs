@@ -23,14 +23,14 @@ public class GuizmoRenderSystem : SystemBase {
     (GuizmoBufferObject*)Marshal.AllocHGlobal(Unsafe.SizeOf<GuizmoBufferObject>());
 
   public GuizmoRenderSystem(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     IRenderer renderer,
-    VkDescriptorSetLayout globalSetLayout,
+    IDescriptorSetLayout globalSetLayout,
     PipelineConfigInfo configInfo = null!
-  ) : base(vmaAllocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
     VkDescriptorSetLayout[] descriptorSetLayouts = [
-      globalSetLayout,
+      globalSetLayout.GetDescriptorSetLayoutPointer(),
     ];
 
     AddPipelineData<GuizmoBufferObject>(new() {

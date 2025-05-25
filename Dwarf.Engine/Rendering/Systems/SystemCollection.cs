@@ -67,7 +67,7 @@ public class SystemCollection : IDisposable {
 
   public void ValidateSystems(
     ReadOnlySpan<Entity> entities,
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     IRenderer renderer,
     Dictionary<string, IDescriptorSetLayout> layouts,
@@ -81,7 +81,7 @@ public class SystemCollection : IDisposable {
       var textures = _render3DSystem.CheckTextures(modelEntities);
       if (!sizes || !textures || Reload3DRenderSystem) {
         Reload3DRenderSystem = false;
-        Reload3DRenderer(vmaAllocator, device, renderer, layouts, ref textureManager, pipelineConfigInfo, entities);
+        Reload3DRenderer(allocator, device, renderer, layouts, ref textureManager, pipelineConfigInfo, entities);
       }
     }
 
@@ -92,7 +92,7 @@ public class SystemCollection : IDisposable {
       // var textures = _render2DSystem.CheckTextures(spriteEntities);
       if (!sizes || Reload2DRenderSystem) {
         Reload2DRenderSystem = false;
-        Reload2DRenderer(vmaAllocator, device, renderer, layouts["Global"].GetDescriptorSetLayoutPointer(), ref textureManager, pipelineConfigInfo, entities);
+        Reload2DRenderer(allocator, device, renderer, layouts["Global"].GetDescriptorSetLayoutPointer(), ref textureManager, pipelineConfigInfo, entities);
       }
     }
 
@@ -102,7 +102,7 @@ public class SystemCollection : IDisposable {
     //   var textures = _renderUISystem.CheckTextures(canvasEntities);
     //   if (!sizes || !textures || ReloadUISystem) {
     //     ReloadUISystem = false;
-    //     ReloadUIRenderer(vmaAllocator, device, renderer, layouts["Global"].GetDescriptorSetLayout(), ref textureManager, pipelineConfigInfo);
+    //     ReloadUIRenderer(allocator, device, renderer, layouts["Global"].GetDescriptorSetLayout(), ref textureManager, pipelineConfigInfo);
     //   }
     // }
 
@@ -110,7 +110,7 @@ public class SystemCollection : IDisposable {
       var particles = _particleSystem.Validate();
       if (!particles || ReloadParticleSystem) {
         ReloadParticleSystem = false;
-        ReloadParticleRenderer(vmaAllocator, device, renderer, layouts["Global"].GetDescriptorSetLayoutPointer(), ref textureManager, new ParticlePipelineConfigInfo());
+        ReloadParticleRenderer(allocator, device, renderer, layouts["Global"].GetDescriptorSetLayoutPointer(), ref textureManager, new ParticlePipelineConfigInfo());
       }
     }
   }
@@ -119,7 +119,7 @@ public class SystemCollection : IDisposable {
     Application app,
     SystemCreationFlags creationFlags,
     SystemConfiguration systemConfiguration,
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     IRenderer renderer,
     Dictionary<string, IDescriptorSetLayout> layouts,
@@ -130,14 +130,14 @@ public class SystemCollection : IDisposable {
       app.Systems,
       creationFlags,
       systemConfiguration,
-      vmaAllocator,
+      allocator,
       (VulkanDevice)device,
       renderer,
       layouts,
       configInfo
     );
-    // _subpassConnectorSystem = new(vmaAllocator, device, renderer, layouts, new SecondSubpassPipeline());
-    _postProcessingSystem = new(vmaAllocator, device, renderer, systemConfiguration, layouts, new PostProcessingPipeline());
+    // _subpassConnectorSystem = new(allocator, device, renderer, layouts, new SecondSubpassPipeline());
+    _postProcessingSystem = new(allocator, device, renderer, systemConfiguration, layouts, new PostProcessingPipeline());
 
     var entities = app.GetEntities();
     var objs3D = entities.DistinctInterface<IRender3DElement>();
@@ -158,7 +158,7 @@ public class SystemCollection : IDisposable {
   }
 
   public void Reload3DRenderer(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     IRenderer renderer,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
@@ -168,7 +168,7 @@ public class SystemCollection : IDisposable {
   ) {
     _render3DSystem?.Dispose();
     _render3DSystem = new Render3DSystem(
-      vmaAllocator,
+      allocator,
       device,
       renderer,
       externalLayouts,
@@ -178,7 +178,7 @@ public class SystemCollection : IDisposable {
   }
 
   public void Reload2DRenderer(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     IRenderer renderer,
     VkDescriptorSetLayout globalLayout,
@@ -188,7 +188,7 @@ public class SystemCollection : IDisposable {
   ) {
     // _render2DSystem?.Dispose();
     // _render2DSystem = new Render2DSystem(
-    //   vmaAllocator,
+    //   allocator,
     //   device,
     //   renderer,
     //   globalLayout,
@@ -198,7 +198,7 @@ public class SystemCollection : IDisposable {
   }
 
   public void ReloadUIRenderer(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     IRenderer renderer,
     VkDescriptorSetLayout globalLayout,
@@ -207,7 +207,7 @@ public class SystemCollection : IDisposable {
   ) {
     _renderUISystem?.Dispose();
     _renderUISystem = new RenderUISystem(
-      vmaAllocator,
+      allocator,
       (VulkanDevice)device,
       renderer,
       globalLayout,
@@ -217,7 +217,7 @@ public class SystemCollection : IDisposable {
   }
 
   public void ReloadParticleRenderer(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     IRenderer renderer,
     VkDescriptorSetLayout globalLayout,
@@ -226,7 +226,7 @@ public class SystemCollection : IDisposable {
   ) {
     _particleSystem?.Dispose();
     _particleSystem = new ParticleSystem(
-      vmaAllocator,
+      allocator,
       device,
       renderer,
       globalLayout,

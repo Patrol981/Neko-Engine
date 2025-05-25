@@ -27,7 +27,7 @@ public static partial class GLTFLoaderKHR {
     for (int i = 0; i < scene.Nodes.Length; i++) {
       var node = gltf.Nodes[scene.Nodes[i]];
       LoadNode(
-        app.VmaAllocator,
+        app.Allocator,
         app.Device,
         null!,
         node,
@@ -129,7 +129,7 @@ public static partial class GLTFLoaderKHR {
       ITexture texture = null!;
       if (id == Guid.Empty) {
         texture = TextureLoader.LoadFromGLTF(
-          app.VmaAllocator,
+          app.Allocator,
           app.Device,
           gltf,
           globalBuffer,
@@ -355,7 +355,7 @@ public static partial class GLTFLoaderKHR {
   }
 
   private static void LoadNode(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     Dwarf.Rendering.Renderer3D.Node parent,
     Node node,
@@ -400,7 +400,7 @@ public static partial class GLTFLoaderKHR {
     if (node.Children?.Length > 0) {
       for (int i = 0; i < node.Children.Length; i++) {
         LoadNode(
-          vmaAllocator,
+          allocator,
           device,
           newNode,
           gltf.Nodes[node.Children[i]],
@@ -417,7 +417,7 @@ public static partial class GLTFLoaderKHR {
     // Node contains mesh data
     if (node.Mesh.HasValue) {
       var gltfMesh = gltf.Meshes[node.Mesh.Value];
-      var newMesh = new Rendering.Mesh(vmaAllocator, device, newNode.NodeMatrix);
+      var newMesh = new Rendering.Mesh(allocator, device, newNode.NodeMatrix);
 
       var indices = new List<uint>();
       var vertices = new List<Vertex>();

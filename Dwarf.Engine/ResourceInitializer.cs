@@ -26,7 +26,7 @@ public class ResourceInitializer {
 
   public static void VkInitResources(
     in IDevice device,
-    in DynamicRenderer renderer,
+    in IRenderer renderer,
     in IStorageCollection storageCollection,
     ref IDescriptorPool globalPool,
     ref Dictionary<string, IDescriptorSetLayout> descriptorSetLayouts
@@ -103,7 +103,7 @@ public class ResourceInitializer {
 
   public static void VkSetupResources(
     in IDevice device,
-    in DynamicRenderer renderer,
+    in IRenderer renderer,
     in SystemCollection systems,
     in IStorageCollection storageCollection,
     ref IDescriptorPool globalPool,
@@ -142,7 +142,7 @@ public class ResourceInitializer {
 
     // if (useSkybox) {
     //   _skybox = new(
-    //     VmaAllocator,
+    //     _allocator,
     //     Device,
     //     _textureManager,
     //     Renderer,

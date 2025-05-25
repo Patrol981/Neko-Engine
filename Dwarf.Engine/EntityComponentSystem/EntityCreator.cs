@@ -245,7 +245,7 @@ public static class EntityCreator {
   ) {
     if (entity == null) return;
 
-    entity.AddComponent(new Rigidbody(app.VmaAllocator, app.Device, primitiveType, radius, motionType, flip, useMesh: useMesh));
+    entity.AddComponent(new Rigidbody(app.Allocator, app.Device, primitiveType, radius, motionType, flip, useMesh: useMesh));
     entity.GetComponent<Rigidbody>().InitBase();
   }
 
@@ -261,7 +261,7 @@ public static class EntityCreator {
   ) {
     if (entity == null) return;
 
-    entity.AddComponent(new Rigidbody(app.VmaAllocator, app.Device, primitiveType, radius, motionType, flip, useMesh: useMesh));
+    entity.AddComponent(new Rigidbody(app.Allocator, app.Device, primitiveType, radius, motionType, flip, useMesh: useMesh));
     entity.GetComponent<Rigidbody>().InitBase(mesh);
   }
 
@@ -280,7 +280,7 @@ public static class EntityCreator {
 
     entity.AddComponent(
       new Rigidbody(
-        app.VmaAllocator,
+        app.Allocator,
         app.Device,
         primitiveType,
         motionType,
@@ -306,7 +306,7 @@ public static class EntityCreator {
   ) {
     if (entity == null) return;
 
-    entity.AddComponent(new Rigidbody(app.VmaAllocator, app.Device, primitiveType, sizeX, sizeY, sizeZ, motionType, flip, useMesh: useMesh));
+    entity.AddComponent(new Rigidbody(app.Allocator, app.Device, primitiveType, sizeX, sizeY, sizeZ, motionType, flip, useMesh: useMesh));
     entity.GetComponent<Rigidbody>().InitBase();
   }
 
@@ -326,7 +326,7 @@ public static class EntityCreator {
   ) {
     if (entity == null) return;
 
-    entity.AddComponent(new Rigidbody(app.VmaAllocator, app.Device, primitiveType, sizeX, sizeY, sizeZ, offsetX, offsetY, offsetZ, motionType, flip, useMesh: useMesh));
+    entity.AddComponent(new Rigidbody(app.Allocator, app.Device, primitiveType, sizeX, sizeY, sizeZ, offsetX, offsetY, offsetZ, motionType, flip, useMesh: useMesh));
     entity.GetComponent<Rigidbody>().InitBase();
   }
 

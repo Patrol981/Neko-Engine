@@ -19,7 +19,7 @@ public static class Primitives {
   static Vector3 Color = new(0f, 1f, 0f);
 
   public static Mesh CreatePrimitive(PrimitiveType primitiveType) {
-    var mesh = new Mesh(Application.Instance.VmaAllocator, Application.Instance.Device);
+    var mesh = new Mesh(Application.Instance.Allocator, Application.Instance.Device);
 
     switch (primitiveType) {
       case PrimitiveType.Cylinder:
@@ -105,7 +105,7 @@ public static class Primitives {
       indices[i] = (uint)cornerIndex + (uint)numVertices.X + 1;
     }
 
-    return new Mesh(Application.Instance.VmaAllocator, Application.Instance.Device) {
+    return new Mesh(Application.Instance.Allocator, Application.Instance.Device) {
       Vertices = vertices,
       Indices = indices,
       Matrix = Matrix4x4.Identity
@@ -130,7 +130,7 @@ public static class Primitives {
         });
       }
     }
-    return new Mesh(Application.Instance.VmaAllocator, Application.Instance.Device) {
+    return new Mesh(Application.Instance.Allocator, Application.Instance.Device) {
       Vertices = [.. vertices],
       Matrix = Matrix4x4.Identity
     };
@@ -162,7 +162,7 @@ public static class Primitives {
       vertexOffset += (uint)n.Mesh!.Vertices.Length;
     }
 
-    return new Mesh(Application.Instance.VmaAllocator, Application.Instance.Device) {
+    return new Mesh(Application.Instance.Allocator, Application.Instance.Device) {
       Vertices = [.. vertices],
       Indices = [.. indices],
       Matrix = Matrix4x4.Identity
@@ -181,7 +181,7 @@ public static class Primitives {
       vertices.Add(vertex);
     }
 
-    return new Mesh(Application.Instance.VmaAllocator, Application.Instance.Device) {
+    return new Mesh(Application.Instance.Allocator, Application.Instance.Device) {
       Vertices = [.. vertices],
       Indices = [.. mesh.Indices],
       Matrix = Matrix4x4.Identity
@@ -209,7 +209,7 @@ public static class Primitives {
         2, 3, 0  // Second triangle
     ];
 
-    return new Mesh(Application.Instance.VmaAllocator, Application.Instance.Device) {
+    return new Mesh(Application.Instance.Allocator, Application.Instance.Device) {
       Vertices = vertices,
       Indices = indices,
       Matrix = Matrix4x4.Identity
@@ -290,7 +290,7 @@ public static class Primitives {
       0
     ];
 
-    return new Mesh(Application.Instance.VmaAllocator, Application.Instance.Device) {
+    return new Mesh(Application.Instance.Allocator, Application.Instance.Device) {
       Vertices = vertices,
       Indices = indices,
       Matrix = Matrix4x4.Identity
@@ -360,7 +360,7 @@ public static class Primitives {
       indices.Add(bottom2);
     }
 
-    return new Mesh(Application.Instance.VmaAllocator, Application.Instance.Device) {
+    return new Mesh(Application.Instance.Allocator, Application.Instance.Device) {
       Vertices = [.. vertices],
       Indices = [.. indices],
       Matrix = Matrix4x4.Identity
@@ -487,7 +487,7 @@ public static class Primitives {
     }
     */
 
-    return new Mesh(Application.Instance.VmaAllocator, Application.Instance.Device) {
+    return new Mesh(Application.Instance.Allocator, Application.Instance.Device) {
       Vertices = vertices,
       Matrix = Matrix4x4.Identity
     };

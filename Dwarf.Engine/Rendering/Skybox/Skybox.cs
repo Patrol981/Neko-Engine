@@ -16,7 +16,7 @@ public class Skybox : IDisposable {
   }
 
   private readonly VulkanDevice _device;
-  private readonly VmaAllocator _vmaAllocator;
+  private readonly nint _allocator;
   private readonly TextureManager _textureManager;
   private readonly IRenderer _renderer;
   private readonly float[] _vertices = [
@@ -241,8 +241,8 @@ public class Skybox : IDisposable {
   private readonly string[] _cubemapNames = new string[6];
   private CubeMapTexture _cubemapTexture = null!;
 
-  public Skybox(VmaAllocator vmaAllocator, VulkanDevice device, TextureManager textureManager, IRenderer renderer, VkDescriptorSetLayout globalSetLayout) {
-    _vmaAllocator = vmaAllocator;
+  public Skybox(nint allocator, VulkanDevice device, TextureManager textureManager, IRenderer renderer, VkDescriptorSetLayout globalSetLayout) {
+    _allocator = allocator;
     _device = device;
     _textureManager = textureManager;
     _renderer = renderer;
@@ -286,7 +286,7 @@ public class Skybox : IDisposable {
 
   private async void InitCubeMapTexture() {
     var data = await CubeMapTexture.LoadDataFromPath(_cubemapNames[0]);
-    _cubemapTexture = new CubeMapTexture(_vmaAllocator, _device, data.Width, data.Height, _cubemapNames, "cubemap0");
+    _cubemapTexture = new CubeMapTexture(_allocator, _device, data.Width, data.Height, _cubemapNames, "cubemap0");
 
     CreateVertexBuffer(_mesh.Vertices);
     CreateBuffers();
@@ -362,7 +362,7 @@ public class Skybox : IDisposable {
     ulong vertexSize = (ulong)Unsafe.SizeOf<TexturedVertex>();
 
     var stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       vertexSize,
       _vertexCount,
@@ -379,7 +379,7 @@ public class Skybox : IDisposable {
     // stagingBuffer.WriteToBuffer(MemoryUtils.ToIntPtr(vertices), bufferSize);
 
     _vertexBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       vertexSize,
       _vertexCount,
@@ -405,7 +405,7 @@ public class Skybox : IDisposable {
       .Build();
 
     _skyboxBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       (ulong)Unsafe.SizeOf<SkyboxBufferObject>(),
       1,

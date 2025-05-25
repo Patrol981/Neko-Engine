@@ -11,9 +11,10 @@ using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Physics;
+
 public class ColliderMesh : Component, IDebugRenderObject {
   private readonly IDevice _device = null!;
-  private readonly VmaAllocator _vmaAllocator = VmaAllocator.Null;
+  private readonly nint _allocator = IntPtr.Zero;
 
   private DwarfBuffer _vertexBuffer = null!;
   private DwarfBuffer _indexBuffer = null!;
@@ -23,8 +24,8 @@ public class ColliderMesh : Component, IDebugRenderObject {
 
   public ColliderMesh() { }
 
-  public ColliderMesh(VmaAllocator vmaAllocator, IDevice device, Mesh mesh) {
-    _vmaAllocator = vmaAllocator;
+  public ColliderMesh(nint allocator, IDevice device, Mesh mesh) {
+    _allocator = allocator;
     _device = device;
     Mesh = mesh;
 
@@ -33,11 +34,11 @@ public class ColliderMesh : Component, IDebugRenderObject {
     Init();
   }
 
-  public ColliderMesh(VmaAllocator vmaAllocator, IDevice device, AABB aabb) {
+  public ColliderMesh(nint allocator, IDevice device, AABB aabb) {
     _device = device;
-    _vmaAllocator = vmaAllocator;
+    _allocator = allocator;
 
-    Mesh = CreateMeshOutOfAABB(vmaAllocator, device, aabb);
+    Mesh = CreateMeshOutOfAABB(allocator, device, aabb);
 
     if (Mesh.Indices.Length > 0) _hasIndexBuffer = true;
     Init();
@@ -99,7 +100,7 @@ public class ColliderMesh : Component, IDebugRenderObject {
     ulong vertexSize = (ulong)Unsafe.SizeOf<Vertex>();
 
     var stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       vertexSize,
       _vertexCount,
@@ -116,7 +117,7 @@ public class ColliderMesh : Component, IDebugRenderObject {
     // stagingBuffer.WriteToBuffer(MemoryUtils.ToIntPtr(vertices), bufferSize);
 
     _vertexBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       vertexSize,
       _vertexCount,
@@ -138,7 +139,7 @@ public class ColliderMesh : Component, IDebugRenderObject {
     ulong indexSize = sizeof(uint);
 
     var stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       indexSize,
       _indexCount,
@@ -155,7 +156,7 @@ public class ColliderMesh : Component, IDebugRenderObject {
     // stagingBuffer.WriteToBuffer(MemoryUtils.ToIntPtr(indices), bufferSize);
 
     _indexBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       indexSize,
       _indexCount,
@@ -169,7 +170,7 @@ public class ColliderMesh : Component, IDebugRenderObject {
     return Task.CompletedTask;
   }
 
-  private static Mesh CreateMeshOutOfAABB(VmaAllocator vmaAllocator, IDevice device, AABB aabb) {
+  private static Mesh CreateMeshOutOfAABB(nint allocator, IDevice device, AABB aabb) {
     Vector3[] normals = [
       new(-1, -1, -1),
       new(1, -1, -1),
@@ -277,7 +278,7 @@ public class ColliderMesh : Component, IDebugRenderObject {
       0
     ];
 
-    var mesh = new Mesh(vmaAllocator, device) {
+    var mesh = new Mesh(allocator, device) {
       Vertices = vertices,
       Indices = indices,
       IndexCount = (ulong)indices.Length,

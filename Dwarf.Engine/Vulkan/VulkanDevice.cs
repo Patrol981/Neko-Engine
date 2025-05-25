@@ -15,6 +15,8 @@ using static Vortice.Vulkan.Vulkan;
 namespace Dwarf.Vulkan;
 
 public class VulkanDevice : IDevice {
+  public RenderAPI RenderAPI => RenderAPI.Vulkan;
+
   private readonly string[] VALIDATION_LAYERS = ["VK_LAYER_KHRONOS_validation"];
   public static bool s_EnableValidationLayers = true;
   private readonly IWindow _window;
@@ -73,8 +75,8 @@ public class VulkanDevice : IDevice {
     ulong size,
     BufferUsage uFlags,
     MemoryProperty pFlags,
-    out VkBuffer buffer,
-    out VkDeviceMemory bufferMemory
+    out ulong buffer,
+    out ulong bufferMemory
   ) {
     VkBufferCreateInfo bufferInfo = new() {
       size = size,
@@ -84,7 +86,8 @@ public class VulkanDevice : IDevice {
 
     // Logger.Info($"Allocating Size: {size}");
 
-    vkCreateBuffer(_logicalDevice, &bufferInfo, null, out buffer).CheckResult();
+    vkCreateBuffer(_logicalDevice, &bufferInfo, null, out var buff).CheckResult();
+    buffer = buff;
 
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(_logicalDevice, buffer, out memRequirements);
@@ -94,7 +97,8 @@ public class VulkanDevice : IDevice {
       memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, pFlags)
     };
 
-    vkAllocateMemory(_logicalDevice, &allocInfo, null, out bufferMemory).CheckResult();
+    vkAllocateMemory(_logicalDevice, &allocInfo, null, out var buffMem).CheckResult();
+    bufferMemory = buffMem;
     vkBindBufferMemory(_logicalDevice, buffer, bufferMemory, 0).CheckResult();
   }
 
@@ -102,8 +106,8 @@ public class VulkanDevice : IDevice {
     ulong size,
     BufferUsage uFlags,
     MemoryProperty pFlags,
-    VkBuffer buffer,
-    out VkDeviceMemory bufferMemory
+    ulong buffer,
+    out ulong bufferMemory
   ) {
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(_logicalDevice, buffer, out memRequirements);
@@ -113,7 +117,8 @@ public class VulkanDevice : IDevice {
       memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, pFlags)
     };
 
-    vkAllocateMemory(_logicalDevice, &allocInfo, null, out bufferMemory).CheckResult();
+    vkAllocateMemory(_logicalDevice, &allocInfo, null, out var buffMem).CheckResult();
+    bufferMemory = buffMem;
     vkBindBufferMemory(_logicalDevice, buffer, bufferMemory, 0).CheckResult();
   }
 

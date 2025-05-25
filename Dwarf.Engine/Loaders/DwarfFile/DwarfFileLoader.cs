@@ -123,7 +123,7 @@ public static class DwarfFileLoader {
       byte[] textureData = reader.ReadBytes((int)fileNode.Mesh.BinaryTextureSize);
 
       var texture = VulkanTexture.LoadFromBytesDirect(
-        app.VmaAllocator,
+        app.Allocator,
         (VulkanDevice)app.Device,
         textureData,
         (int)fileNode.Mesh.BinaryTextureSize,

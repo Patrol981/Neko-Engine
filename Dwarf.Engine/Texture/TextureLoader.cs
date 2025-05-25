@@ -8,11 +8,11 @@ using Vortice.Vulkan;
 namespace Dwarf;
 
 public class TextureLoader {
-  public static async Task<ITexture> LoadFromPath(object? allocator, IDevice device, string path, int flip = 1) {
+  public static async Task<ITexture> LoadFromPath(nint allocator, IDevice device, string path, int flip = 1) {
     switch (Application.Instance.CurrentAPI) {
       case RenderAPI.Vulkan:
-        Debug.Assert(allocator != null);
-        return await VulkanTexture.LoadFromPath((VmaAllocator)allocator, (VulkanDevice)device, path, flip);
+        Debug.Assert(allocator != IntPtr.Zero);
+        return await VulkanTexture.LoadFromPath(allocator, (VulkanDevice)device, path, flip);
       default:
         throw new NotImplementedException("Other apis are not currently supported");
     }
@@ -30,12 +30,12 @@ public class TextureLoader {
     };
   }
 
-  public static ITexture LoadFromBytes(object? allocator, IDevice device, byte[] data, string textureName, int flip = 1) {
+  public static ITexture LoadFromBytes(nint allocator, IDevice device, byte[] data, string textureName, int flip = 1) {
     switch (Application.Instance.CurrentAPI) {
       case RenderAPI.Vulkan:
-        Debug.Assert(allocator != null);
+        Debug.Assert(allocator != IntPtr.Zero);
         return VulkanTexture.LoadFromBytes(
-          (VmaAllocator)allocator,
+          allocator,
           (VulkanDevice)device,
           data,
           textureName,
@@ -47,7 +47,7 @@ public class TextureLoader {
   }
 
   public static ITexture LoadFromGLTF(
-    object? allocator,
+    nint allocator,
     IDevice device,
     in Gltf gltf,
     in byte[] globalBuffer,
@@ -58,9 +58,9 @@ public class TextureLoader {
   ) {
     switch (Application.Instance.CurrentAPI) {
       case RenderAPI.Vulkan:
-        Debug.Assert(allocator != null);
+        Debug.Assert(allocator != IntPtr.Zero);
         return VulkanTexture.LoadFromGLTF(
-          (VmaAllocator)allocator,
+          allocator,
           device,
           gltf,
           globalBuffer,

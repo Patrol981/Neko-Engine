@@ -18,13 +18,13 @@ public class ShadowRenderSystem : SystemBase {
     (ShadowPushConstant*)Marshal.AllocHGlobal(Unsafe.SizeOf<ShadowPushConstant>());
 
   public ShadowRenderSystem(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     IRenderer renderer,
     SystemConfiguration systemConfiguration,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     PipelineConfigInfo configInfo = null!
-  ) : base(vmaAllocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
     _application = Application.Instance;
 
     VkDescriptorSetLayout[] layouts = [

@@ -56,12 +56,12 @@ public class Render3DSystem : SystemBase, IRenderSystem {
   private DescriptorSetLayout _previousTexturesLayout = null!;
 
   public Render3DSystem(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     IRenderer renderer,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     PipelineConfigInfo configInfo = null!
-  ) : base(vmaAllocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
     _setLayout = new DescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBufferDynamic, ShaderStageFlags.AllGraphics)
       .Build();
@@ -240,7 +240,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
 
     // entities.length before, param no.3
     _modelBuffer = new(
-      _vmaAllocator,
+      _allocator,
       _device,
       (ulong)Unsafe.SizeOf<ModelUniformBufferObject>(),
       (ulong)_texturesCount,
@@ -294,7 +294,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
     Logger.Info($"START VTX: {vtxCount}");
 
     var stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       (ulong)Unsafe.SizeOf<Vertex>(),
       vtxCount,
@@ -310,7 +310,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
     }
 
     _complexVertexBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       (ulong)Unsafe.SizeOf<Vertex>(),
       vtxCount,
@@ -324,7 +324,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
     var (idxCount, indices) = CalculateIndexOffsets(entities, hasSkinFlag: true);
 
     stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       sizeof(uint),
       idxCount,
@@ -340,7 +340,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
     }
 
     _complexIndexBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       sizeof(uint),
       idxCount,

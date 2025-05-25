@@ -59,7 +59,7 @@ public partial class ImGuiController {
     io.Fonts.GetTexDataAsRGBA32(out nint fontData, out int texWidth, out int texHeight, out int bytesPerPixel);
     var uploadSize = texWidth * texHeight * bytesPerPixel * sizeof(byte);
 
-    // _fontTexture = new ITexture(_vmaAllocator, _device, texWidth, texHeight, "im_gui_texture");
+    // _fontTexture = new ITexture(_allocator, _device, texWidth, texHeight, "im_gui_texture");
     // _fontTexture.SetTextureData(fontData);
     // _fontTexture.BuildDescriptor(_systemSetLayout, _systemDescriptorPool);
 
@@ -125,7 +125,7 @@ public partial class ImGuiController {
 
     // staging buffers
     var stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       (ulong)uploadSize,
       BufferUsage.TransferSrc,
@@ -269,7 +269,7 @@ public partial class ImGuiController {
   }
   public void CreateBuffers() {
     _vertexBuffer = new(
-      _vmaAllocator,
+      _allocator,
       _device,
       (ulong)Unsafe.SizeOf<ImDrawVert>() * 5000,
       BufferUsage.VertexBuffer,
@@ -277,7 +277,7 @@ public partial class ImGuiController {
     );
 
     _indexBuffer = new(
-      _vmaAllocator,
+      _allocator,
       _device,
       (ulong)Unsafe.SizeOf<ushort>() * 10000,
       BufferUsage.IndexBuffer,

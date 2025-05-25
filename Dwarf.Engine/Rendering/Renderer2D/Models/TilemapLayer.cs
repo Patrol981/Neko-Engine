@@ -42,7 +42,7 @@ public class TilemapLayer {
   }
 
   public void GenerateMesh() {
-    LayerMesh = new(_app.VmaAllocator, _app.Device);
+    LayerMesh = new(_app.Allocator, _app.Device);
 
     var vertices = new List<Vertex>();
     var indices = new List<uint>();

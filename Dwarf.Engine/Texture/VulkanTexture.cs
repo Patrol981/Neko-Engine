@@ -15,7 +15,7 @@ namespace Dwarf;
 
 public class VulkanTexture : ITexture {
   protected readonly VulkanDevice _device = null!;
-  protected readonly VmaAllocator _vmaAllocator;
+  protected readonly nint _allocator;
 
   public int TextureIndex { get; set; } = -1;
   public struct VulkanTextureData {
@@ -33,9 +33,9 @@ public class VulkanTexture : ITexture {
 
   protected VkDescriptorSet _textureDescriptor = VkDescriptorSet.Null;
 
-  public VulkanTexture(VmaAllocator vmaAllocator, VulkanDevice device, int width, int height, string textureName = "") {
+  public VulkanTexture(nint allocator, VulkanDevice device, int width, int height, string textureName = "") {
     _device = device;
-    _vmaAllocator = vmaAllocator;
+    _allocator = allocator;
     _width = width;
     _height = height;
     TextureName = textureName;
@@ -43,9 +43,9 @@ public class VulkanTexture : ITexture {
     _size = _width * _height * 4;
   }
 
-  public VulkanTexture(VmaAllocator vmaAllocator, VulkanDevice device, int size, int width, int height, string textureName = "") {
+  public VulkanTexture(nint allocator, VulkanDevice device, int size, int width, int height, string textureName = "") {
     _device = device;
-    _vmaAllocator = vmaAllocator;
+    _allocator = allocator;
     TextureName = textureName;
     _size = size;
     _width = width;
@@ -57,7 +57,7 @@ public class VulkanTexture : ITexture {
   }
   private void SetTextureData(nint dataPtr, VkImageCreateFlags createFlags = VkImageCreateFlags.None) {
     var stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       (ulong)_size,
       BufferUsage.TransferSrc,
@@ -77,7 +77,7 @@ public class VulkanTexture : ITexture {
 
   private void SetTextureData(byte[] data, VkImageCreateFlags createFlags = VkImageCreateFlags.None) {
     var stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       (ulong)_size,
       BufferUsage.TransferSrc,
@@ -368,7 +368,7 @@ public class VulkanTexture : ITexture {
     Application.Instance.Mutex.ReleaseMutex();
   }
 
-  public static async Task<ITexture> LoadFromPath(VmaAllocator vmaAllocator, VulkanDevice device, string path, int flip = 1, VkImageCreateFlags imageCreateFlags = VkImageCreateFlags.None) {
+  public static async Task<ITexture> LoadFromPath(nint allocator, VulkanDevice device, string path, int flip = 1, VkImageCreateFlags imageCreateFlags = VkImageCreateFlags.None) {
     ImageResult textureData;
     if (Path.Exists(path)) {
       textureData = await LoadDataFromPath(path, flip);
@@ -378,26 +378,26 @@ public class VulkanTexture : ITexture {
       textureData = await LoadDataFromPath(pathResult, flip);
     }
 
-    var texture = new VulkanTexture(vmaAllocator, device, textureData.Width, textureData.Height, path);
+    var texture = new VulkanTexture(allocator, device, textureData.Width, textureData.Height, path);
     texture.SetTextureData(textureData.Data, imageCreateFlags);
     return texture;
   }
 
   public static ITexture LoadFromBytes(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     VulkanDevice device,
     byte[] data,
     string textureName,
     int flip = 1
   ) {
     var texInfo = LoadDataFromBytes(data, flip);
-    var texture = new VulkanTexture(vmaAllocator, device, texInfo.Width, texInfo.Height, textureName);
+    var texture = new VulkanTexture(allocator, device, texInfo.Width, texInfo.Height, textureName);
     texture.SetTextureData(texInfo.Data);
     return texture;
   }
 
   public static ITexture LoadFromBytesDirect(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     VulkanDevice device,
     byte[] data,
     int size,
@@ -405,7 +405,7 @@ public class VulkanTexture : ITexture {
     int height,
     string textureName
   ) {
-    var texture = new VulkanTexture(vmaAllocator, device, size, width, height, textureName);
+    var texture = new VulkanTexture(allocator, device, size, width, height, textureName);
     texture.SetTextureData(data);
     return texture;
   }
@@ -428,7 +428,7 @@ public class VulkanTexture : ITexture {
   }
 
   public static ITexture LoadFromGLTF(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     Gltf gltf,
     byte[] globalBuffer,
@@ -468,7 +468,7 @@ public class VulkanTexture : ITexture {
         rgba = image.Data;
       }
 
-      var texture = new VulkanTexture(vmaAllocator, (VulkanDevice)device, image.Width, image.Height, textureName);
+      var texture = new VulkanTexture(allocator, (VulkanDevice)device, image.Width, image.Height, textureName);
       texture.SetTextureData(rgba);
 
       return texture;

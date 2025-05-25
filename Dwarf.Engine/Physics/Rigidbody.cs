@@ -16,7 +16,7 @@ namespace Dwarf.Physics;
 
 public class Rigidbody : Component, IDisposable {
   private readonly IDevice _device = null!;
-  private readonly VmaAllocator _vmaAllocator = VmaAllocator.Null;
+  private readonly nint _allocator = IntPtr.Zero;
   private IPhysicsBody _bodyInterface = null!;
   private MotionType _motionType = MotionType.Dynamic;
   private readonly MotionQuality _motionQuality = MotionQuality.LinearCast;
@@ -35,7 +35,7 @@ public class Rigidbody : Component, IDisposable {
   public Rigidbody() { }
 
   public Rigidbody(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     PrimitiveType primitiveType,
     MotionType motionType,
@@ -46,7 +46,7 @@ public class Rigidbody : Component, IDisposable {
     bool useMesh = true
   ) {
     _device = device;
-    _vmaAllocator = vmaAllocator;
+    _allocator = allocator;
     _motionType = motionType;
     PrimitiveType = primitiveType;
     Flipped = flip;
@@ -62,7 +62,7 @@ public class Rigidbody : Component, IDisposable {
   }
 
   public Rigidbody(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     PrimitiveType colliderShape,
     float inputRadius,
@@ -72,7 +72,7 @@ public class Rigidbody : Component, IDisposable {
     bool useMesh = true
   ) {
     PrimitiveType = colliderShape;
-    _vmaAllocator = vmaAllocator;
+    _allocator = allocator;
     _device = device;
     _inputRadius = inputRadius;
     Flipped = flip;
@@ -82,7 +82,7 @@ public class Rigidbody : Component, IDisposable {
   }
 
   public Rigidbody(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     PrimitiveType primitiveType,
     float sizeX,
@@ -94,7 +94,7 @@ public class Rigidbody : Component, IDisposable {
     bool useMesh = true
   ) {
     _device = device;
-    _vmaAllocator = vmaAllocator;
+    _allocator = allocator;
     PrimitiveType = primitiveType;
     Flipped = flip;
     _motionType = motionType;
@@ -106,7 +106,7 @@ public class Rigidbody : Component, IDisposable {
   }
 
   public Rigidbody(
-    VmaAllocator vmaAllocator,
+    nint allocator,
     IDevice device,
     PrimitiveType primitiveType,
     float sizeX,
@@ -121,7 +121,7 @@ public class Rigidbody : Component, IDisposable {
     bool useMesh = true
   ) {
     _device = device;
-    _vmaAllocator = vmaAllocator;
+    _allocator = allocator;
     PrimitiveType = primitiveType;
     Flipped = flip;
     _motionType = motionType;
@@ -185,7 +185,7 @@ public class Rigidbody : Component, IDisposable {
     }
 
     if (_useMesh) {
-      Owner!.AddComponent(new ColliderMesh(_vmaAllocator, _device, _collisionShape));
+      Owner!.AddComponent(new ColliderMesh(_allocator, _device, _collisionShape));
     }
 
   }

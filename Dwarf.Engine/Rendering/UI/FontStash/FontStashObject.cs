@@ -7,6 +7,7 @@ using FontStashSharp.Interfaces;
 using Vortice.Vulkan;
 
 namespace Dwarf.Rendering.UI.FontStash;
+
 public class FontStashObject : IDisposable {
   public class FontMesh {
     public VertexPositionColorTexture[] Vertices = new VertexPositionColorTexture[0];
@@ -18,7 +19,7 @@ public class FontStashObject : IDisposable {
   private const int MAX_INDICES = MAX_SPRITES * 6;
 
   private readonly VulkanDevice _device = null!;
-  private readonly VmaAllocator _vmaAllocator = VmaAllocator.Null;
+  private readonly nint _allocator = IntPtr.Zero;
   private DwarfBuffer _vertexBuffer = null!;
   private DwarfBuffer _indexBuffer = null!;
   private readonly ulong _vertexCount = 0;
@@ -66,7 +67,7 @@ public class FontStashObject : IDisposable {
     ulong vertexSize = (ulong)Unsafe.SizeOf<VertexPositionColorTexture>();
 
     var stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       vertexSize,
       _vertexCount,
@@ -91,7 +92,7 @@ public class FontStashObject : IDisposable {
     ulong vertexSize = (ulong)Unsafe.SizeOf<VertexPositionColorTexture>();
 
     _vertexBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       vertexSize,
       _vertexCount,
@@ -106,7 +107,7 @@ public class FontStashObject : IDisposable {
     ulong indexSize = sizeof(uint);
 
     var stagingBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       indexSize,
       _indexCount,
@@ -123,7 +124,7 @@ public class FontStashObject : IDisposable {
     // stagingBuffer.WriteToBuffer(MemoryUtils.ToIntPtr(indices), bufferSize);
 
     _indexBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
       _device,
       indexSize,
       _indexCount,

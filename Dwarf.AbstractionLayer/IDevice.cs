@@ -7,16 +7,16 @@ public interface IDevice : IDisposable {
     ulong size,
     BufferUsage uFlags,
     MemoryProperty pFlags,
-    out VkBuffer buffer,
-    out VkDeviceMemory bufferMemory
+    out ulong buffer,
+    out ulong bufferMemory
   );
 
   public unsafe void AllocateBuffer(
     ulong size,
     BufferUsage uFlags,
     MemoryProperty pFlags,
-    VkBuffer buffer,
-    out VkDeviceMemory bufferMemory
+    ulong buffer,
+    out ulong bufferMemory
   );
 
   public Task CopyBuffer(ulong srcBuffer, ulong dstBuffer, ulong size);
@@ -45,4 +45,6 @@ public interface IDevice : IDisposable {
 
   ulong MinStorageBufferOffsetAlignment { get; }
   ulong MinUniformBufferOffsetAlignment { get; }
+
+  RenderAPI RenderAPI { get; }
 }

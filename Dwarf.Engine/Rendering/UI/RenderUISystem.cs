@@ -18,12 +18,12 @@ public class RenderUISystem : SystemBase {
   private DwarfBuffer _uiBuffer = null!;
 
   public RenderUISystem(
-    VmaAllocator vmaAllocator,
-    VulkanDevice device,
+    nint allocator,
+    IDevice device,
     IRenderer renderer,
     VkDescriptorSetLayout globalSetLayout,
     PipelineConfigInfo configInfo = null!
-  ) : base(vmaAllocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
     _setLayout = new DescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
       .Build();
@@ -78,7 +78,7 @@ public class RenderUISystem : SystemBase {
     .Build();
 
     _uiBuffer = new DwarfBuffer(
-      _vmaAllocator,
+      _allocator,
         _device,
         (ulong)Unsafe.SizeOf<UIUniformObject>(),
         (uint)entities.Length,
