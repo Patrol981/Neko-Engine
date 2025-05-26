@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using Dwarf.AbstractionLayer;
 using Dwarf.Utils;
 using Dwarf.Vulkan;
+using Dwarf.Rendering;
 using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 

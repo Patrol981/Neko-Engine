@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Dwarf.AbstractionLayer;
 using Dwarf.Extensions.Logging;
 using Dwarf.Math;
+using Dwarf.Rendering;
 using Dwarf.Utils;
 using Dwarf.Vulkan;
 using Dwarf.Windowing;
@@ -26,7 +27,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
 
   public delegate void RenderDelegate();
 
-  public VkFormat DepthFormat { get; private set; }
+  public DwarfFormat DepthFormat { get; private set; }
   public VkDescriptorSet[] ImageDescriptors { get; private set; } = [];
   private VulkanDescriptorSetLayout _postProcessLayout = null!;
   public VkSampler DepthSampler { get; private set; }
@@ -228,11 +229,12 @@ public unsafe class VkDynamicRenderer : IRenderer {
     }
   }
   private void CreateDepthStencil(int index) {
-    DepthFormat = FindDepthFormat();
+    var dp = FindDepthFormat();
+    DepthFormat = DwarfFormatConverter.AsDwarfFormat(dp);
 
     VkImageCreateInfo imageCI = new();
     imageCI.imageType = VK_IMAGE_TYPE_2D;
-    imageCI.format = DepthFormat;
+    imageCI.format = dp;
     imageCI.extent = new(Swapchain.Extent2D.width, Swapchain.Extent2D.height, 1);
     imageCI.mipLevels = 1;
     imageCI.arrayLayers = 1;
@@ -254,14 +256,14 @@ public unsafe class VkDynamicRenderer : IRenderer {
     VkImageViewCreateInfo imageViewCI = new();
     imageViewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
     imageViewCI.image = _depthStencil[index].Image;
-    imageViewCI.format = DepthFormat;
+    imageViewCI.format = dp;
     imageViewCI.subresourceRange.baseMipLevel = 0;
     imageViewCI.subresourceRange.levelCount = 1;
     imageViewCI.subresourceRange.baseArrayLayer = 0;
     imageViewCI.subresourceRange.layerCount = 1;
     imageViewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
     // Stencil aspect should only be set on depth + stencil formats (VK_FORMAT_D16_UNORM_S8_UINT..VK_FORMAT_D32_SFLOAT_S8_UINT
-    if (DepthFormat >= VK_FORMAT_D16_UNORM_S8_UINT) {
+    if (dp >= VK_FORMAT_D16_UNORM_S8_UINT) {
       // imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
     }
     vkCreateImageView(_device.LogicalDevice, &imageViewCI, null, out _depthStencil[index].ImageView).CheckResult();
@@ -308,14 +310,14 @@ public unsafe class VkDynamicRenderer : IRenderer {
 
     Logger.Info("Recreated Swapchain");
   }
-  public VkRenderPass GetSwapchainRenderPass() {
+  public ulong GetSwapchainRenderPass() {
     return VkRenderPass.Null;
   }
 
-  public VkRenderPass GetPostProcessingPass() {
+  public ulong GetPostProcessingPass() {
     return VkRenderPass.Null;
   }
-  public VkCommandBuffer BeginFrame(VkCommandBufferLevel level = VkCommandBufferLevel.Primary) {
+  public nint BeginFrame(CommandBufferLevel level = CommandBufferLevel.Primary) {
     if (IsFrameInProgress) {
       Logger.Error("Cannot start frame while already in progress!");
       return VkCommandBuffer.Null;
@@ -328,7 +330,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     var commandBuffer = _commandBuffers[_imageIndex];
     vkResetCommandBuffer(commandBuffer, VkCommandBufferResetFlags.None);
     VkCommandBufferBeginInfo beginInfo = new();
-    if (level == VkCommandBufferLevel.Secondary) {
+    if (level == CommandBufferLevel.Secondary) {
       beginInfo.flags = VkCommandBufferUsageFlags.SimultaneousUse;
     }
     vkBeginCommandBuffer(commandBuffer, &beginInfo);
@@ -373,7 +375,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     }
   }
 
-  public void BeginRendering(VkCommandBuffer commandBuffer) {
+  public void BeginRendering(nint commandBuffer) {
     if (!IsFrameInProgress) {
       Logger.Error("Cannot start render pass while already in progress!");
       return;
@@ -445,7 +447,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
   }
 
-  public void EndRendering(VkCommandBuffer commandBuffer) {
+  public void EndRendering(nint commandBuffer) {
     if (!IsFrameInProgress) {
       Logger.Error("Cannot end render pass on not started frame!");
       return;
@@ -470,12 +472,12 @@ public unsafe class VkDynamicRenderer : IRenderer {
     );
   }
 
-  public void CreateCommandBuffers(VkCommandPool commandPool, VkCommandBufferLevel level = VkCommandBufferLevel.Primary) {
+  public void CreateCommandBuffers(ulong commandPool, CommandBufferLevel level = CommandBufferLevel.Primary) {
     _commandBuffers = new VkCommandBuffer[Swapchain.Images.Length];
 
     VkCommandBufferAllocateInfo cmdBufAllocateInfo = new() {
       commandPool = commandPool,
-      level = level,
+      level = (VkCommandBufferLevel)level,
       commandBufferCount = (uint)_commandBuffers.Length
     };
 
@@ -514,7 +516,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
   public VulkanDynamicSwapchain DynamicSwapchain => Swapchain;
   public VkDescriptorSet PostProcessDecriptor => ImageDescriptors[ImageIndex];
   public VkDescriptorSet PreviousPostProcessDescriptor => ImageDescriptors[Swapchain.PreviousFrame];
-  public VkCommandBuffer CurrentCommandBuffer => _commandBuffers[_imageIndex];
+  public nint CurrentCommandBuffer => _commandBuffers[_imageIndex];
   public int FrameIndex { get; private set; }
   public int ImageIndex => (int)_imageIndex;
   public float AspectRatio => Swapchain.ExtentAspectRatio();

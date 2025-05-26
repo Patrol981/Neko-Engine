@@ -3,15 +3,17 @@ using Dwarf.Math;
 using Dwarf.Vulkan;
 using Vortice.Vulkan;
 
-public interface IRenderer : IDisposable {
-  VkCommandBuffer BeginFrame(VkCommandBufferLevel level = VkCommandBufferLevel.Primary);
-  void EndFrame();
-  void BeginRendering(VkCommandBuffer commandBuffer);
-  void EndRendering(VkCommandBuffer commandBuffer);
-  void RecreateSwapchain();
-  void CreateCommandBuffers(VkCommandPool commandPool, VkCommandBufferLevel level = VkCommandBufferLevel.Primary);
+namespace Dwarf.Rendering;
 
-  VkCommandBuffer CurrentCommandBuffer { get; }
+public interface IRenderer : IDisposable {
+  nint BeginFrame(CommandBufferLevel level = CommandBufferLevel.Primary);
+  void EndFrame();
+  void BeginRendering(nint commandBuffer);
+  void EndRendering(nint commandBuffer);
+  void RecreateSwapchain();
+  void CreateCommandBuffers(ulong commandPool, CommandBufferLevel level = CommandBufferLevel.Primary);
+
+  nint CurrentCommandBuffer { get; }
   int FrameIndex { get; }
   int ImageIndex { get; }
   float AspectRatio { get; }
@@ -19,11 +21,11 @@ public interface IRenderer : IDisposable {
   int MAX_FRAMES_IN_FLIGHT { get; }
   VulkanSwapchain Swapchain { get; }
   VulkanDynamicSwapchain DynamicSwapchain { get; }
-  VkFormat DepthFormat { get; }
+  DwarfFormat DepthFormat { get; }
   CommandList CommandList { get; }
 
-  VkRenderPass GetSwapchainRenderPass();
-  VkRenderPass GetPostProcessingPass();
+  ulong GetSwapchainRenderPass();
+  ulong GetPostProcessingPass();
 
   void UpdateDescriptors();
   VkDescriptorSet PostProcessDecriptor { get; }

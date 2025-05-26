@@ -49,7 +49,7 @@ public partial class ImGuiController {
       fragmentName,
       pipelineConfig,
       pipelineProvider,
-      depthFormat,
+      DwarfFormatConverter.AsVkFormat(depthFormat),
       colorFormat
     );
   }

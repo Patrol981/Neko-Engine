@@ -65,7 +65,7 @@ public static class PipelineFactory {
       fragmentName,
       (VkPipelineConfigInfo)pipelineConfigInfo,
       (VkPipelineProvider)pipelineProvider,
-      depthFormat,
+      DwarfFormatConverter.AsVkFormat(depthFormat),
       colorFormat
     );
   }

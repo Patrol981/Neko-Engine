@@ -769,7 +769,7 @@ public class Application {
       vkAllocateCommandBuffers(Device.LogicalDevice, &secondaryCmdBufAllocateInfo, cmdBfPtr).CheckResult();
     }
 
-    Renderer.CreateCommandBuffers(threadInfo.CommandPool, VkCommandBufferLevel.Primary);
+    Renderer.CreateCommandBuffers(threadInfo.CommandPool, CommandBufferLevel.Primary);
 
     while (!_renderShouldClose) {
       RenderLoader();
@@ -807,7 +807,7 @@ public class Application {
       CommandBuffer = [Renderer.MAX_FRAMES_IN_FLIGHT]
     };
 
-    Renderer.CreateCommandBuffers(threadInfo.CommandPool, VkCommandBufferLevel.Primary);
+    Renderer.CreateCommandBuffers(threadInfo.CommandPool, CommandBufferLevel.Primary);
     // Renderer.BuildCommandBuffers(() => { });
     Mutex.ReleaseMutex();
 

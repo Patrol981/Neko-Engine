@@ -179,7 +179,7 @@ public abstract class SystemBase {
       fragmentName,
       pipelineConfig,
       (VkPipelineProvider)pipelineProvider,
-      depthFormat,
+      DwarfFormatConverter.AsVkFormat(depthFormat),
       colorFormat
     );
   }

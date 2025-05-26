@@ -451,7 +451,7 @@ public class Skybox : IDisposable {
       fragmentName,
       pipelineConfig,
       pipelineProvider,
-      depthFormat,
+      DwarfFormatConverter.AsVkFormat(depthFormat),
       colorFormat
     );
   }

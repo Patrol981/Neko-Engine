@@ -1,5 +1,6 @@
 using Dwarf.AbstractionLayer;
 using Dwarf.Math;
+using Dwarf.Rendering;
 using Dwarf.Vulkan;
 using Vortice.Vulkan;
 
@@ -10,7 +11,7 @@ public class MRenderer : IRenderer {
 
   }
 
-  public VkCommandBuffer CurrentCommandBuffer => throw new NotImplementedException();
+  public nint CurrentCommandBuffer => throw new NotImplementedException();
 
   public int FrameIndex => throw new NotImplementedException();
 
@@ -26,7 +27,7 @@ public class MRenderer : IRenderer {
 
   public VulkanDynamicSwapchain DynamicSwapchain => throw new NotImplementedException();
 
-  public VkFormat DepthFormat => throw new NotImplementedException();
+  public DwarfFormat DepthFormat => throw new NotImplementedException();
 
   public CommandList CommandList => throw new NotImplementedException();
 
@@ -34,15 +35,15 @@ public class MRenderer : IRenderer {
 
   public VkDescriptorSet PreviousPostProcessDescriptor => throw new NotImplementedException();
 
-  public VkCommandBuffer BeginFrame(VkCommandBufferLevel level = VkCommandBufferLevel.Primary) {
+  public nint BeginFrame(CommandBufferLevel level = CommandBufferLevel.Primary) {
     throw new NotImplementedException();
   }
 
-  public void BeginRendering(VkCommandBuffer commandBuffer) {
+  public void BeginRendering(nint commandBuffer) {
     throw new NotImplementedException();
   }
 
-  public void CreateCommandBuffers(VkCommandPool commandPool, VkCommandBufferLevel level = VkCommandBufferLevel.Primary) {
+  public void CreateCommandBuffers(ulong commandPool, CommandBufferLevel level = CommandBufferLevel.Primary) {
     throw new NotImplementedException();
   }
 
@@ -54,15 +55,15 @@ public class MRenderer : IRenderer {
     throw new NotImplementedException();
   }
 
-  public void EndRendering(VkCommandBuffer commandBuffer) {
+  public void EndRendering(nint commandBuffer) {
     throw new NotImplementedException();
   }
 
-  public VkRenderPass GetPostProcessingPass() {
+  public ulong GetPostProcessingPass() {
     throw new NotImplementedException();
   }
 
-  public VkRenderPass GetSwapchainRenderPass() {
+  public ulong GetSwapchainRenderPass() {
     throw new NotImplementedException();
   }
 
