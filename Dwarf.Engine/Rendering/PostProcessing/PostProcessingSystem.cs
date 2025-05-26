@@ -78,14 +78,14 @@ public class PostProcessingSystem : SystemBase {
   ) : base(allocator, device, renderer, configInfo) {
     _textureManager = Application.Instance.TextureManager;
 
-    _setLayout = new DescriptorSetLayout.Builder(_device)
+    _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       .AddBinding(1, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       // .AddBinding(2, VkDescriptorType.SampledImage, VkShaderStageFlags.AllGraphics)
       // .AddBinding(3, VkDescriptorType.Sampler, VkShaderStageFlags.AllGraphics)
       .Build();
 
-    _textureSetLayout = new DescriptorSetLayout.Builder(_device)
+    _textureSetLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.AllGraphics)
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.AllGraphics)
       .Build();
@@ -93,11 +93,11 @@ public class PostProcessingSystem : SystemBase {
     VkDescriptorSetLayout[] layouts = [
       // renderer.Swapchain.InputAttachmentLayout.GetDescriptorSetLayout(),
       // externalLayouts["Global"].GetDescriptorSetLayout()
-      _setLayout.GetDescriptorSetLayout(),
+      _setLayout.GetDescriptorSetLayoutPointer(),
       externalLayouts["Global"].GetDescriptorSetLayoutPointer(),
-      _textureSetLayout.GetDescriptorSetLayout(),
-      _textureSetLayout.GetDescriptorSetLayout(),
-      _textureSetLayout.GetDescriptorSetLayout()
+      _textureSetLayout.GetDescriptorSetLayoutPointer(),
+      _textureSetLayout.GetDescriptorSetLayoutPointer(),
+      _textureSetLayout.GetDescriptorSetLayoutPointer()
     ];
 
     var postProcessConfig = GetConfigurationBasedOnFlag(systemConfiguration.PostProcessingFlag);

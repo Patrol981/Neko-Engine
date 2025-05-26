@@ -28,7 +28,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
 
   public VkFormat DepthFormat { get; private set; }
   public VkDescriptorSet[] ImageDescriptors { get; private set; } = [];
-  private DescriptorSetLayout _postProcessLayout = null!;
+  private VulkanDescriptorSetLayout _postProcessLayout = null!;
   public VkSampler DepthSampler { get; private set; }
   public VkSampler ImageSampler { get; private set; }
 
@@ -120,7 +120,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
   }
 
   private unsafe void CreateDescriptors() {
-    _postProcessLayout = new DescriptorSetLayout.Builder(_device)
+    _postProcessLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       .AddBinding(1, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       .Build();

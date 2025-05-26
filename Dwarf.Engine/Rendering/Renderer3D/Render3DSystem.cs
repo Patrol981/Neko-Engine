@@ -32,7 +32,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
   private VkDescriptorSet _dynamicSet = VkDescriptorSet.Null;
   private VulkanDescriptorWriter _dynamicWriter = null!;
 
-  private readonly DescriptorSetLayout _jointDescriptorLayout = null!;
+  private readonly IDescriptorSetLayout _jointDescriptorLayout = null!;
 
   // private readonly List<VkDrawIndexedIndirectCommand> _indirectCommands = [];
   // private readonly DwarfBuffer _indirectCommandBuffer = null!;
@@ -53,7 +53,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
   private List<(string, int)> _notSkinnedGroups = [];
 
   private ITexture _hatchTexture = null!;
-  private DescriptorSetLayout _previousTexturesLayout = null!;
+  private IDescriptorSetLayout _previousTexturesLayout = null!;
 
   public Render3DSystem(
     nint allocator,
@@ -62,15 +62,15 @@ public class Render3DSystem : SystemBase, IRenderSystem {
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     VkPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
-    _setLayout = new DescriptorSetLayout.Builder(_device)
+    _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBufferDynamic, ShaderStageFlags.AllGraphics)
       .Build();
 
-    _jointDescriptorLayout = new DescriptorSetLayout.Builder(_device)
+    _jointDescriptorLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
       .Build();
 
-    _textureSetLayout = new DescriptorSetLayout.Builder(_device)
+    _textureSetLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.Fragment)
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)
 
@@ -78,17 +78,17 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       // .AddBinding(3, VkDescriptorType.Sampler, VkShaderStageFlags.Fragment)
       .Build();
 
-    _previousTexturesLayout = new DescriptorSetLayout.Builder(_device)
+    _previousTexturesLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       .AddBinding(1, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       .Build();
 
     VkDescriptorSetLayout[] basicLayouts = [
-      _textureSetLayout.GetDescriptorSetLayout(),
-      _textureSetLayout.GetDescriptorSetLayout(),
+      _textureSetLayout.GetDescriptorSetLayoutPointer(),
+      _textureSetLayout.GetDescriptorSetLayoutPointer(),
       externalLayouts["Global"].GetDescriptorSetLayoutPointer(),
       externalLayouts["ObjectData"].GetDescriptorSetLayoutPointer(),
-      _setLayout.GetDescriptorSetLayout(),
+      _setLayout.GetDescriptorSetLayoutPointer(),
       externalLayouts["PointLight"].GetDescriptorSetLayoutPointer(),
     ];
 
@@ -104,7 +104,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       VertexName = "vertex",
       FragmentName = "fragment",
       PipelineProvider = new PipelineModelProvider(),
-      DescriptorSetLayouts = [.. basicLayouts, _previousTexturesLayout.GetDescriptorSetLayout()],
+      DescriptorSetLayouts = [.. basicLayouts, _previousTexturesLayout.GetDescriptorSetLayoutPointer()],
       PipelineName = Simple3D
     });
 
@@ -113,7 +113,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       VertexName = "vertex_skinned",
       FragmentName = "fragment_skinned",
       PipelineProvider = new PipelineModelProvider(),
-      DescriptorSetLayouts = [.. complexLayouts, _previousTexturesLayout.GetDescriptorSetLayout()],
+      DescriptorSetLayouts = [.. complexLayouts, _previousTexturesLayout.GetDescriptorSetLayoutPointer()],
       PipelineName = Skinned3D
     });
   }
@@ -233,7 +233,8 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       .AddPoolSize(DescriptorType.InputAttachment, 1000)
       .AddPoolSize(DescriptorType.UniformBuffer, 1000)
       .AddPoolSize(DescriptorType.StorageBuffer, 1000)
-      .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
+      .SetPoolFlags(DescriptorPoolCreateFlags.None)
+      // .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
     _texturesCount = CalculateLengthOfPool(entities);
@@ -267,7 +268,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
     var range = _modelBuffer.GetDescriptorBufferInfo(_modelBuffer.GetAlignmentSize());
     range.range = _modelBuffer.GetAlignmentSize();
     unsafe {
-      _dynamicWriter = new VulkanDescriptorWriter(_setLayout, _descriptorPool);
+      _dynamicWriter = new VulkanDescriptorWriter((VulkanDescriptorSetLayout)_setLayout, (VulkanDescriptorPool)_descriptorPool);
       _dynamicWriter.WriteBuffer(0, &range);
       _dynamicWriter.Build(out _dynamicSet);
     }
@@ -756,7 +757,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
     _complexIndexBuffer?.Dispose();
 
     _modelBuffer?.Dispose();
-    _descriptorPool?.FreeDescriptors([_dynamicSet]);
+    // _descriptorPool?.FreeDescriptors([_dynamicSet]);
 
     _jointDescriptorLayout?.Dispose();
     _previousTexturesLayout?.Dispose();

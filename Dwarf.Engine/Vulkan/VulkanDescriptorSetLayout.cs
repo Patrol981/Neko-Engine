@@ -6,7 +6,7 @@ using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Vulkan;
 
-public class DescriptorSetLayout : IDescriptorSetLayout {
+public class VulkanDescriptorSetLayout : IDescriptorSetLayout {
   private readonly IDevice _device = null!;
   private readonly VkDescriptorSetLayout _descriptorSetLayout = VkDescriptorSetLayout.Null;
   public class Builder {
@@ -37,13 +37,13 @@ public class DescriptorSetLayout : IDescriptorSetLayout {
       return this;
     }
 
-    public DescriptorSetLayout Build() {
-      return new DescriptorSetLayout(_device, _bindings);
+    public VulkanDescriptorSetLayout Build() {
+      return new VulkanDescriptorSetLayout(_device, _bindings);
     }
 
   }
 
-  public unsafe DescriptorSetLayout(IDevice device, Dictionary<uint, VkDescriptorSetLayoutBinding> bindings) {
+  public unsafe VulkanDescriptorSetLayout(IDevice device, Dictionary<uint, VkDescriptorSetLayoutBinding> bindings) {
     _device = device;
     Bindings = bindings;
 

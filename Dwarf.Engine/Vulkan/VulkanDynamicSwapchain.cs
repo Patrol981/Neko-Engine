@@ -129,24 +129,29 @@ public class VulkanDynamicSwapchain : IDisposable {
     // }
     // Extent2D = swapchainExtent;
 
-    uint presentModeCount;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(_device.PhysicalDevice, _device.Surface, &presentModeCount, null).CheckResult();
+    // uint presentModeCount;
+    // vkGetPhysicalDeviceSurfacePresentModesKHR(_device.PhysicalDevice, _device.Surface, &presentModeCount, null).CheckResult();
 
-    VkPresentModeKHR* presentModes = stackalloc VkPresentModeKHR[(int)presentModeCount];
-    vkGetPhysicalDeviceSurfacePresentModesKHR(_device.PhysicalDevice, _device.Surface, &presentModeCount, presentModes).CheckResult();
+    // VkPresentModeKHR* presentModes = stackalloc VkPresentModeKHR[(int)presentModeCount];
+    // vkGetPhysicalDeviceSurfacePresentModesKHR(_device.PhysicalDevice, _device.Surface, &presentModeCount, presentModes).CheckResult();
 
+    var vkPresentModes = vkGetPhysicalDeviceSurfacePresentModesKHR(_device.PhysicalDevice, _device.Surface);
     VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
     if (!vsync) {
-      for (int i = 0; i < presentModeCount; i++) {
-        if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+      for (int i = 0; i < vkPresentModes.Length; i++) {
+        if (vkPresentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
           swapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
           break;
         }
-        if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+        if (vkPresentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
           swapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+          break;
         }
+        swapchainPresentMode = vkPresentModes[i];
       }
+
+      Logger.Info($"[SWAPCHAIN] Present Mode set to {swapchainPresentMode}");
     }
 
     uint desiredNumberOfSwapchainImages = surfCaps.minImageCount + 1;

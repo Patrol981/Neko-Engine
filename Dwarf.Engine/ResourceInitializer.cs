@@ -41,20 +41,20 @@ public class ResourceInitializer {
       .AddPoolSize(DescriptorType.StorageBuffer, (uint)renderer.MAX_FRAMES_IN_FLIGHT * 45)
       .Build();
 
-    descriptorSetLayouts.TryAdd("Global", new DescriptorSetLayout.Builder(device)
+    descriptorSetLayouts.TryAdd("Global", new VulkanDescriptorSetLayout.Builder(device)
      .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
      .Build());
 
-    descriptorSetLayouts.TryAdd("PointLight", new DescriptorSetLayout.Builder(device)
+    descriptorSetLayouts.TryAdd("PointLight", new VulkanDescriptorSetLayout.Builder(device)
       .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.AllGraphics)
       .Build());
 
-    descriptorSetLayouts.TryAdd("ObjectData", new DescriptorSetLayout.Builder(device)
+    descriptorSetLayouts.TryAdd("ObjectData", new VulkanDescriptorSetLayout.Builder(device)
       .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.Vertex)
       // .AddBinding(1, VkDescriptorType.StorageBuffer, VkShaderStageFlags.AllGraphics)
       .Build());
 
-    descriptorSetLayouts.TryAdd("JointsBuffer", new DescriptorSetLayout.Builder(device)
+    descriptorSetLayouts.TryAdd("JointsBuffer", new VulkanDescriptorSetLayout.Builder(device)
       .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.Vertex)
       .Build());
 
@@ -118,7 +118,7 @@ public class ResourceInitializer {
         renderer.MAX_FRAMES_IN_FLIGHT,
         (ulong)Unsafe.SizeOf<ObjectData>(),
         (ulong)systems.Render3DSystem.LastKnownElemCount,
-        (DescriptorSetLayout)descriptorSetLayouts["ObjectData"],
+        (VulkanDescriptorSetLayout)descriptorSetLayouts["ObjectData"],
         null!,
         "ObjectStorage",
         device.MinStorageBufferOffsetAlignment,
@@ -132,7 +132,7 @@ public class ResourceInitializer {
         renderer.MAX_FRAMES_IN_FLIGHT,
         (ulong)Unsafe.SizeOf<Matrix4x4>(),
         systems.Render3DSystem.LastKnownSkinnedElemJointsCount,
-        (DescriptorSetLayout)descriptorSetLayouts["JointsBuffer"],
+        (VulkanDescriptorSetLayout)descriptorSetLayouts["JointsBuffer"],
         null!,
         "JointsStorage",
         device.MinStorageBufferOffsetAlignment,

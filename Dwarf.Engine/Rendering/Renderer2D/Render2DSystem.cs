@@ -32,19 +32,19 @@ public class Render2DSystem : SystemBase {
     VkDescriptorSetLayout globalSetLayout,
     VkPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
-    _setLayout = new DescriptorSetLayout.Builder(_device)
+    _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
       .Build();
 
-    _textureSetLayout = new DescriptorSetLayout.Builder(_device)
+    _textureSetLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.Fragment)
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)
       .Build();
 
     VkDescriptorSetLayout[] descriptorSetLayouts = [
       globalSetLayout,
-      _setLayout.GetDescriptorSetLayout(),
-      _textureSetLayout.GetDescriptorSetLayout()
+      _setLayout.GetDescriptorSetLayoutPointer(),
+      _textureSetLayout.GetDescriptorSetLayoutPointer()
     ];
 
     AddPipelineData<SpritePushConstant>(new() {

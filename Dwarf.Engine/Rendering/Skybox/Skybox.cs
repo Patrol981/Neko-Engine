@@ -231,7 +231,7 @@ public class Skybox : IDisposable {
 
   private VulkanDescriptorPool _descriptorPool = null!;
   private VulkanDescriptorPool _texturePool = null!;
-  private readonly DescriptorSetLayout _textureSetLayout = null!;
+  private readonly VulkanDescriptorSetLayout _textureSetLayout = null!;
 
   private VkDescriptorSet _textureSet = VkDescriptorSet.Null;
   private DwarfBuffer _skyboxBuffer = null!;
@@ -249,7 +249,7 @@ public class Skybox : IDisposable {
     _transform = new();
     _material = new(new Vector3(1.0f, 1.0f, 1.0f));
 
-    _textureSetLayout = new DescriptorSetLayout.Builder(_device)
+    _textureSetLayout = new VulkanDescriptorSetLayout.Builder(_device)
     .AddBinding(0, DescriptorType.CombinedImageSampler, ShaderStageFlags.Fragment)
     .Build();
 

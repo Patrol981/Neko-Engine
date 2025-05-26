@@ -47,8 +47,8 @@ public class VulkanSwapchain : IDisposable {
 
   // private Swapchain _oldSwapchain = null!;
   private VulkanDescriptorPool _descriptorPool = null!;
-  private DescriptorSetLayout _inputAttachmentsLayout = null!;
-  private DescriptorSetLayout _postProcessLayout = null!;
+  private VulkanDescriptorSetLayout _inputAttachmentsLayout = null!;
+  private VulkanDescriptorSetLayout _postProcessLayout = null!;
   // private VkDescriptorSet[] _colorDescriptors;
   // private VkDescriptorSet[] _depthDescriptors;
   private VkDescriptorSet[] _imageDescriptors = [];
@@ -913,12 +913,12 @@ public class VulkanSwapchain : IDisposable {
   }
 
   private unsafe void CreateDescriptors() {
-    _inputAttachmentsLayout = new DescriptorSetLayout.Builder(_device)
+    _inputAttachmentsLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.InputAttachment, ShaderStageFlags.Fragment)
       .AddBinding(1, DescriptorType.InputAttachment, ShaderStageFlags.Fragment)
       .Build();
 
-    _postProcessLayout = new DescriptorSetLayout.Builder(_device)
+    _postProcessLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       .AddBinding(1, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       .Build();
@@ -1233,7 +1233,7 @@ public class VulkanSwapchain : IDisposable {
   public VkDescriptorSet ImageDescriptor => _imageDescriptors[_currentFrame];
   public VkDescriptorSet PostProcessDecriptor => _postProcessDescriptors[_currentFrame];
   public VkDescriptorSet PreviousPostProcessDescriptor => _postProcessDescriptors[_previousFrame];
-  public DescriptorSetLayout InputAttachmentLayout => _inputAttachmentsLayout;
+  public VulkanDescriptorSetLayout InputAttachmentLayout => _inputAttachmentsLayout;
   public uint ImageCount => GetImageCount();
   public int GetMaxFramesInFlight() => MAX_FRAMES_IN_FLIGHT;
   public float ExtentAspectRatio() {

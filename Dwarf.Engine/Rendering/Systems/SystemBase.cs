@@ -54,11 +54,11 @@ public abstract class SystemBase {
   protected IPipelineConfigInfo _pipelineConfigInfo;
   protected Dictionary<string, PipelineData> _pipelines = [];
 
-  protected VulkanDescriptorPool _descriptorPool = null!;
-  protected VulkanDescriptorPool _texturePool = null!;
-  protected DescriptorSetLayout _setLayout = null!;
-  protected DescriptorSetLayout _textureSetLayout = null!;
-  protected VkDescriptorSet[] _descriptorSets = [];
+  protected IDescriptorPool _descriptorPool = null!;
+  protected IDescriptorPool _texturePool = null!;
+  protected IDescriptorSetLayout _setLayout = null!;
+  protected IDescriptorSetLayout _textureSetLayout = null!;
+  protected IDescriptorSet[] _descriptorSets = [];
 
   protected int _texturesCount = 0;
 

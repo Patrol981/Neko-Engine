@@ -24,18 +24,18 @@ public class RenderUISystem : SystemBase {
     VkDescriptorSetLayout globalSetLayout,
     VkPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
-    _setLayout = new DescriptorSetLayout.Builder(_device)
+    _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
       .Build();
 
-    _textureSetLayout = new DescriptorSetLayout.Builder(_device)
+    _textureSetLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.CombinedImageSampler, ShaderStageFlags.Fragment)
       .Build();
 
     VkDescriptorSetLayout[] descriptorSetLayouts = [
       globalSetLayout,
-      _setLayout.GetDescriptorSetLayout(),
-      _textureSetLayout.GetDescriptorSetLayout(),
+      _setLayout.GetDescriptorSetLayoutPointer(),
+      _textureSetLayout.GetDescriptorSetLayoutPointer(),
     ];
 
     AddPipelineData<UIUniformObject>(new() {
@@ -184,8 +184,8 @@ public class RenderUISystem : SystemBase {
   public override unsafe void Dispose() {
     _device.WaitQueue();
     _uiBuffer?.Dispose();
-    _descriptorPool?.FreeDescriptors(_descriptorSets);
-    _texturePool?.FreeDescriptors(_textureSets);
+    // _descriptorPool?.FreeDescriptors(_descriptorSets);
+    // _texturePool?.FreeDescriptors(_textureSets);
 
     base.Dispose();
   }

@@ -19,7 +19,7 @@ public class ParticleSystem : SystemBase {
   private static List<Particle> s_particles = [];
   private readonly unsafe ParticlePushConstant* _particlePushConstant =
     (ParticlePushConstant*)Marshal.AllocHGlobal(Unsafe.SizeOf<ParticlePushConstant>());
-  private DescriptorSetLayout _textureLayout = null!;
+  private VulkanDescriptorSetLayout _textureLayout = null!;
 
   private TextureManager _textureManager = null!;
 
@@ -30,7 +30,7 @@ public class ParticleSystem : SystemBase {
     VkDescriptorSetLayout globalSetLayout,
     VkPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
-    _textureLayout = new DescriptorSetLayout.Builder(device)
+    _textureLayout = new VulkanDescriptorSetLayout.Builder(device)
       .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.Fragment)
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)
       .Build();

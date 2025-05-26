@@ -5,10 +5,10 @@ using static Vortice.Vulkan.Vulkan;
 namespace Dwarf.Vulkan;
 
 public class VulkanDescriptorWriter {
-  private readonly unsafe DescriptorSetLayout _setLayout;
+  private readonly unsafe VulkanDescriptorSetLayout _setLayout;
   private readonly unsafe VulkanDescriptorPool _pool;
   private VkWriteDescriptorSet[] _writes = [];
-  public VulkanDescriptorWriter(DescriptorSetLayout setLayout, VulkanDescriptorPool pool) {
+  public VulkanDescriptorWriter(VulkanDescriptorSetLayout setLayout, VulkanDescriptorPool pool) {
     _setLayout = setLayout;
     _pool = pool;
   }
