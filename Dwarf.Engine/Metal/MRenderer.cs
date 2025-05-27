@@ -1,8 +1,6 @@
 using Dwarf.AbstractionLayer;
 using Dwarf.Math;
 using Dwarf.Rendering;
-using Dwarf.Vulkan;
-using Vortice.Vulkan;
 
 namespace Dwarf.Metal;
 
@@ -10,7 +8,6 @@ public class MRenderer : IRenderer {
   public MRenderer(Application app) {
 
   }
-
   public nint CurrentCommandBuffer => throw new NotImplementedException();
 
   public int FrameIndex => throw new NotImplementedException();
@@ -23,17 +20,15 @@ public class MRenderer : IRenderer {
 
   public int MAX_FRAMES_IN_FLIGHT => throw new NotImplementedException();
 
-  public VulkanSwapchain Swapchain => throw new NotImplementedException();
-
-  public VulkanDynamicSwapchain DynamicSwapchain => throw new NotImplementedException();
+  public ISwapchain Swapchain => throw new NotImplementedException();
 
   public DwarfFormat DepthFormat => throw new NotImplementedException();
 
   public CommandList CommandList => throw new NotImplementedException();
 
-  public VkDescriptorSet PostProcessDecriptor => throw new NotImplementedException();
+  public ulong PostProcessDecriptor => throw new NotImplementedException();
 
-  public VkDescriptorSet PreviousPostProcessDescriptor => throw new NotImplementedException();
+  public ulong PreviousPostProcessDescriptor => throw new NotImplementedException();
 
   public nint BeginFrame(CommandBufferLevel level = CommandBufferLevel.Primary) {
     throw new NotImplementedException();

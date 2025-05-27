@@ -1,7 +1,9 @@
 using System.Runtime.InteropServices;
 using Dwarf.AbstractionLayer;
 using Dwarf.Extensions.Logging;
+using Dwarf.Math;
 using Dwarf.Pathfinding;
+using Dwarf.Rendering;
 using Dwarf.Utils;
 using Vortice.Vulkan;
 
@@ -9,16 +11,19 @@ using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Vulkan;
 
-public class VulkanDynamicSwapchain : IDisposable {
+public class VulkanDynamicSwapchain : ISwapchain {
   private readonly VulkanDevice _device;
   private VkSwapchainKHR _handle = VkSwapchainKHR.Null;
 
 
-  public VkImage[] Images { get; private set; } = [];
-  public VkImageView[] ImageViews { get; private set; } = [];
-  public VkFormat ColorFormat { get; private set; } = VkFormat.R8G8B8A8Unorm;
-  public VkColorSpaceKHR ColorSpace { get; private set; } = VkColorSpaceKHR.SrgbNonLinear;
-  public VkExtent2D Extent2D { get; private set; }
+  public ulong[] Images { get; private set; } = [];
+  public ulong[] ImageViews { get; private set; } = [];
+  private VkFormat _colorFormat;
+  public DwarfFormat ColorFormat => _colorFormat.AsDwarfFormat();
+  private VkColorSpaceKHR _colorSpace = VkColorSpaceKHR.SrgbNonLinear;
+  public DwarfColorSpace ColorSpace => _colorSpace.AsDwarfColorSpace();
+  private VkExtent2D _extent2D;
+  public DwarfExtent2D Extent2D => _extent2D.FromVkExtent2D();
   public uint QueueNodeIndex { get; private set; } = UInt32.MaxValue;
 
   public int CurrentFrame { get; set; }
@@ -26,7 +31,7 @@ public class VulkanDynamicSwapchain : IDisposable {
 
   public VulkanDynamicSwapchain(VulkanDevice device, VkExtent2D extent2D, bool vsync) {
     _device = device;
-    Extent2D = extent2D;
+    _extent2D = extent2D;
 
     InitSurface();
     Init(vsync);
@@ -89,11 +94,11 @@ public class VulkanDynamicSwapchain : IDisposable {
     var swapChainSupport = VkUtils.QuerySwapChainSupport(_device.PhysicalDevice, _device.Surface);
     var selectedFormat = ChooseSwapSurfaceFormat(swapChainSupport.Formats);
 
-    ColorFormat = selectedFormat.format;
-    ColorSpace = selectedFormat.colorSpace;
+    _colorFormat = selectedFormat.format;
+    _colorSpace = selectedFormat.colorSpace;
   }
 
-  private VkSurfaceFormatKHR ChooseSwapSurfaceFormat(ReadOnlySpan<VkSurfaceFormatKHR> availableFormats) {
+  private static VkSurfaceFormatKHR ChooseSwapSurfaceFormat(ReadOnlySpan<VkSurfaceFormatKHR> availableFormats) {
     // If the surface format list only includes one entry with VK_FORMAT_UNDEFINED,
     // there is no preferred format, so we assume VK_FORMAT_B8G8R8A8_UNORM
     if ((availableFormats.Length == 1) && (availableFormats[0].format == VkFormat.Undefined)) {
@@ -189,9 +194,9 @@ public class VulkanDynamicSwapchain : IDisposable {
     VkSwapchainCreateInfoKHR swapchainCI = new() {
       surface = _device.Surface,
       minImageCount = desiredNumberOfSwapchainImages,
-      imageFormat = ColorFormat,
-      imageColorSpace = ColorSpace,
-      imageExtent = Extent2D,
+      imageFormat = ColorFormat.AsVkFormat(),
+      imageColorSpace = _colorSpace,
+      imageExtent = _extent2D,
       imageUsage = VkImageUsageFlags.ColorAttachment | VkImageUsageFlags.Sampled,
       preTransform = preTransform,
       imageArrayLayers = 1,
@@ -208,17 +213,17 @@ public class VulkanDynamicSwapchain : IDisposable {
     uint imageCount = 0;
     vkGetSwapchainImagesKHR(_device.LogicalDevice, _handle, &imageCount, null).CheckResult();
 
-    Images = new VkImage[imageCount];
-    fixed (VkImage* imagesPtr = Images) {
-      vkGetSwapchainImagesKHR(_device.LogicalDevice, _handle, &imageCount, imagesPtr);
+    Images = new ulong[imageCount];
+    fixed (ulong* imagesPtr = Images) {
+      vkGetSwapchainImagesKHR(_device.LogicalDevice, _handle, &imageCount, (VkImage*)imagesPtr);
     }
 
-    ImageViews = new VkImageView[imageCount];
+    ImageViews = new ulong[imageCount];
     for (int i = 0; i < Images.Length; i++) {
       VkImageViewCreateInfo colorAttachmentView = new() {
         sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         pNext = null,
-        format = ColorFormat,
+        format = ColorFormat.AsVkFormat(),
         components = new() {
           r = VK_COMPONENT_SWIZZLE_R,
           g = VK_COMPONENT_SWIZZLE_G,
@@ -234,7 +239,8 @@ public class VulkanDynamicSwapchain : IDisposable {
       colorAttachmentView.viewType = VK_IMAGE_VIEW_TYPE_2D;
       colorAttachmentView.flags = 0;
       colorAttachmentView.image = Images[i];
-      vkCreateImageView(_device.LogicalDevice, &colorAttachmentView, null, out ImageViews[i]).CheckResult();
+      vkCreateImageView(_device.LogicalDevice, &colorAttachmentView, null, out var imageView).CheckResult();
+      ImageViews[i] = imageView.Handle;
     }
   }
 
@@ -251,12 +257,13 @@ public class VulkanDynamicSwapchain : IDisposable {
 
   public unsafe VkResult QueuePresent(VkQueue queue, uint imageIndex, VkSemaphore waitSemaphore) {
     fixed (VkSwapchainKHR* pSwapchain = &_handle) {
-      VkPresentInfoKHR presentInfo = new();
-      presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-      presentInfo.pNext = null;
-      presentInfo.swapchainCount = 1;
-      presentInfo.pSwapchains = pSwapchain;
-      presentInfo.pImageIndices = &imageIndex;
+      VkPresentInfoKHR presentInfo = new() {
+        sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        pNext = null,
+        swapchainCount = 1,
+        pSwapchains = pSwapchain,
+        pImageIndices = &imageIndex
+      };
       if (waitSemaphore != VkSemaphore.Null) {
         presentInfo.pWaitSemaphores = &waitSemaphore;
         presentInfo.waitSemaphoreCount = 1;
@@ -269,7 +276,7 @@ public class VulkanDynamicSwapchain : IDisposable {
   }
 
   public float ExtentAspectRatio() {
-    return Extent2D.width / (float)Extent2D.height;
+    return _extent2D.width / (float)_extent2D.height;
   }
 
   public unsafe void Dispose() {

@@ -532,7 +532,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
         null
       );
 
-      if (_renderer.DynamicSwapchain.PreviousFrame != -1) {
+      if (_renderer.Swapchain.PreviousFrame != -1) {
         vkCmdBindDescriptorSets(
           frameInfo.CommandBuffer,
           VkPipelineBindPoint.Graphics,
@@ -659,7 +659,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
         null
       );
 
-      if (_renderer.DynamicSwapchain.PreviousFrame != -1) {
+      if (_renderer.Swapchain.PreviousFrame != -1) {
         vkCmdBindDescriptorSets(
           frameInfo.CommandBuffer,
           VkPipelineBindPoint.Graphics,

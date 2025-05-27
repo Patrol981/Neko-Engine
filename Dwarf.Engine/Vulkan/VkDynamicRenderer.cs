@@ -18,6 +18,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
   private readonly IWindow _window = null!;
   private readonly VulkanDevice _device;
   private readonly Application _application;
+  private VulkanDynamicSwapchain _swapchain = null!;
 
   private VkCommandBuffer[] _commandBuffers = [];
   private VulkanDescriptorPool _descriptorPool = null!;
@@ -185,7 +186,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
       vkWaitForFences(_device.LogicalDevice, (uint)Swapchain.Images.Length, fences, true, UInt64.MaxValue);
     }
 
-    var result = Swapchain.AcquireNextImage(_semaphores[Swapchain.CurrentFrame].PresentComplete, out _imageIndex);
+    var result = _swapchain.AcquireNextImage(_semaphores[Swapchain.CurrentFrame].PresentComplete, out _imageIndex);
     if (result == VkResult.ErrorOutOfDateKHR) {
       RecreateSwapchain();
     }
@@ -197,7 +198,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
   }
 
   private void SubmitFrame() {
-    var result = Swapchain.QueuePresent(_device.GraphicsQueue, _imageIndex, _semaphores[Swapchain.CurrentFrame].RenderComplete);
+    var result = _swapchain.QueuePresent(_device.GraphicsQueue, _imageIndex, _semaphores[Swapchain.CurrentFrame].RenderComplete);
 
     if (result == VkResult.ErrorOutOfDateKHR || result == VkResult.SuboptimalKHR || _window.WasWindowResized()) {
       _window.ResetWindowResizedFlag();
@@ -235,7 +236,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     VkImageCreateInfo imageCI = new();
     imageCI.imageType = VK_IMAGE_TYPE_2D;
     imageCI.format = dp;
-    imageCI.extent = new(Swapchain.Extent2D.width, Swapchain.Extent2D.height, 1);
+    imageCI.extent = new(Swapchain.Extent2D.Width, Swapchain.Extent2D.Height, 1);
     imageCI.mipLevels = 1;
     imageCI.arrayLayers = 1;
     imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -297,14 +298,14 @@ public unsafe class VkDynamicRenderer : IRenderer {
     }
 
     Swapchain?.Dispose();
-    Swapchain = new(_device, extent, _application.VSync);
+    _swapchain = new VulkanDynamicSwapchain(_device, extent, _application.VSync);
     if (_depthStencil.Length < 1) {
-      _depthStencil = new AttachmentImage[Swapchain.Images.Length];
-      for (int i = 0; i < Swapchain.Images.Length; i++) {
+      _depthStencil = new AttachmentImage[_swapchain.Images.Length];
+      for (int i = 0; i < _swapchain.Images.Length; i++) {
         _depthStencil[i] = new();
       }
     }
-    for (int i = 0; i < Swapchain.Images.Length; i++) {
+    for (int i = 0; i < _swapchain.Images.Length; i++) {
       CreateDepthStencil(i);
     }
 
@@ -424,7 +425,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     depthStencilAttachment.clearValue.depthStencil = new(1.0f, 0);
 
     VkRenderingInfo renderingInfo = new();
-    renderingInfo.renderArea = new(0, 0, Swapchain.Extent2D.width, Swapchain.Extent2D.height);
+    renderingInfo.renderArea = new(0, 0, Swapchain.Extent2D.Width, Swapchain.Extent2D.Height);
     renderingInfo.layerCount = 1;
     renderingInfo.colorAttachmentCount = 1;
     renderingInfo.pColorAttachments = &colorAttachment;
@@ -436,13 +437,13 @@ public unsafe class VkDynamicRenderer : IRenderer {
     VkViewport viewport = new() {
       x = 0.0f,
       y = 0.0f,
-      width = Swapchain.Extent2D.width,
-      height = Swapchain.Extent2D.height,
+      width = Swapchain.Extent2D.Width,
+      height = Swapchain.Extent2D.Height,
       minDepth = 0.0f,
       maxDepth = 1.0f
     };
 
-    VkRect2D scissor = new(0, 0, Swapchain.Extent2D.width, Swapchain.Extent2D.height);
+    VkRect2D scissor = new(0, 0, Swapchain.Extent2D.Width, Swapchain.Extent2D.Height);
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
   }
@@ -510,19 +511,15 @@ public unsafe class VkDynamicRenderer : IRenderer {
     Swapchain?.Dispose();
   }
 
-
-  VulkanSwapchain IRenderer.Swapchain => throw new NotImplementedException();
-
-  public VulkanDynamicSwapchain DynamicSwapchain => Swapchain;
-  public VkDescriptorSet PostProcessDecriptor => ImageDescriptors[ImageIndex];
-  public VkDescriptorSet PreviousPostProcessDescriptor => ImageDescriptors[Swapchain.PreviousFrame];
+  public ulong PostProcessDecriptor => ImageDescriptors[ImageIndex];
+  public ulong PreviousPostProcessDescriptor => ImageDescriptors[Swapchain.PreviousFrame];
   public nint CurrentCommandBuffer => _commandBuffers[_imageIndex];
   public int FrameIndex { get; private set; }
   public int ImageIndex => (int)_imageIndex;
   public float AspectRatio => Swapchain.ExtentAspectRatio();
-  public DwarfExtent2D Extent2D => Swapchain.Extent2D.FromVkExtent2D();
+  public DwarfExtent2D Extent2D => Swapchain.Extent2D;
   public int MAX_FRAMES_IN_FLIGHT => Swapchain.Images.Length;
-  public VulkanDynamicSwapchain Swapchain { get; private set; } = null!;
+  public ISwapchain Swapchain => _swapchain;
   public CommandList CommandList { get; } = null!;
   public bool IsFrameInProgress { get; private set; } = false;
   public bool IsFrameStarted => IsFrameInProgress;

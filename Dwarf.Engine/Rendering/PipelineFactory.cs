@@ -53,7 +53,7 @@ public static class PipelineFactory {
   ) {
     var pipelineConfig = pipelineConfigInfo;
     // var info = pipelineConfig.GetConfigInfo();
-    var colorFormat = app.Renderer.DynamicSwapchain.ColorFormat;
+    var colorFormat = app.Renderer.Swapchain.ColorFormat;
     var depthFormat = app.Renderer.DepthFormat;
 
     // pipelineConfig.RenderPass = VkRenderPass.Null;
@@ -65,8 +65,8 @@ public static class PipelineFactory {
       fragmentName,
       (VkPipelineConfigInfo)pipelineConfigInfo,
       (VkPipelineProvider)pipelineProvider,
-      DwarfFormatConverter.AsVkFormat(depthFormat),
-      colorFormat
+      depthFormat.AsVkFormat(),
+      colorFormat.AsVkFormat()
     );
   }
 }

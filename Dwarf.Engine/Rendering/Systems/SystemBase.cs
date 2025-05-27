@@ -169,7 +169,7 @@ public abstract class SystemBase {
     out IPipeline pipeline
   ) {
     var pipelineConfig = _pipelineConfigInfo.GetConfigInfo();
-    var colorFormat = _renderer.DynamicSwapchain.ColorFormat;
+    var colorFormat = _renderer.Swapchain.ColorFormat;
     var depthFormat = _renderer.DepthFormat;
     pipelineConfig.RenderPass = VkRenderPass.Null;
     pipelineConfig.PipelineLayout = pipelineLayout;
@@ -179,8 +179,8 @@ public abstract class SystemBase {
       fragmentName,
       pipelineConfig,
       (VkPipelineProvider)pipelineProvider,
-      DwarfFormatConverter.AsVkFormat(depthFormat),
-      colorFormat
+      depthFormat.AsVkFormat(),
+      colorFormat.AsVkFormat()
     );
   }
 

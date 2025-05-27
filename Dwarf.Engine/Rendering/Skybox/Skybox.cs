@@ -443,7 +443,7 @@ public class Skybox : IDisposable {
     var pipelineConfig = _pipelineConfigInfo.GetConfigInfo();
     pipelineConfig.RenderPass = renderPass;
     pipelineConfig.PipelineLayout = _pipelineLayout;
-    var colorFormat = _renderer.DynamicSwapchain.ColorFormat;
+    var colorFormat = _renderer.Swapchain.ColorFormat;
     var depthFormat = _renderer.DepthFormat;
     _pipeline = new VulkanPipeline(
       _device,
@@ -451,8 +451,8 @@ public class Skybox : IDisposable {
       fragmentName,
       pipelineConfig,
       pipelineProvider,
-      DwarfFormatConverter.AsVkFormat(depthFormat),
-      colorFormat
+      depthFormat.AsVkFormat(),
+      colorFormat.AsVkFormat()
     );
   }
 

@@ -59,7 +59,7 @@ public enum DwarfFormat {
 }
 
 public static class DwarfFormatConverter {
-  public static VkFormat AsVkFormat(DwarfFormat format) => format switch {
+  public static VkFormat AsVkFormat(this DwarfFormat format) => format switch {
     DwarfFormat.Undefined => VkFormat.Undefined,
     DwarfFormat.R4G4UnormPack8 => VkFormat.R4G4UnormPack8,
     DwarfFormat.R4G4B4A4UnormPack16 => VkFormat.R4G4B4A4UnormPack16,
@@ -117,7 +117,7 @@ public static class DwarfFormatConverter {
     _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unsupported DwarfFormat"),
   };
 
-  public static DwarfFormat AsDwarfFormat(VkFormat format) => format switch {
+  public static DwarfFormat AsDwarfFormat(this VkFormat format) => format switch {
     VkFormat.Undefined => DwarfFormat.Undefined,
     VkFormat.R4G4UnormPack8 => DwarfFormat.R4G4UnormPack8,
     VkFormat.R4G4B4A4UnormPack16 => DwarfFormat.R4G4B4A4UnormPack16,

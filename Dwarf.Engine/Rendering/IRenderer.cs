@@ -19,8 +19,7 @@ public interface IRenderer : IDisposable {
   float AspectRatio { get; }
   DwarfExtent2D Extent2D { get; }
   int MAX_FRAMES_IN_FLIGHT { get; }
-  VulkanSwapchain Swapchain { get; }
-  VulkanDynamicSwapchain DynamicSwapchain { get; }
+  ISwapchain Swapchain { get; }
   DwarfFormat DepthFormat { get; }
   CommandList CommandList { get; }
 
@@ -28,6 +27,6 @@ public interface IRenderer : IDisposable {
   ulong GetPostProcessingPass();
 
   void UpdateDescriptors();
-  VkDescriptorSet PostProcessDecriptor { get; }
-  VkDescriptorSet PreviousPostProcessDescriptor { get; }
+  ulong PostProcessDecriptor { get; }
+  ulong PreviousPostProcessDescriptor { get; }
 }

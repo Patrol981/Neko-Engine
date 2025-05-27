@@ -41,7 +41,7 @@ public partial class ImGuiController {
     var pipelineConfig = _pipelineConfigInfo.GetConfigInfo();
     pipelineConfig.RenderPass = renderPass;
     pipelineConfig.PipelineLayout = _systemPipelineLayout;
-    var colorFormat = _renderer.DynamicSwapchain.ColorFormat;
+    var colorFormat = _renderer.Swapchain.ColorFormat;
     var depthFormat = _renderer.DepthFormat;
     _systemPipeline = new VulkanPipeline(
       _device,
@@ -49,8 +49,8 @@ public partial class ImGuiController {
       fragmentName,
       pipelineConfig,
       pipelineProvider,
-      DwarfFormatConverter.AsVkFormat(depthFormat),
-      colorFormat
+      depthFormat.AsVkFormat(),
+      colorFormat.AsVkFormat()
     );
   }
 
