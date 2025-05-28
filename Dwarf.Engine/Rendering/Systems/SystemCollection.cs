@@ -71,7 +71,7 @@ public class SystemCollection : IDisposable {
     IDevice device,
     IRenderer renderer,
     Dictionary<string, IDescriptorSetLayout> layouts,
-    VkPipelineConfigInfo pipelineConfigInfo,
+    IPipelineConfigInfo pipelineConfigInfo,
     ref TextureManager textureManager
   ) {
     if (_render3DSystem != null) {
@@ -92,7 +92,7 @@ public class SystemCollection : IDisposable {
       // var textures = _render2DSystem.CheckTextures(spriteEntities);
       if (!sizes || Reload2DRenderSystem) {
         Reload2DRenderSystem = false;
-        Reload2DRenderer(allocator, device, renderer, layouts["Global"].GetDescriptorSetLayoutPointer(), ref textureManager, pipelineConfigInfo, entities);
+        Reload2DRenderer(allocator, device, renderer, layouts["Global"], ref textureManager, pipelineConfigInfo, entities);
       }
     }
 
@@ -110,7 +110,7 @@ public class SystemCollection : IDisposable {
       var particles = _particleSystem.Validate();
       if (!particles || ReloadParticleSystem) {
         ReloadParticleSystem = false;
-        ReloadParticleRenderer(allocator, device, renderer, layouts["Global"].GetDescriptorSetLayoutPointer(), ref textureManager, new ParticlePipelineConfigInfo());
+        ReloadParticleRenderer(allocator, device, renderer, layouts["Global"], ref textureManager, new ParticlePipelineConfigInfo());
       }
     }
   }
@@ -123,7 +123,7 @@ public class SystemCollection : IDisposable {
     IDevice device,
     IRenderer renderer,
     Dictionary<string, IDescriptorSetLayout> layouts,
-    VkPipelineConfigInfo configInfo,
+    IPipelineConfigInfo configInfo,
     ref TextureManager textureManager
   ) {
     SystemCreator.CreateSystems(
@@ -163,7 +163,7 @@ public class SystemCollection : IDisposable {
     IRenderer renderer,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     ref TextureManager textureManager,
-    VkPipelineConfigInfo pipelineConfig,
+    IPipelineConfigInfo pipelineConfig,
     ReadOnlySpan<Entity> entities
   ) {
     _render3DSystem?.Dispose();
@@ -181,9 +181,9 @@ public class SystemCollection : IDisposable {
     nint allocator,
     IDevice device,
     IRenderer renderer,
-    VkDescriptorSetLayout globalLayout,
+    IDescriptorSetLayout globalLayout,
     ref TextureManager textureManager,
-    VkPipelineConfigInfo pipelineConfig,
+    IPipelineConfigInfo pipelineConfig,
     ReadOnlySpan<Entity> entities
   ) {
     // _render2DSystem?.Dispose();
@@ -201,9 +201,9 @@ public class SystemCollection : IDisposable {
     nint allocator,
     IDevice device,
     IRenderer renderer,
-    VkDescriptorSetLayout globalLayout,
+    IDescriptorSetLayout globalLayout,
     ref TextureManager textureManager,
-    VkPipelineConfigInfo pipelineConfig
+    IPipelineConfigInfo pipelineConfig
   ) {
     _renderUISystem?.Dispose();
     _renderUISystem = new RenderUISystem(
@@ -220,9 +220,9 @@ public class SystemCollection : IDisposable {
     nint allocator,
     IDevice device,
     IRenderer renderer,
-    VkDescriptorSetLayout globalLayout,
+    IDescriptorSetLayout globalLayout,
     ref TextureManager textureManager,
-    VkPipelineConfigInfo pipelineConfig
+    IPipelineConfigInfo pipelineConfig
   ) {
     _particleSystem?.Dispose();
     _particleSystem = new ParticleSystem(

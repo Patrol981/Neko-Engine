@@ -23,12 +23,12 @@ public class ShadowRenderSystem : SystemBase {
     IRenderer renderer,
     SystemConfiguration systemConfiguration,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
-    VkPipelineConfigInfo configInfo = null!
+    IPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
     _application = Application.Instance;
 
-    VkDescriptorSetLayout[] layouts = [
-      externalLayouts["Global"].GetDescriptorSetLayoutPointer(),
+    IDescriptorSetLayout[] layouts = [
+      externalLayouts["Global"],
     ];
 
     AddPipelineData<ShadowPushConstant>(new() {

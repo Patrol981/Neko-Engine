@@ -14,10 +14,10 @@ using Dwarf.Rendering.UI.DirectRPG;
 using Dwarf.Utils;
 using Dwarf.Vulkan;
 using Dwarf.Windowing;
-using Vortice.Vulkan;
-using static Vortice.Vulkan.Vma;
+// using Vortice.Vulkan;
+// using static Vortice.Vulkan.Vma;
 // using static Dwarf.GLFW.GLFW;
-using static Vortice.Vulkan.Vulkan;
+// using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf;
 
@@ -66,7 +66,7 @@ public class Application {
     _onLoad = eventCallback;
   }
 
-  public VkPipelineConfigInfo CurrentPipelineConfig = new VkPipelineConfigInfo();
+  public IPipelineConfigInfo CurrentPipelineConfig = null!;
 
   private EventCallback? _onUpdate;
   private EventCallback? _onRender;
@@ -140,13 +140,12 @@ public class Application {
 
     Device = new VulkanDevice(Window);
 
-    ResourceInitializer.VkInitAllocator(Device, out var allocator);
-    Allocator = allocator.Handle;
+    ResourceInitializer.InitAllocator(Device, out var allocator);
+    Allocator = allocator;
 
-    // Renderer = new Renderer(Window, Device);
-    Renderer = new VkDynamicRenderer(this);
+    Renderer = RendererFactory.CreateAPIRenderer(this);
     Systems = new SystemCollection();
-    StorageCollection = new VkStorageCollection(Allocator, (VulkanDevice)Device);
+    StorageCollection = ApplicationFactory.CreateStorageCollection(Allocator, Device);
 
     _textureManager = new(Allocator, Device);
     _systemCreationFlags = systemCreationFlags;
@@ -170,8 +169,10 @@ public class Application {
   }
 
   public void LoadScene(Scene scene) {
+    Mutex.WaitOne();
     SetCurrentScene(scene);
     _newSceneShouldLoad = true;
+    Mutex.ReleaseMutex();
   }
   private async void SceneLoadReactor() {
     Mutex.WaitOne();
@@ -236,7 +237,7 @@ public class Application {
     _skybox?.Dispose();
     _textureManager.DisposeLocal();
 
-    StorageCollection = new VkStorageCollection(Allocator, (VulkanDevice)Device);
+    StorageCollection = ApplicationFactory.CreateStorageCollection(Allocator, Device);
     Mutex.ReleaseMutex();
     await Init();
 
@@ -336,10 +337,7 @@ public class Application {
 
     Mutex.WaitOne();
     try {
-      var result = vkDeviceWaitIdle(Device.LogicalDevice);
-      if (result != VkResult.Success) {
-        Logger.Error(result.ToString());
-      }
+      Device.WaitDevice();
     } finally {
       Mutex.ReleaseMutex();
     }
@@ -357,10 +355,9 @@ public class Application {
   }
   #region RESOURCES
   private unsafe Task InitResources() {
-    ResourceInitializer.VkInitResources(Device, Renderer, StorageCollection, ref _globalPool, ref _descriptorSetLayouts);
+    ResourceInitializer.InitResources(Device, Renderer, StorageCollection, ref _globalPool, ref _descriptorSetLayouts);
 
     Mutex.WaitOne();
-    // SetupSystems(_systemCreationFlags, Device, Renderer, _globalSetLayout, null!);
     Systems.Setup(
       this,
       _systemCreationFlags,
@@ -373,9 +370,8 @@ public class Application {
       ref _textureManager
     );
 
-    ResourceInitializer.VkSetupResources(Device, Renderer, Systems, StorageCollection, ref _globalPool, ref _descriptorSetLayouts, UseSkybox);
+    ResourceInitializer.SetupResources(Device, Renderer, Systems, StorageCollection, ref _globalPool, ref _descriptorSetLayouts, UseSkybox);
     Mutex.ReleaseMutex();
-    // _imguiController.InitResources(_renderer.GetSwapchainRenderPass(), _device.GraphicsQueue, "imgui_vertex", "imgui_fragment");
 
     MasterAwake(_entities.GetScripts());
     _onLoad?.Invoke();
@@ -456,9 +452,6 @@ public class Application {
   private static void MasterUpdate(DwarfScript[] entities) {
 #if RUNTIME
     Parallel.For(0, entities.Length, i => { entities[i].Update(); });
-    // for (short i = 0; i < entities.Length; i++) {
-    //   entities[i].Update();
-    // }
 #endif
   }
 
@@ -556,9 +549,6 @@ public class Application {
   #endregion ENTITY_FLOW
   #region APPLICATION_LOOP
   private unsafe void Render(ThreadInfo threadInfo) {
-    // Time.Tick();
-    // Logger.Info("TICK");
-
     Time.RenderTick();
     if (Window.IsMinimalized) return;
 
@@ -587,13 +577,13 @@ public class Application {
     }
 
     var camera = _camera.TryGetComponent<Camera>();
-    VkCommandBuffer commandBuffer = VkCommandBuffer.Null;
+    nint commandBuffer = IntPtr.Zero;
 
     if (camera != null) {
       commandBuffer = Renderer.BeginFrame();
     }
 
-    if (commandBuffer != VkCommandBuffer.Null && camera != null) {
+    if (commandBuffer != IntPtr.Zero && camera != null) {
       int frameIndex = Renderer.FrameIndex;
       _currentFrame.Camera = camera;
       _currentFrame.CommandBuffer = commandBuffer;
@@ -688,9 +678,6 @@ public class Application {
       Entity[] toUpdate = [.. _entities];
       Systems.UpdateSystems(toUpdate, _currentFrame);
 
-      // Renderer.EndRendering(commandBuffer);
-
-      // Renderer.BeginRendering(commandBuffer);
       if (UseImGui) {
         GuiController.Update(Time.StopwatchDelta);
       }
@@ -730,7 +717,7 @@ public class Application {
 
   internal unsafe void RenderLoader() {
     var commandBuffer = Renderer.BeginFrame();
-    if (commandBuffer != VkCommandBuffer.Null) {
+    if (commandBuffer != IntPtr.Zero) {
       int frameIndex = Renderer.FrameIndex;
 
       _currentFrame.CommandBuffer = commandBuffer;
@@ -756,18 +743,7 @@ public class Application {
     var pool = Device.CreateCommandPool();
     var threadInfo = new ThreadInfo() {
       CommandPool = pool,
-      CommandBuffer = [Renderer.MAX_FRAMES_IN_FLIGHT]
     };
-
-    VkCommandBufferAllocateInfo secondaryCmdBufAllocateInfo = new() {
-      level = VkCommandBufferLevel.Primary,
-      commandPool = threadInfo.CommandPool,
-      commandBufferCount = 1
-    };
-
-    fixed (VkCommandBuffer* cmdBfPtr = threadInfo.CommandBuffer) {
-      vkAllocateCommandBuffers(Device.LogicalDevice, &secondaryCmdBufAllocateInfo, cmdBfPtr).CheckResult();
-    }
 
     Renderer.CreateCommandBuffers(threadInfo.CommandPool, CommandBufferLevel.Primary);
 
@@ -775,26 +751,10 @@ public class Application {
       RenderLoader();
     }
 
-    fixed (VkCommandBuffer* cmdBfPtrEnd = threadInfo.CommandBuffer) {
-      // vkFreeCommandBuffers(
-      //   Device.LogicalDevice,
-      //   threadInfo.CommandPool,
-      //   (uint)Renderer.MAX_FRAMES_IN_FLIGHT,
-      //   cmdBfPtrEnd
-      // );
-
-      vkFreeCommandBuffers(
-        Device.LogicalDevice,
-        threadInfo.CommandPool,
-        (uint)threadInfo.CommandBuffer.Length,
-        cmdBfPtrEnd
-      );
-    }
-
     Device.WaitQueue();
     Device.WaitDevice();
 
-    vkDestroyCommandPool(Device.LogicalDevice, threadInfo.CommandPool, null);
+    Device.DisposeCommandPool(threadInfo.CommandPool);
 
     _renderShouldClose = false;
   }
@@ -804,15 +764,12 @@ public class Application {
     var pool = Device.CreateCommandPool();
     var threadInfo = new ThreadInfo() {
       CommandPool = pool,
-      CommandBuffer = [Renderer.MAX_FRAMES_IN_FLIGHT]
     };
 
     Renderer.CreateCommandBuffers(threadInfo.CommandPool, CommandBufferLevel.Primary);
-    // Renderer.BuildCommandBuffers(() => { });
     Mutex.ReleaseMutex();
 
     while (!_renderShouldClose) {
-      // Logger.Warn("SPINNING " + !_renderShouldClose);
       if (Window.IsMinimalized) continue;
 
       Render(threadInfo);
@@ -825,7 +782,7 @@ public class Application {
     Device.WaitQueue();
     Device.WaitDevice();
 
-    vkDestroyCommandPool(Device.LogicalDevice, threadInfo.CommandPool, null);
+    Device.DisposeCommandPool(threadInfo.CommandPool);
 
     _renderShouldClose = false;
   }
@@ -837,13 +794,6 @@ public class Application {
 
     Span<Entity> entities = _entities.ToArray();
     for (int i = 0; i < entities.Length; i++) {
-      // entities[i].GetComponent<Sprite>()?.Dispose();
-
-      // var u = entities[i].GetDrawables<IDrawable>();
-      // foreach (var e in u) {
-      //   var t = e as IDrawable;
-      //   t?.Dispose();
-      // }
       entities[i].DisposeEverything();
     }
 
@@ -861,7 +811,7 @@ public class Application {
     Window?.Dispose();
     if (Allocator != IntPtr.Zero) {
       Logger.Info("[ALLOCATION] Disposing Allocator");
-      vmaDestroyAllocator(Allocator);
+      ResourceInitializer.DestroyAllocator(Device, Allocator);
     }
     Device?.Dispose();
   }
@@ -870,8 +820,6 @@ public class Application {
     if (_entities.Count == 0) return;
     for (short i = 0; i < _entities.Count; i++) {
       if (_entities[i].CanBeDisposed) {
-
-
         if (_entities[i].Collected) continue;
 
         _entities[i].Collected = true;

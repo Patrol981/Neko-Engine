@@ -49,7 +49,7 @@ public class SystemCreator {
     IDevice device,
     IRenderer renderer,
     Dictionary<string, IDescriptorSetLayout> layouts,
-    VkPipelineConfigInfo configInfo = null!
+    IPipelineConfigInfo configInfo = null!
   ) {
     var hasRenderer3D = flags.HasFlag(SystemCreationFlags.Renderer3D);
     var hasRenderer2D = flags.HasFlag(SystemCreationFlags.Renderer2D);
@@ -67,7 +67,7 @@ public class SystemCreator {
     if (hasRendererUI) {
       Logger.Info("[SYSTEM CREATOR] Creating UI Renderer");
       systemCollection.RenderUISystem =
-        new(allocator, device, renderer, layouts["Global"].GetDescriptorSetLayoutPointer(), configInfo);
+        new(allocator, device, renderer, layouts["Global"], configInfo);
     }
 
     if (hasRenderer3D) {
@@ -80,13 +80,13 @@ public class SystemCreator {
       Logger.Info("[SYSTEM CREATOR] Creating Debug Renderer");
       var debugConfig = new VertexDebugPipeline();
       systemCollection.RenderDebugSystem =
-        new(allocator, device, renderer, layouts["Global"].GetDescriptorSetLayoutPointer(), debugConfig);
+        new(allocator, device, renderer, layouts["Global"], debugConfig);
     }
 
     if (hasRenderer2D) {
       Logger.Info("[SYSTEM CREATOR] Creating 2D Renderer");
       systemCollection.Render2DSystem =
-        new(allocator, device, renderer, layouts["Global"].GetDescriptorSetLayoutPointer(), configInfo);
+        new(allocator, device, renderer, layouts["Global"], configInfo);
     }
 
     if (usePhysics3D) {
@@ -125,7 +125,7 @@ public class SystemCreator {
     if (hasParticles) {
       Logger.Info("[SYSTEM CREATOR] Creating Particle System");
       systemCollection.ParticleSystem =
-        new(allocator, device, renderer, layouts["Global"].GetDescriptorSetLayoutPointer(), new ParticlePipelineConfigInfo());
+        new(allocator, device, renderer, layouts["Global"], new ParticlePipelineConfigInfo());
     }
 
     if (hasShadows) {

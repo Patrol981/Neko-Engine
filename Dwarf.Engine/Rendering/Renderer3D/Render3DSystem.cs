@@ -60,7 +60,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
     IDevice device,
     IRenderer renderer,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
-    VkPipelineConfigInfo configInfo = null!
+    IPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
     _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBufferDynamic, ShaderStageFlags.AllGraphics)
@@ -83,18 +83,18 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       .AddBinding(1, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       .Build();
 
-    VkDescriptorSetLayout[] basicLayouts = [
-      _textureSetLayout.GetDescriptorSetLayoutPointer(),
-      _textureSetLayout.GetDescriptorSetLayoutPointer(),
-      externalLayouts["Global"].GetDescriptorSetLayoutPointer(),
-      externalLayouts["ObjectData"].GetDescriptorSetLayoutPointer(),
-      _setLayout.GetDescriptorSetLayoutPointer(),
-      externalLayouts["PointLight"].GetDescriptorSetLayoutPointer(),
+    IDescriptorSetLayout[] basicLayouts = [
+      _textureSetLayout,
+      _textureSetLayout,
+      externalLayouts["Global"],
+      externalLayouts["ObjectData"],
+      _setLayout,
+      externalLayouts["PointLight"],
     ];
 
-    VkDescriptorSetLayout[] complexLayouts = [
+    IDescriptorSetLayout[] complexLayouts = [
       .. basicLayouts,
-      externalLayouts["JointsBuffer"].GetDescriptorSetLayoutPointer(),
+      externalLayouts["JointsBuffer"],
       // _jointDescriptorLayout.GetDescriptorSetLayout(),
       // _previousTexturesLayout.GetDescriptorSetLayout()
     ];
@@ -104,7 +104,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       VertexName = "vertex",
       FragmentName = "fragment",
       PipelineProvider = new PipelineModelProvider(),
-      DescriptorSetLayouts = [.. basicLayouts, _previousTexturesLayout.GetDescriptorSetLayoutPointer()],
+      DescriptorSetLayouts = [.. basicLayouts, _previousTexturesLayout],
       PipelineName = Simple3D
     });
 
@@ -113,7 +113,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       VertexName = "vertex_skinned",
       FragmentName = "fragment_skinned",
       PipelineProvider = new PipelineModelProvider(),
-      DescriptorSetLayouts = [.. complexLayouts, _previousTexturesLayout.GetDescriptorSetLayoutPointer()],
+      DescriptorSetLayouts = [.. complexLayouts, _previousTexturesLayout],
       PipelineName = Skinned3D
     });
   }
@@ -714,7 +714,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       }
 
       if (i <= nodes.Length && nodes[i].ParentRenderer.Animations.Count > 0) {
-        nodes[i].ParentRenderer.GetOwner().GetComponent<AnimationController>().Update(nodes[i]);
+        nodes[i].ParentRenderer.GetOwner().TryGetComponent<AnimationController>()?.Update(nodes[i]);
       }
 
       if (prevTextureId != nodes[i].Mesh!.TextureIdReference) {

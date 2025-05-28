@@ -25,10 +25,10 @@ public class PointLightSystem : SystemBase {
     IDevice device,
     IRenderer renderer,
     IDescriptorSetLayout globalSetLayout,
-    VkPipelineConfigInfo configInfo = null!
+    IPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
-    VkDescriptorSetLayout[] descriptorSetLayouts = [
-      globalSetLayout.GetDescriptorSetLayoutPointer(),
+    IDescriptorSetLayout[] descriptorSetLayouts = [
+      globalSetLayout,
     ];
 
     AddPipelineData<PointLightPushConstant>(new() {

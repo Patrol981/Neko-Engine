@@ -29,8 +29,8 @@ public class Render2DSystem : SystemBase {
     nint allocator,
     IDevice device,
     IRenderer renderer,
-    VkDescriptorSetLayout globalSetLayout,
-    VkPipelineConfigInfo configInfo = null!
+    IDescriptorSetLayout globalSetLayout,
+    IPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
     _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
@@ -41,10 +41,10 @@ public class Render2DSystem : SystemBase {
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)
       .Build();
 
-    VkDescriptorSetLayout[] descriptorSetLayouts = [
+    IDescriptorSetLayout[] descriptorSetLayouts = [
       globalSetLayout,
-      _setLayout.GetDescriptorSetLayoutPointer(),
-      _textureSetLayout.GetDescriptorSetLayoutPointer()
+      _setLayout,
+      _textureSetLayout
     ];
 
     AddPipelineData<SpritePushConstant>(new() {

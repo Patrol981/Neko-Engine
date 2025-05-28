@@ -75,7 +75,7 @@ public class PostProcessingSystem : SystemBase {
     IRenderer renderer,
     SystemConfiguration systemConfiguration,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
-    VkPipelineConfigInfo configInfo = null!
+    IPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
     _textureManager = Application.Instance.TextureManager;
 
@@ -91,14 +91,14 @@ public class PostProcessingSystem : SystemBase {
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.AllGraphics)
       .Build();
 
-    VkDescriptorSetLayout[] layouts = [
+    IDescriptorSetLayout[] layouts = [
       // renderer.Swapchain.InputAttachmentLayout.GetDescriptorSetLayout(),
       // externalLayouts["Global"].GetDescriptorSetLayout()
-      _setLayout.GetDescriptorSetLayoutPointer(),
-      externalLayouts["Global"].GetDescriptorSetLayoutPointer(),
-      _textureSetLayout.GetDescriptorSetLayoutPointer(),
-      _textureSetLayout.GetDescriptorSetLayoutPointer(),
-      _textureSetLayout.GetDescriptorSetLayoutPointer()
+      _setLayout,
+      externalLayouts["Global"],
+      _textureSetLayout,
+      _textureSetLayout,
+      _textureSetLayout
     ];
 
     var postProcessConfig = GetConfigurationBasedOnFlag(systemConfiguration.PostProcessingFlag);

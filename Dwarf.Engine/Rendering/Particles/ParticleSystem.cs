@@ -27,20 +27,20 @@ public class ParticleSystem : SystemBase {
     nint allocator,
     IDevice device,
     IRenderer renderer,
-    VkDescriptorSetLayout globalSetLayout,
-    VkPipelineConfigInfo configInfo = null!
+    IDescriptorSetLayout globalSetLayout,
+    IPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
     _textureLayout = new VulkanDescriptorSetLayout.Builder(device)
       .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.Fragment)
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)
       .Build();
 
-    VkDescriptorSetLayout[] descriptorSetLayouts = [
+    IDescriptorSetLayout[] descriptorSetLayouts = [
       globalSetLayout,
     ];
 
-    VkDescriptorSetLayout[] texturedSetLayouts = [
-      _textureLayout.GetDescriptorSetLayout(),
+    IDescriptorSetLayout[] texturedSetLayouts = [
+      _textureLayout,
       globalSetLayout
     ];
 

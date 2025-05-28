@@ -36,6 +36,7 @@ public interface IDevice : IDisposable {
 
   ulong CommandPool { get; }
   ulong CreateCommandPool();
+  void DisposeCommandPool(ulong commandPool);
 
   IntPtr LogicalDevice { get; }
   IntPtr PhysicalDevice { get; }

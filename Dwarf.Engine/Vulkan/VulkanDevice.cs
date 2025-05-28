@@ -622,6 +622,10 @@ public class VulkanDevice : IDevice {
     return result != VkResult.Success ? throw new Exception("Failed to create command pool!") : (ulong)commandPool;
   }
 
+  public unsafe void DisposeCommandPool(ulong commandPool) {
+    vkDestroyCommandPool(LogicalDevice, commandPool, null);
+  }
+
   public object CreateFence(FenceCreateFlags fenceCreateFlags) {
     return CreateFence((VkFenceCreateFlags)fenceCreateFlags);
   }

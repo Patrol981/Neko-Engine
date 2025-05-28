@@ -11,7 +11,16 @@ using static Vortice.Vulkan.Vma;
 namespace Dwarf;
 
 public class ResourceInitializer {
-  public static void VkInitAllocator(IDevice device, out VmaAllocator allocator) {
+
+  public static void InitAllocator(IDevice device, out nint allocator) {
+    allocator = device.RenderAPI switch {
+      RenderAPI.Vulkan => VkInitAllocator(device),
+      RenderAPI.Metal => IntPtr.Zero,
+      _ => throw new NotImplementedException(),
+    };
+  }
+
+  private static nint VkInitAllocator(IDevice device) {
     var vkDevice = (VulkanDevice)device;
     VmaAllocatorCreateFlags allocatorFlags = VmaAllocatorCreateFlags.KHRDedicatedAllocation | VmaAllocatorCreateFlags.KHRBindMemory2;
     VmaAllocatorCreateInfo allocatorCreateInfo = new() {
@@ -21,10 +30,73 @@ public class ResourceInitializer {
       physicalDevice = vkDevice.PhysicalDevice,
       device = vkDevice.LogicalDevice,
     };
-    vmaCreateAllocator(allocatorCreateInfo, out allocator);
+    vmaCreateAllocator(allocatorCreateInfo, out var allocator);
+    return allocator;
   }
 
-  public static void VkInitResources(
+  public static void DestroyAllocator(IDevice device, nint allocator) {
+    switch (device.RenderAPI) {
+      case RenderAPI.Vulkan:
+        VkDestroyAllocator(allocator);
+        break;
+      case RenderAPI.Metal:
+        break;
+      default:
+        throw new NotImplementedException();
+    }
+  }
+
+  private static void VkDestroyAllocator(VmaAllocator vmaAllocator) {
+    vmaDestroyAllocator(vmaAllocator);
+  }
+
+  public static void InitResources(
+    in IDevice device,
+    in IRenderer renderer,
+    in IStorageCollection storageCollection,
+    ref IDescriptorPool globalPool,
+    ref Dictionary<string, IDescriptorSetLayout> descriptorSetLayouts
+  ) {
+    switch (device.RenderAPI) {
+      case RenderAPI.Vulkan:
+        VkInitResources(device, renderer, storageCollection, ref globalPool, ref descriptorSetLayouts);
+        break;
+      case RenderAPI.Metal:
+        throw new NotImplementedException();
+      default:
+        throw new NotImplementedException();
+    }
+  }
+
+  public static void SetupResources(
+    in IDevice device,
+    in IRenderer renderer,
+    in SystemCollection systems,
+    in IStorageCollection storageCollection,
+    ref IDescriptorPool globalPool,
+    ref Dictionary<string, IDescriptorSetLayout> descriptorSetLayouts,
+    bool useSkybox
+  ) {
+    switch (device.RenderAPI) {
+      case RenderAPI.Vulkan:
+        VkSetupResources(
+          device,
+          renderer,
+          systems,
+          storageCollection,
+          ref globalPool,
+          ref descriptorSetLayouts,
+          useSkybox
+        );
+        break;
+      case RenderAPI.Metal:
+        throw new NotImplementedException();
+      default:
+        throw new NotImplementedException();
+    }
+  }
+
+  private static void VkInitResources(
     in IDevice device,
     in IRenderer renderer,
     in IStorageCollection storageCollection,
@@ -101,7 +173,7 @@ public class ResourceInitializer {
     //  .Build());
   }
 
-  public static void VkSetupResources(
+  private static void VkSetupResources(
     in IDevice device,
     in IRenderer renderer,
     in SystemCollection systems,

@@ -52,7 +52,9 @@ public static class Frustum {
     outNodes = [];
     Guizmos.Clear();
     foreach (var node in inNodes) {
-      var transform = node.ParentRenderer.Owner.TryGetComponent<Transform>();
+      var owner = node.ParentRenderer.Owner;
+      if (owner.CanBeDisposed) continue;
+      var transform = owner.TryGetComponent<Transform>();
       Debug.Assert(transform != null);
 
       // var globalScale = node.Scale;
@@ -102,7 +104,9 @@ public static class Frustum {
     var iep = globalUbo.CameraPosition;
     var fogValue = Application.Instance.FogValue.X;
     foreach (var node in inNodes) {
-      var transform = node.ParentRenderer.Owner.TryGetComponent<Transform>();
+      var owner = node.ParentRenderer.Owner;
+      if (owner.CanBeDisposed) continue;
+      var transform = owner.TryGetComponent<Transform>();
       Debug.Assert(transform != null);
       var matrix = node.GetMatrix() * transform.RotationMatrix * transform.PositionMatrix * transform.ScaleMatrix;
       var position = matrix.Translation;

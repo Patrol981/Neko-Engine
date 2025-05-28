@@ -14,15 +14,14 @@ using static Vortice.Vulkan.Vulkan;
 namespace Dwarf.Rendering;
 
 public class RenderUISystem : SystemBase {
-  private PublicList<VkDescriptorSet> _textureSets = new PublicList<VkDescriptorSet>();
   private DwarfBuffer _uiBuffer = null!;
 
   public RenderUISystem(
     nint allocator,
     IDevice device,
     IRenderer renderer,
-    VkDescriptorSetLayout globalSetLayout,
-    VkPipelineConfigInfo configInfo = null!
+    IDescriptorSetLayout globalSetLayout,
+    IPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, configInfo) {
     _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
@@ -32,10 +31,10 @@ public class RenderUISystem : SystemBase {
       .AddBinding(0, DescriptorType.CombinedImageSampler, ShaderStageFlags.Fragment)
       .Build();
 
-    VkDescriptorSetLayout[] descriptorSetLayouts = [
+    IDescriptorSetLayout[] descriptorSetLayouts = [
       globalSetLayout,
-      _setLayout.GetDescriptorSetLayoutPointer(),
-      _textureSetLayout.GetDescriptorSetLayoutPointer(),
+      _setLayout,
+      _textureSetLayout,
     ];
 
     AddPipelineData<UIUniformObject>(new() {

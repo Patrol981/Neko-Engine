@@ -82,4 +82,8 @@ public class MetalDevice : IDevice {
   public void WaitQueue() {
     throw new NotImplementedException();
   }
+
+  public void DisposeCommandPool(ulong commandPool) {
+    throw new NotImplementedException();
+  }
 }
