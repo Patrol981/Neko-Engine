@@ -7,7 +7,7 @@ using ImGuiNET;
 
 using Vortice.Vulkan;
 
-namespace Neko.Rendering.UI;
+namespace Dwarf.Rendering.UI;
 
 public class PipelineImGuiProvider : VkPipelineProvider {
   public override unsafe VkVertexInputBindingDescription* GetBindingDescsFunc() {

@@ -1,10 +1,10 @@
-using Neko.Math;
+using Dwarf.Math;
 using Vortice.Vulkan;
 
-namespace Neko.Windowing;
+namespace Dwarf.Windowing;
 
 public interface IWindow : IDisposable {
-  NekoExtent2D Extent { get; set; }
+  DwarfExtent2D Extent { get; set; }
   bool ShouldClose { get; set; }
   bool FramebufferResized { get; set; }
   bool IsMinimalized { get; }
@@ -27,5 +27,5 @@ public interface IWindow : IDisposable {
 
   float GetRefreshRate();
 
-  ulong CreateSurface(nint instance);
+  VkSurfaceKHR CreateVkSurface(VkInstance instance);
 }

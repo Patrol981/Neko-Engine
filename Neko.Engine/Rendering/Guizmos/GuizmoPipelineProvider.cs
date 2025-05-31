@@ -2,7 +2,7 @@ using Neko.Vulkan;
 
 using Vortice.Vulkan;
 
-namespace Neko.Rendering.Guizmos;
+namespace Dwarf.Rendering.Guizmos;
 
 public class GuizmoPipelineProvider : VkPipelineProvider {
   public override unsafe VkVertexInputBindingDescription* GetBindingDescsFunc() {

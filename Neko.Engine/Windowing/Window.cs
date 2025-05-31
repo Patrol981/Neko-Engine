@@ -13,7 +13,7 @@ using static SDL3.SDL3;
 namespace Neko.Windowing;
 
 public class Window : IWindow {
-  public NekoExtent2D Extent { get; set; }
+  public DwarfExtent2D Extent { get; set; }
   public bool ShouldClose { get; set; } = false;
   public bool FramebufferResized { get; set; } = false;
   public bool IsMinimalized { get; private set; } = false;
@@ -25,8 +25,6 @@ public class Window : IWindow {
 
   private readonly bool _windowMinimalized = false;
   private SDL_Cursor _cursor;
-
-  private Application? _app;
 
   public void Init(string windowName, bool fullscreen, int width, int height, bool debug = false) {
     InitWindow(windowName, fullscreen, debug, width, height);
@@ -69,21 +67,10 @@ public class Window : IWindow {
 
       windowFlags |= SDL_WindowFlags.Vulkan;
     } else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
-      var path = Path.Combine(NekoPath.AssemblyDirectory, "libMoltenVK.dylib");
-
-      Logger.Info($"[WINDOW] Setting path for MoltenVK - {path}");
-
-      if (!SDL_Vulkan_LoadLibrary(path)) {
-        throw new Exception("Failed to initialize Vulkan");
-      }
-
-      windowFlags |= SDL_WindowFlags.Vulkan;
+      windowFlags |= SDL_WindowFlags.Metal;
     }
-    // } else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
-    //   windowFlags |= SDL_WindowFlags.Metal;
-    // }
 
-    if (fullscreen && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+    if (fullscreen) {
       windowFlags |= SDL_WindowFlags.Fullscreen | SDL_WindowFlags.Borderless;
     } else if (fullscreen && RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
       windowFlags |= SDL_WindowFlags.Fullscreen;
@@ -234,22 +221,17 @@ public class Window : IWindow {
   }
 
   public void OnResizedEvent(EventArgs e) {
-    OnResizedEventDispatcher?.Invoke(this, e);
+    // Application.Instance.Window.OnResizedEventDispatcher?.Invoke(this, e);
   }
 
   public bool WasWindowResized() => FramebufferResized;
   public bool WasWindowMinimalized() => _windowMinimalized;
 
-  public unsafe ulong CreateSurface(nint instance) {
-    switch (Application.Instance.CurrentAPI) {
-      case AbstractionLayer.RenderAPI.Vulkan:
-        VkSurfaceKHR surface;
-        return SDL_Vulkan_CreateSurface(SDLWindow, instance, IntPtr.Zero, (ulong**)&surface) == false
-          ? throw new Exception("Failed to create SDL Surface")
-          : surface;
-      default:
-        throw new NotImplementedException();
-    }
+  public unsafe VkSurfaceKHR CreateVkSurface(VkInstance instance) {
+    VkSurfaceKHR surface;
+    return SDL_Vulkan_CreateSurface(SDLWindow, instance, IntPtr.Zero, (ulong**)&surface) == false
+      ? throw new Exception("Failed to create SDL Surface")
+      : surface;
   }
 
   public unsafe float GetRefreshRate() {

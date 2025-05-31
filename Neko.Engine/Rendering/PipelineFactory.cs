@@ -1,8 +1,8 @@
-using Neko.AbstractionLayer;
-using Neko.Vulkan;
+using Dwarf.AbstractionLayer;
+using Dwarf.Vulkan;
 using Vortice.Vulkan;
 
-namespace Neko.Rendering;
+namespace Dwarf.Rendering;
 
 public static class PipelineFactory {
   public static IPipeline CreatePipeline(
@@ -60,13 +60,13 @@ public static class PipelineFactory {
     pipelineConfig.PipelineLayout = pipelineLayout;
 
     return new VulkanPipeline(
-      (VulkanDevice)app.Device,
+      app.Device,
+      vertexName,
+      fragmentName,
       (VkPipelineConfigInfo)pipelineConfigInfo,
       (VkPipelineProvider)pipelineProvider,
       depthFormat.AsVkFormat(),
-      colorFormat.AsVkFormat(),
-      vertexName,
-      fragmentName
+      colorFormat.AsVkFormat()
     );
   }
 }

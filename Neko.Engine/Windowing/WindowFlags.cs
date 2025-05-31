@@ -1,4 +1,4 @@
-namespace Neko.Windowing;
+namespace Dwarf.Windowing;
 
 [Flags]
 public enum WindowFlags {

@@ -53,8 +53,8 @@ public class HammerProgram : IPhysicsProgram {
   public static void OnContactExit(in BodyId body1, in BodyId body2) {
     var data = HammerBodyWrapper.GetCollisionData(body1, body2);
     if (data.Item1 != null || data.Item2 != null) {
-      data.Item1?.InvokeCollision(CollisionState.Exit, data.Item2?.Owner, data.Item2?.IsTrigger ?? false);
-      data.Item2?.InvokeCollision(CollisionState.Exit, data.Item1?.Owner, data.Item1?.IsTrigger ?? false);
+      data.Item1?.GetComponent<Rigidbody2D>().InvokeCollision(CollisionState.Exit, data.Item2);
+      data.Item2?.GetComponent<Rigidbody2D>().InvokeCollision(CollisionState.Exit, data.Item1);
     }
   }
 

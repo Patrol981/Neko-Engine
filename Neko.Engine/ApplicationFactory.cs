@@ -1,93 +1,10 @@
-using Neko.AbstractionLayer;
-using Neko.Math;
-using Neko.Rendering;
-using Neko.Vulkan;
+using Dwarf.AbstractionLayer;
+using Dwarf.Rendering;
+using Dwarf.Vulkan;
 
-namespace Neko;
+namespace Dwarf;
 
-public enum ApplicationType {
-  Default,
-  Headless
-}
-
-public record class ApplicationInfo {
-  public string? AppName;
-  public SystemCreationFlags SystemCreationFlags;
-  public SystemConfiguration? SystemConfiguration;
-  public Vector2I? AppSize;
-  public bool Fullscreen;
-  public bool DebugMode;
-  public bool VSync;
-  public bool UseSkybox;
-}
-
-public static class ApplicationFactory {
-  public static ApplicationInfo CreateApplicationBuilder() {
-    return new ApplicationInfo();
-  }
-
-  public static ApplicationInfo WithName(this ApplicationInfo appInfo, string name) {
-    appInfo.AppName = name;
-    return appInfo;
-  }
-
-  public static ApplicationInfo WithCreationFlag(
-    this ApplicationInfo appInfo,
-    SystemCreationFlags systemCreationFlag
-  ) {
-    appInfo.SystemCreationFlags |= systemCreationFlag;
-    return appInfo;
-  }
-
-  public static ApplicationInfo WithSystemConfiguration(
-    this ApplicationInfo appInfo,
-    SystemConfiguration systemConfiguration
-  ) {
-    appInfo.SystemConfiguration = systemConfiguration;
-    return appInfo;
-  }
-
-  public static ApplicationInfo WithSize(this ApplicationInfo appInfo, Vector2I size) {
-    appInfo.AppSize = size;
-    return appInfo;
-  }
-
-  public static ApplicationInfo WithVSync(this ApplicationInfo appInfo, bool value = true) {
-    appInfo.VSync = value;
-    return appInfo;
-  }
-
-  public static ApplicationInfo WithFullscreen(this ApplicationInfo appInfo, bool value = true) {
-    appInfo.Fullscreen = value;
-    return appInfo;
-  }
-
-  public static ApplicationInfo WithDebugMode(this ApplicationInfo appInfo, bool value = true) {
-    appInfo.DebugMode = value;
-    return appInfo;
-  }
-
-  public static ApplicationInfo WithSkybox(this ApplicationInfo appInfo, bool value = true) {
-    appInfo.UseSkybox = value;
-    return appInfo;
-  }
-
-  public static Application Build(this ApplicationInfo appInfo) {
-    var app = new Application(
-      appName: appInfo.AppName ?? "Neko App",
-      windowSize: appInfo.AppSize ?? new(1400, 900),
-      systemCreationFlags: appInfo.SystemCreationFlags,
-      vsync: appInfo.VSync,
-      fullscreen: appInfo.Fullscreen,
-      debugMode: appInfo.DebugMode,
-      systemConfiguration: appInfo.SystemConfiguration
-    ) {
-      UseSkybox = appInfo.UseSkybox
-    };
-
-    return app;
-  }
-
+internal static class ApplicationFactory {
   internal static void CreateDevice(in Application app) {
     switch (app.CurrentAPI) {
       case RenderAPI.Vulkan:

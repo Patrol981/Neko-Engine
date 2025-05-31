@@ -10,19 +10,19 @@ namespace Neko.Vulkan;
 public class VulkanDescriptorPool : IDescriptorPool {
   private VkDescriptorPool _descriptorPool;
   public class Builder {
-    private readonly VulkanDevice _device;
+    private readonly IDevice _device;
     private VkDescriptorPoolSize[] _poolSizes = [];
     private uint _maxSets = 1000;
     private VkDescriptorPoolCreateFlags _poolFlags = 0;
 
-    public Builder(VulkanDevice device, uint maxSets, VkDescriptorPoolCreateFlags poolFlags, VkDescriptorPoolSize[] poolSizes) {
+    public Builder(IDevice device, uint maxSets, VkDescriptorPoolCreateFlags poolFlags, VkDescriptorPoolSize[] poolSizes) {
       this._device = device;
       this._maxSets = maxSets;
       this._poolSizes = poolSizes;
       this._poolFlags = poolFlags;
     }
 
-    public Builder(VulkanDevice device) {
+    public Builder(IDevice device) {
       this._device = device;
     }
 
@@ -53,7 +53,7 @@ public class VulkanDescriptorPool : IDescriptorPool {
   }
 
   public unsafe VulkanDescriptorPool(
-    VulkanDevice device,
+    IDevice device,
     uint maxSets,
     VkDescriptorPoolCreateFlags poolFlags,
     VkDescriptorPoolSize[] poolSizes
@@ -116,7 +116,7 @@ public class VulkanDescriptorPool : IDescriptorPool {
     return _descriptorPool.Handle;
   }
 
-  public VulkanDevice Device { get; }
+  public IDevice Device { get; }
 
   public unsafe void Dispose() {
     Device.DeviceApi.vkDestroyDescriptorPool(Device.LogicalDevice, _descriptorPool);

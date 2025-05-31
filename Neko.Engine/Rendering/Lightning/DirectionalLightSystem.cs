@@ -7,18 +7,16 @@ using Vortice.Vulkan;
 
 using static Vortice.Vulkan.Vulkan;
 
-namespace Neko.Rendering.Lightning;
+namespace Dwarf.Rendering.Lightning;
 
 public class DirectionalLightSystem : SystemBase {
   public DirectionalLightSystem(
-    Application app,
     nint allocator,
-    VulkanDevice device,
+    IDevice device,
     IRenderer renderer,
-    TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
     IPipelineConfigInfo configInfo = null!
-  ) : base(app, allocator, device, renderer, textureManager, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
     IDescriptorSetLayout[] descriptorSetLayouts = [
       globalSetLayout,
     ];

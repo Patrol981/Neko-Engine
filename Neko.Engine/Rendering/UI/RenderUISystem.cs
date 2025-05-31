@@ -14,17 +14,15 @@ using static Vortice.Vulkan.Vulkan;
 namespace Neko.Rendering;
 
 public class RenderUISystem : SystemBase {
-  private NekoBuffer _uiBuffer = null!;
+  private DwarfBuffer _uiBuffer = null!;
 
   public RenderUISystem(
-    Application app,
     nint allocator,
-    VulkanDevice device,
+    IDevice device,
     IRenderer renderer,
-    TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
     IPipelineConfigInfo configInfo = null!
-  ) : base(app, allocator, device, renderer, textureManager, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
     _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
       .Build();
@@ -78,7 +76,7 @@ public class RenderUISystem : SystemBase {
     .SetPoolFlags(VkDescriptorPoolCreateFlags.FreeDescriptorSet)
     .Build();
 
-    _uiBuffer = new NekoBuffer(
+    _uiBuffer = new DwarfBuffer(
       _allocator,
         _device,
         (ulong)Unsafe.SizeOf<UIUniformObject>(),

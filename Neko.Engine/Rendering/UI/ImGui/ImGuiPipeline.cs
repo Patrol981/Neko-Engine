@@ -2,7 +2,7 @@ using Neko.Vulkan;
 
 using Vortice.Vulkan;
 
-namespace Neko.Rendering.UI;
+namespace Dwarf.Rendering.UI;
 
 public class ImGuiPipeline : VkPipelineConfigInfo {
   public override unsafe VkPipelineConfigInfo GetConfigInfo() {

@@ -1,14 +1,14 @@
 using System.Runtime.CompilerServices;
 
-using Neko.AbstractionLayer;
-using Neko.Extensions.Logging;
-using Neko.Rendering.Renderer3D;
+using Dwarf.AbstractionLayer;
+using Dwarf.Extensions.Logging;
+using Dwarf.Rendering.Renderer3D;
 
 using Vortice.Vulkan;
 
 using static Vortice.Vulkan.Vulkan;
 
-namespace Neko.Vulkan;
+namespace Dwarf.Vulkan;
 
 public struct StorageData {
   public VkDescriptorSet[] Descriptors;
@@ -75,7 +75,7 @@ public class VkStorageCollection : IStorageCollection {
       var bufferInfo = mapWholeBuffer ?
         storage.Buffers[i].GetDescriptorBufferInfo() :
         storage.Buffers[i].GetDescriptorBufferInfo(bufferSize * bufferCount);
-      _ = new VulkanDescriptorWriter(_device, (VulkanDescriptorSetLayout)layout, (VulkanDescriptorPool)pool)
+      _ = new VulkanDescriptorWriter((VulkanDescriptorSetLayout)layout, (VulkanDescriptorPool)pool)
         .WriteBuffer(0, &bufferInfo)
         .Build(out storage.Descriptors[i]);
     }
@@ -111,7 +111,7 @@ public class VkStorageCollection : IStorageCollection {
       _dynamicPool.FreeDescriptors([Storages[key].Descriptors[index]]);
 
       var bufferInfo = Storages[key].Buffers[index].GetDescriptorBufferInfo();
-      _ = new VulkanDescriptorWriter(_device, (VulkanDescriptorSetLayout)layout, _dynamicPool)
+      _ = new VulkanDescriptorWriter((VulkanDescriptorSetLayout)layout, _dynamicPool)
         .WriteBuffer(0, &bufferInfo)
         .Build(out Storages[key].Descriptors[index]);
 
@@ -125,13 +125,6 @@ public class VkStorageCollection : IStorageCollection {
     // Application.Mutex.WaitOne();
     Storages[key].Buffers[index].WriteToBuffer(data, size);
     // Application.Mutex.ReleaseMutex();
-  }
-
-  public void WriteToIndex(string key, int index, nint data, ulong size, ulong offset) {
-    if (!Storages.TryGetValue(key, out var storage)) return;
-    if (storage.Buffers[index] == null) return;
-
-    Storages[key].Buffers[index].WriteToBuffer(data, size, offset);
   }
 
   public ulong GetDescriptor(string key, int index) {

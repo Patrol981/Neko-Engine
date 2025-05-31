@@ -1,30 +1,27 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using Neko.AbstractionLayer;
-using Neko.EntityComponentSystem;
-using Neko.Extensions.Logging;
-using Neko.Globals;
-using Neko.Physics;
-using Neko.Physics.Interfaces;
-using Neko.Rendering.Renderer3D;
-using Neko.Vulkan;
-using OpenTK.Mathematics;
+using Dwarf.AbstractionLayer;
+using Dwarf.EntityComponentSystem;
+using Dwarf.Globals;
+using Dwarf.Physics;
+using Dwarf.Physics.Interfaces;
+using Dwarf.Rendering.Renderer3D;
+using Dwarf.Vulkan;
+
 using Vortice.Vulkan;
 
 using static Vortice.Vulkan.Vulkan;
 
-namespace Neko.Rendering.DebugRenderer;
+namespace Dwarf.Rendering.DebugRenderer;
 
 public class RenderDebugSystem : SystemBase, IRenderSystem {
   public RenderDebugSystem(
-    Application app,
     nint allocator,
-    VulkanDevice device,
+    IDevice device,
     IRenderer renderer,
-    TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
     IPipelineConfigInfo configInfo = null!
-  ) : base(app, allocator, device, renderer, textureManager, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
 
     IDescriptorSetLayout[] descriptorSetLayouts = [
       globalSetLayout,

@@ -1,10 +1,10 @@
 using System.Runtime.InteropServices;
-using Neko.AbstractionLayer;
-using Neko.Extensions.Logging;
-using Neko.Math;
-using Neko.Pathfinding;
-using Neko.Rendering;
-using Neko.Utils;
+using Dwarf.AbstractionLayer;
+using Dwarf.Extensions.Logging;
+using Dwarf.Math;
+using Dwarf.Pathfinding;
+using Dwarf.Rendering;
+using Dwarf.Utils;
 using Vortice.Vulkan;
 
 using static Vortice.Vulkan.Vulkan;
@@ -19,12 +19,11 @@ public class VulkanDynamicSwapchain : ISwapchain {
   public ulong[] Images { get; private set; } = [];
   public ulong[] ImageViews { get; private set; } = [];
   private VkFormat _colorFormat;
-  public NekoFormat ColorFormat => _colorFormat.AsNekoFormat();
-  public VkFormat SurfaceFormat => _colorFormat;
+  public DwarfFormat ColorFormat => _colorFormat.AsDwarfFormat();
   private VkColorSpaceKHR _colorSpace = VkColorSpaceKHR.SrgbNonLinear;
-  public NekoColorSpace ColorSpace => _colorSpace.AsNekoColorSpace();
+  public DwarfColorSpace ColorSpace => _colorSpace.AsDwarfColorSpace();
   private VkExtent2D _extent2D;
-  public NekoExtent2D Extent2D => _extent2D.FromVkExtent2D();
+  public DwarfExtent2D Extent2D => _extent2D.FromVkExtent2D();
   public uint QueueNodeIndex { get; private set; } = UInt32.MaxValue;
 
   public int CurrentFrame { get; set; }
@@ -101,17 +100,6 @@ public class VulkanDynamicSwapchain : ISwapchain {
     _colorSpace = selectedFormat.colorSpace;
   }
 
-  private static VkSurfaceFormatKHR ChooseSurfaceFormatAndColorSpace(ReadOnlySpan<VkSurfaceFormatKHR> availableFormats) {
-    for (int i = 0; i < availableFormats.Length; i++) {
-      if ((availableFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB) &&
-        (availableFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)) {
-        return availableFormats[i];
-      }
-    }
-
-    return availableFormats[0];
-  }
-
   private static VkSurfaceFormatKHR ChooseSwapSurfaceFormat(ReadOnlySpan<VkSurfaceFormatKHR> availableFormats) {
     // If the surface format list only includes one entry with VK_FORMAT_UNDEFINED,
     // there is no preferred format, so we assume VK_FORMAT_B8G8R8A8_UNORM
@@ -159,10 +147,7 @@ public class VulkanDynamicSwapchain : ISwapchain {
     // VkPresentModeKHR* presentModes = stackalloc VkPresentModeKHR[(int)presentModeCount];
     // vkGetPhysicalDeviceSurfacePresentModesKHR(_device.PhysicalDevice, _device.Surface, &presentModeCount, presentModes).CheckResult();
 
-    _device.InstanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(_device.PhysicalDevice, _device.Surface, out uint presentModeCount).CheckResult();
-    Span<VkPresentModeKHR> vkPresentModes = stackalloc VkPresentModeKHR[(int)presentModeCount];
-    _device.InstanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(_device.PhysicalDevice, _device.Surface, vkPresentModes).CheckResult();
-
+    var vkPresentModes = vkGetPhysicalDeviceSurfacePresentModesKHR(_device.PhysicalDevice, _device.Surface);
     VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
     if (!vsync) {
@@ -245,7 +230,7 @@ public class VulkanDynamicSwapchain : ISwapchain {
 
     Images = new ulong[imageCount];
     fixed (ulong* imagesPtr = Images) {
-      _device.DeviceApi.vkGetSwapchainImagesKHR(_device.LogicalDevice, _handle, &imageCount, (VkImage*)imagesPtr);
+      vkGetSwapchainImagesKHR(_device.LogicalDevice, _handle, &imageCount, (VkImage*)imagesPtr);
     }
 
     ImageViews = new ulong[imageCount];
@@ -269,8 +254,8 @@ public class VulkanDynamicSwapchain : ISwapchain {
       colorAttachmentView.viewType = VK_IMAGE_VIEW_TYPE_2D;
       colorAttachmentView.flags = 0;
       colorAttachmentView.image = Images[i];
-      _device.DeviceApi.vkCreateImageView(_device.LogicalDevice, &colorAttachmentView, null, out var imageView).CheckResult();
-      ImageViews[i] = imageView;
+      vkCreateImageView(_device.LogicalDevice, &colorAttachmentView, null, out var imageView).CheckResult();
+      ImageViews[i] = imageView.Handle;
     }
   }
 
@@ -287,15 +272,6 @@ public class VulkanDynamicSwapchain : ISwapchain {
 
   public unsafe VkResult QueuePresent(VkQueue queue, uint imageIndex, VkSemaphore waitSemaphore, VkFence[] waitFences) {
     fixed (VkSwapchainKHR* pSwapchain = &_handle) {
-      // ulong presentId = ++_presentId;
-
-      // VkPresentIdKHR presentIdKHR = new() {
-      //   sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR,
-      //   pNext = null,
-      //   pPresentIds = &presentId,
-      //   swapchainCount = 1
-      // };
-
       VkPresentInfoKHR presentInfo = new() {
         sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         pNext = null,
@@ -332,11 +308,7 @@ public class VulkanDynamicSwapchain : ISwapchain {
   }
 
   public float ExtentAspectRatio() {
-    if (_extent2D.width > _extent2D.height) {
-      return _extent2D.width / (float)_extent2D.height;
-    } else {
-      return _extent2D.height / (float)_extent2D.width;
-    }
+    return _extent2D.width / (float)_extent2D.height;
   }
 
   public unsafe void Dispose() {

@@ -24,14 +24,12 @@ public class ParticleSystem : SystemBase {
   private TextureManager _textureManager = null!;
 
   public ParticleSystem(
-    Application app,
     nint allocator,
-    VulkanDevice device,
+    IDevice device,
     IRenderer renderer,
-    TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
     IPipelineConfigInfo configInfo = null!
-  ) : base(app, allocator, device, renderer, textureManager, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
     _textureLayout = new VulkanDescriptorSetLayout.Builder(device)
       .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.Fragment)
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)

@@ -13,12 +13,10 @@ public enum AllocationStrategy {
   Metal,
 }
 
-public unsafe class NekoBuffer : IDisposable {
+public unsafe class DwarfBuffer : IDisposable {
   private readonly IDevice _device;
   private nint _allocator;
   private nint _allocation;
-
-  private readonly VkDeviceApi? _deviceApi;
 
   private void* _mapped;
   private ulong _buffer = 0;
@@ -36,7 +34,7 @@ public unsafe class NekoBuffer : IDisposable {
 
   private readonly bool _isStagingBuffer = false;
 
-  public NekoBuffer(
+  public DwarfBuffer(
     nint allocator,
     IDevice device,
     ulong instanceSize,
@@ -142,7 +140,7 @@ public unsafe class NekoBuffer : IDisposable {
 
   private void CreateVmaBuffer(nint allocator, ulong size, BufferUsage bufferUsageFlags, bool cpuAccessible) {
     VkBufferCreateInfo bufferInfo = new() {
-      size = size,
+      size = _bufferSize,
       usage = (VkBufferUsageFlags)bufferUsageFlags,
       sharingMode = VkSharingMode.Exclusive
     };
@@ -173,7 +171,7 @@ public unsafe class NekoBuffer : IDisposable {
           vmaMapMemory(_allocator, _allocation, ptr);
           break;
         case AllocationStrategy.Vulkan:
-          _deviceApi?.vkMapMemory(_device.LogicalDevice, _memory, offset, size, VkMemoryMapFlags.None, ptr).CheckResult();
+          vkMapMemory(_device.LogicalDevice, _memory, offset, size, VkMemoryMapFlags.None, ptr).CheckResult();
           break;
       }
     }
@@ -194,7 +192,7 @@ public unsafe class NekoBuffer : IDisposable {
           vmaUnmapMemory(_allocator, _allocation);
           break;
         case AllocationStrategy.Vulkan:
-          _deviceApi?.vkUnmapMemory(_device.LogicalDevice, _memory);
+          vkUnmapMemory(_device.LogicalDevice, _memory);
           break;
       }
       _mapped = null;
@@ -222,7 +220,7 @@ public unsafe class NekoBuffer : IDisposable {
     };
     return _allocationStrategy switch {
       AllocationStrategy.VulkanMemoryAllocator => vmaFlushAllocation(_allocator, _allocation, offset, size),
-      AllocationStrategy.Vulkan => _deviceApi!.vkFlushMappedMemoryRanges(_device.LogicalDevice, 1, &mappedRange),
+      AllocationStrategy.Vulkan => vkFlushMappedMemoryRanges(_device.LogicalDevice, 1, &mappedRange),
       _ => throw new NotImplementedException(),
     };
   }
@@ -244,7 +242,7 @@ public unsafe class NekoBuffer : IDisposable {
     };
     return _allocationStrategy switch {
       AllocationStrategy.VulkanMemoryAllocator => vmaInvalidateAllocation(_allocator, _allocation, offset, size),
-      AllocationStrategy.Vulkan => _deviceApi!.vkInvalidateMappedMemoryRanges(_device.LogicalDevice, 1, &mappedRange),
+      AllocationStrategy.Vulkan => vkInvalidateMappedMemoryRanges(_device.LogicalDevice, 1, &mappedRange),
       _ => throw new NotImplementedException(),
     };
   }
@@ -320,7 +318,7 @@ public unsafe class NekoBuffer : IDisposable {
         vmaFreeMemory(_allocator, _allocation);
         break;
       case AllocationStrategy.Vulkan:
-        _deviceApi?.vkFreeMemory(_device.LogicalDevice, _memory);
+        vkFreeMemory(_device.LogicalDevice, _memory);
         break;
     }
   }
@@ -332,7 +330,7 @@ public unsafe class NekoBuffer : IDisposable {
         vmaDestroyBuffer(_allocator, _buffer, _allocation);
         break;
       case AllocationStrategy.Vulkan:
-        _deviceApi?.vkDestroyBuffer(_device.LogicalDevice, _buffer);
+        vkDestroyBuffer(_device.LogicalDevice, _buffer);
         break;
     }
   }

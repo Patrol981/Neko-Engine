@@ -1,14 +1,20 @@
 using System.Numerics;
-using Neko.AbstractionLayer;
-using Neko.Extensions.Logging;
-using Neko.Math;
-using Neko.Physics;
-using Neko.Rendering;
-using Neko.Vulkan;
+using Dwarf.AbstractionLayer;
+using Dwarf.EntityComponentSystem;
+using Dwarf.Extensions.Logging;
+using Dwarf.Globals;
+using Dwarf.Math;
+using Dwarf.Rendering;
+using Dwarf.Rendering.Renderer3D;
+using Dwarf.Vulkan;
 
-namespace Neko.EntityComponentSystem;
+using JoltPhysicsSharp;
+using Vortice.Vulkan;
+using static Dwarf.Physics.JoltConfig;
 
-public class Rigidbody : IDisposable {
+namespace Dwarf.Physics;
+
+public class Rigidbody : Component, IDisposable {
   private readonly IDevice _device = null!;
   private readonly nint _allocator = IntPtr.Zero;
   private IPhysicsBody _bodyInterface = null!;
@@ -33,7 +39,6 @@ public class Rigidbody : IDisposable {
   }
 
   public Rigidbody(
-    Entity owner,
     nint allocator,
     IDevice device,
     PrimitiveType primitiveType,
@@ -62,7 +67,6 @@ public class Rigidbody : IDisposable {
   }
 
   public Rigidbody(
-    Entity owner,
     nint allocator,
     IDevice device,
     PrimitiveType colliderShape,
@@ -84,7 +88,6 @@ public class Rigidbody : IDisposable {
   }
 
   public Rigidbody(
-    Entity owner,
     nint allocator,
     IDevice device,
     PrimitiveType primitiveType,
@@ -110,7 +113,6 @@ public class Rigidbody : IDisposable {
   }
 
   public Rigidbody(
-    Entity owner,
     nint allocator,
     IDevice device,
     PrimitiveType primitiveType,
@@ -190,7 +192,7 @@ public class Rigidbody : IDisposable {
     }
 
     if (_useMesh) {
-      Owner!.AddComponent(new ColliderMesh(Owner, _allocator, (VulkanDevice)_device, _collisionShape));
+      Owner!.AddComponent(new ColliderMesh(_allocator, _device, _collisionShape));
     }
 
   }

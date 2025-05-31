@@ -6,7 +6,7 @@ using Neko.Vulkan;
 using FontStashSharp.Interfaces;
 using Vortice.Vulkan;
 
-namespace Neko.Rendering.UI.FontStash;
+namespace Dwarf.Rendering.UI.FontStash;
 
 public class FontStashObject : IDisposable {
   public class FontMesh {
@@ -20,8 +20,8 @@ public class FontStashObject : IDisposable {
 
   private readonly VulkanDevice _device = null!;
   private readonly nint _allocator = IntPtr.Zero;
-  private NekoBuffer _vertexBuffer = null!;
-  private NekoBuffer _indexBuffer = null!;
+  private DwarfBuffer _vertexBuffer = null!;
+  private DwarfBuffer _indexBuffer = null!;
   private readonly ulong _vertexCount = 0;
   private ulong _indexCount = 0;
 
@@ -66,7 +66,7 @@ public class FontStashObject : IDisposable {
     ulong bufferSize = (ulong)Unsafe.SizeOf<VertexPositionColorTexture>() * MAX_VERTICES;
     ulong vertexSize = (ulong)Unsafe.SizeOf<VertexPositionColorTexture>();
 
-    var stagingBuffer = new NekoBuffer(
+    var stagingBuffer = new DwarfBuffer(
       _allocator,
       _device,
       vertexSize,
@@ -91,7 +91,7 @@ public class FontStashObject : IDisposable {
     ulong bufferSize = (ulong)Unsafe.SizeOf<VertexPositionColorTexture>() * MAX_VERTICES;
     ulong vertexSize = (ulong)Unsafe.SizeOf<VertexPositionColorTexture>();
 
-    _vertexBuffer = new NekoBuffer(
+    _vertexBuffer = new DwarfBuffer(
       _allocator,
       _device,
       vertexSize,
@@ -106,7 +106,7 @@ public class FontStashObject : IDisposable {
     ulong bufferSize = sizeof(uint) * _indexCount;
     ulong indexSize = sizeof(uint);
 
-    var stagingBuffer = new NekoBuffer(
+    var stagingBuffer = new DwarfBuffer(
       _allocator,
       _device,
       indexSize,
@@ -123,7 +123,7 @@ public class FontStashObject : IDisposable {
     }
     // stagingBuffer.WriteToBuffer(MemoryUtils.ToIntPtr(indices), bufferSize);
 
-    _indexBuffer = new NekoBuffer(
+    _indexBuffer = new DwarfBuffer(
       _allocator,
       _device,
       indexSize,

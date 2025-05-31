@@ -1,8 +1,8 @@
-using Neko.AbstractionLayer;
-using Neko.Metal;
-using Neko.Vulkan;
+using Dwarf.AbstractionLayer;
+using Dwarf.Metal;
+using Dwarf.Vulkan;
 
-namespace Neko.Rendering;
+namespace Dwarf.Rendering;
 
 public static class RendererFactory {
   public static IRenderer CreateAPIRenderer(Application app) {

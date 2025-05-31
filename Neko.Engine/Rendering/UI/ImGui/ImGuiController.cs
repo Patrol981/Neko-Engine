@@ -90,10 +90,6 @@ public partial class ImGuiController : IDisposable {
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)
       .Build();
 
-    var postProcessLayout = new VulkanDescriptorSetLayout.Builder(_device)
-      .AddBinding(0, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
-      .Build();
-
     _systemDescriptorPool = new VulkanDescriptorPool.Builder(_device)
       .SetMaxSets(10000)
       .AddPoolSize(DescriptorType.SampledImage, 1000)
@@ -500,7 +496,7 @@ public partial class ImGuiController : IDisposable {
       _vertexCount = drawData.TotalVtxCount;
 
       var app = Application.Instance;
-      Application.Mutex.WaitOne();
+      app.Mutex.WaitOne();
 
       var fence = app.Device.CreateFence(FenceCreateFlags.Signaled);
       app.Device.BeginWaitFence(fence, true);
@@ -518,14 +514,14 @@ public partial class ImGuiController : IDisposable {
         MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
         allocationStrategy: AllocationStrategy.Vulkan
       );
-      Application.Mutex.ReleaseMutex();
+      app.Mutex.ReleaseMutex();
     }
 
     if ((_indexBuffer.GetBuffer() == VkBuffer.Null) || (_indexCount < drawData.TotalIdxCount)) {
       _indexCount = drawData.TotalIdxCount;
 
       var app = Application.Instance;
-      Application.Mutex.WaitOne();
+      app.Mutex.WaitOne();
 
       var fence = app.Device.CreateFence(FenceCreateFlags.Signaled);
       app.Device.BeginWaitFence(fence, true);
@@ -543,7 +539,7 @@ public partial class ImGuiController : IDisposable {
         MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
         allocationStrategy: AllocationStrategy.Vulkan
       );
-      Application.Mutex.ReleaseMutex();
+      app.Mutex.ReleaseMutex();
     }
 
     ImDrawVert* vtxDst = null;

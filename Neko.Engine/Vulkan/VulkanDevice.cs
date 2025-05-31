@@ -16,8 +16,6 @@ namespace Neko.Vulkan;
 
 public class VulkanDevice : IDevice {
   public RenderAPI RenderAPI => RenderAPI.Vulkan;
-  public VkInstanceApi InstanceApi { get; private set; }
-  public VkDeviceApi DeviceApi { get; private set; }
 
   private readonly string[] VALIDATION_LAYERS = ["VK_LAYER_KHRONOS_validation"];
   public static bool s_EnableValidationLayers = true;
@@ -91,7 +89,7 @@ public class VulkanDevice : IDevice {
 
     // Logger.Info($"Allocating Size: {size}");
 
-    DeviceApi.vkCreateBuffer(_logicalDevice, &bufferInfo, null, out var buff).CheckResult();
+    vkCreateBuffer(_logicalDevice, &bufferInfo, null, out var buff).CheckResult();
     buffer = buff;
 
     VkMemoryRequirements memRequirements;
@@ -102,9 +100,9 @@ public class VulkanDevice : IDevice {
       memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, pFlags)
     };
 
-    DeviceApi.vkAllocateMemory(_logicalDevice, &allocInfo, null, out var buffMem).CheckResult();
+    vkAllocateMemory(_logicalDevice, &allocInfo, null, out var buffMem).CheckResult();
     bufferMemory = buffMem;
-    DeviceApi.vkBindBufferMemory(_logicalDevice, buffer, bufferMemory, 0).CheckResult();
+    vkBindBufferMemory(_logicalDevice, buffer, bufferMemory, 0).CheckResult();
   }
 
   public unsafe void AllocateBuffer(
@@ -122,9 +120,9 @@ public class VulkanDevice : IDevice {
       memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, pFlags)
     };
 
-    DeviceApi.vkAllocateMemory(_logicalDevice, &allocInfo, null, out var buffMem).CheckResult();
+    vkAllocateMemory(_logicalDevice, &allocInfo, null, out var buffMem).CheckResult();
     bufferMemory = buffMem;
-    DeviceApi.vkBindBufferMemory(_logicalDevice, buffer, bufferMemory, 0).CheckResult();
+    vkBindBufferMemory(_logicalDevice, buffer, bufferMemory, 0).CheckResult();
   }
 
   public unsafe Task CopyBuffer(ulong srcBuffer, ulong dstBuffer, ulong size) {
@@ -575,7 +573,7 @@ public class VulkanDevice : IDevice {
   }
 
   private unsafe void CreateSurface() {
-    Surface = _window.CreateSurface(_vkInstance.Handle);
+    Surface = _window.CreateVkSurface(_vkInstance.Handle);
   }
 
   private unsafe void PickPhysicalDevice() {
@@ -774,7 +772,7 @@ public class VulkanDevice : IDevice {
   }
 
   public unsafe void DisposeCommandPool(ulong commandPool) {
-    DeviceApi.vkDestroyCommandPool(LogicalDevice, commandPool, null);
+    vkDestroyCommandPool(LogicalDevice, commandPool, null);
   }
 
   public object CreateFence(FenceCreateFlags fenceCreateFlags) {
@@ -782,17 +780,17 @@ public class VulkanDevice : IDevice {
   }
 
   public void WaitFence(object fence, bool waitAll) {
-    DeviceApi.vkWaitForFences(LogicalDevice, (VkFence)fence, waitAll, VulkanDevice.FenceTimeout);
+    vkWaitForFences(LogicalDevice, (VkFence)fence, waitAll, VulkanDevice.FenceTimeout);
     unsafe {
-      DeviceApi.vkDestroyFence(LogicalDevice, (VkFence)fence);
+      vkDestroyFence(LogicalDevice, (VkFence)fence);
     }
   }
 
   public void BeginWaitFence(object fence, bool waitAll) {
-    DeviceApi.vkWaitForFences(LogicalDevice, (VkFence)fence, waitAll, FenceTimeout);
+    vkWaitForFences(LogicalDevice, (VkFence)fence, waitAll, FenceTimeout);
   }
   public unsafe void EndWaitFence(object fence) {
-    DeviceApi.vkDestroyFence(LogicalDevice, (VkFence)fence);
+    vkDestroyFence(LogicalDevice, (VkFence)fence);
   }
 
   public unsafe void Dispose() {
@@ -806,11 +804,11 @@ public class VulkanDevice : IDevice {
   public IntPtr LogicalDevice => _logicalDevice;
   public IntPtr PhysicalDevice => _physicalDevice;
   public ulong Surface { get; private set; } = VkSurfaceKHR.Null;
-  public ulong MinStorageBufferOffsetAlignment => Properties.properties.limits.minStorageBufferOffsetAlignment;
-  public ulong MinUniformBufferOffsetAlignment => Properties.properties.limits.minUniformBufferOffsetAlignment;
+  public ulong MinStorageBufferOffsetAlignment => Properties.limits.minStorageBufferOffsetAlignment;
+  public ulong MinUniformBufferOffsetAlignment => Properties.limits.minUniformBufferOffsetAlignment;
 
-  public VkUtf8String AppName = "Neko App"u8;
-  public VkUtf8String EngineName = "Neko Engine"u8;
+  public VkUtf8String AppName = "Dwarf App"u8;
+  public VkUtf8String EngineName = "Dwarf Engine"u8;
 
   public ulong CommandPool {
     get {

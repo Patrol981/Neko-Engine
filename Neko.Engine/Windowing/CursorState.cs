@@ -1,5 +1,5 @@
 
-namespace Neko.Windowing;
+namespace Dwarf.Windowing;
 
 public enum CursorState {
   Normal,

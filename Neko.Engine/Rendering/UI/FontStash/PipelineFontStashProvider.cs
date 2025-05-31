@@ -7,7 +7,7 @@ using FontStashSharp.Interfaces;
 
 using Vortice.Vulkan;
 
-namespace Neko.Rendering.UI.FontStash;
+namespace Dwarf.Rendering.UI.FontStash;
 
 public class PipelineFontStashProvider : VkPipelineProvider {
   public override unsafe VkVertexInputBindingDescription* GetBindingDescsFunc() {

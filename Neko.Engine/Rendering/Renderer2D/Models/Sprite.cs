@@ -112,18 +112,6 @@ public class Sprite : IDisposable, ICloneable {
     Application.Mutex.ReleaseMutex();
   }
 
-  private Sprite(
-    IDevice device,
-    nint allocator,
-    TextureManager textureManager,
-    IRenderer renderer
-  ) {
-    _device = device;
-    _allocator = allocator;
-    _textureManager = textureManager;
-    _renderer = renderer;
-  }
-
   public void BuildDescriptors(IDescriptorSetLayout descriptorSetLayout, IDescriptorPool descriptorPool) {
     _spriteTexture.BuildDescriptor(descriptorSetLayout, descriptorPool);
   }

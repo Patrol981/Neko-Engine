@@ -1,4 +1,4 @@
-namespace Neko.AbstractionLayer;
+namespace Dwarf.AbstractionLayer;
 
 public interface IPipelineConfigInfo {
   ulong PipelineLayout { get; set; }

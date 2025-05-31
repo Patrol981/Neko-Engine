@@ -5,7 +5,7 @@ using Neko.Vulkan;
 
 using Vortice.Vulkan;
 
-namespace Neko.Rendering.PostProcessing;
+namespace Dwarf.Rendering.PostProcessing;
 
 public class PostProcessingPipelineProvider : VkPipelineProvider {
   public override unsafe VkVertexInputBindingDescription* GetBindingDescsFunc() {

@@ -1,4 +1,4 @@
-namespace Neko.AbstractionLayer;
+namespace Dwarf.AbstractionLayer;
 
 public interface IStorageCollection : IDisposable {
   void CreateStorage(
@@ -28,14 +28,6 @@ public interface IStorageCollection : IDisposable {
     int index,
     nint data,
     ulong size
-  );
-
-  void WriteToIndex(
-    string key,
-    int index,
-    nint data,
-    ulong size,
-    ulong offset
   );
 
   ulong GetDescriptor(

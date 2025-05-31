@@ -56,7 +56,7 @@ public class VulkanTexture : ITexture {
     SetTextureData(dataPtr, VkImageCreateFlags.None);
   }
   private void SetTextureData(nint dataPtr, VkImageCreateFlags createFlags = VkImageCreateFlags.None) {
-    var stagingBuffer = new NekoBuffer(
+    var stagingBuffer = new DwarfBuffer(
       _allocator,
       _device,
       (ulong)_size,
@@ -76,7 +76,7 @@ public class VulkanTexture : ITexture {
   }
 
   private void SetTextureData(byte[] data, VkImageCreateFlags createFlags = VkImageCreateFlags.None) {
-    var stagingBuffer = new NekoBuffer(
+    var stagingBuffer = new DwarfBuffer(
       _allocator,
       _device,
       (ulong)_size,
@@ -380,7 +380,6 @@ public class VulkanTexture : ITexture {
       textureData = await LoadDataFromPath(pathResult, flip);
     }
 
-    Application.Mutex.WaitOne();
     var texture = new VulkanTexture(allocator, device, textureData.Width, textureData.Height, path);
     texture.SetTextureData(textureData.Data, imageCreateFlags);
     Application.Mutex.ReleaseMutex();

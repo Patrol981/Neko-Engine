@@ -10,7 +10,11 @@ using Neko.Vulkan;
 using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
-namespace Neko.Physics;
+namespace Dwarf.Physics;
+
+public class ColliderMesh : Component, IDebugRenderObject {
+  private readonly IDevice _device = null!;
+  private readonly nint _allocator = IntPtr.Zero;
 
 public class ColliderMesh : IDebugRenderObject {
   private readonly VulkanDevice _device = null!;
@@ -24,13 +28,7 @@ public class ColliderMesh : IDebugRenderObject {
 
   public Entity Owner { get; init; }
 
-  public ColliderMesh(Entity owner) {
-    Owner = owner;
-  }
-
-  public ColliderMesh(Entity owner, nint allocator, VulkanDevice device, Mesh mesh) {
-    Application.Mutex.WaitOne();
-    Owner = owner;
+  public ColliderMesh(nint allocator, IDevice device, Mesh mesh) {
     _allocator = allocator;
     _device = device;
     Mesh = mesh;
@@ -41,9 +39,7 @@ public class ColliderMesh : IDebugRenderObject {
     Application.Mutex.ReleaseMutex();
   }
 
-  public ColliderMesh(Entity owner, nint allocator, VulkanDevice device, AABB aabb) {
-    Application.Mutex.WaitOne();
-    Owner = owner;
+  public ColliderMesh(nint allocator, IDevice device, AABB aabb) {
     _device = device;
     _allocator = allocator;
 
@@ -109,7 +105,7 @@ public class ColliderMesh : IDebugRenderObject {
     ulong bufferSize = ((ulong)Unsafe.SizeOf<Vertex>()) * _vertexCount;
     ulong vertexSize = (ulong)Unsafe.SizeOf<Vertex>();
 
-    var stagingBuffer = new NekoBuffer(
+    var stagingBuffer = new DwarfBuffer(
       _allocator,
       _device,
       vertexSize,
@@ -126,7 +122,7 @@ public class ColliderMesh : IDebugRenderObject {
     }
     // stagingBuffer.WriteToBuffer(MemoryUtils.ToIntPtr(vertices), bufferSize);
 
-    _vertexBuffer = new NekoBuffer(
+    _vertexBuffer = new DwarfBuffer(
       _allocator,
       _device,
       vertexSize,
@@ -146,7 +142,7 @@ public class ColliderMesh : IDebugRenderObject {
     ulong bufferSize = sizeof(uint) * _indexCount;
     ulong indexSize = sizeof(uint);
 
-    var stagingBuffer = new NekoBuffer(
+    var stagingBuffer = new DwarfBuffer(
       _allocator,
       _device,
       indexSize,
@@ -163,7 +159,7 @@ public class ColliderMesh : IDebugRenderObject {
     }
     // stagingBuffer.WriteToBuffer(MemoryUtils.ToIntPtr(indices), bufferSize);
 
-    _indexBuffer = new NekoBuffer(
+    _indexBuffer = new DwarfBuffer(
       _allocator,
       _device,
       indexSize,

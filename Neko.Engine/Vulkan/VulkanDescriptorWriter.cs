@@ -5,16 +5,10 @@ using static Vortice.Vulkan.Vulkan;
 namespace Neko.Vulkan;
 
 public class VulkanDescriptorWriter {
-  private readonly VulkanDevice _device;
   private readonly unsafe VulkanDescriptorSetLayout _setLayout;
   private readonly unsafe VulkanDescriptorPool _pool;
   private VkWriteDescriptorSet[] _writes = [];
-  public VulkanDescriptorWriter(
-    VulkanDevice device,
-    VulkanDescriptorSetLayout setLayout,
-    VulkanDescriptorPool pool
-  ) {
-    _device = device;
+  public VulkanDescriptorWriter(VulkanDescriptorSetLayout setLayout, VulkanDescriptorPool pool) {
     _setLayout = setLayout;
     _pool = pool;
   }

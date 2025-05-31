@@ -48,9 +48,7 @@ public partial class ImGuiController {
       pipelineConfig,
       pipelineProvider,
       depthFormat.AsVkFormat(),
-      colorFormat.AsVkFormat(),
-      vertexName,
-      fragmentName
+      colorFormat.AsVkFormat()
     );
   }
 
@@ -124,7 +122,7 @@ public partial class ImGuiController {
     _device.DeviceApi.vkCreateImageView(_device.LogicalDevice, &viewInfo, null, out _fontView);
 
     // staging buffers
-    var stagingBuffer = new NekoBuffer(
+    var stagingBuffer = new DwarfBuffer(
       _allocator,
       _device,
       (ulong)uploadSize,

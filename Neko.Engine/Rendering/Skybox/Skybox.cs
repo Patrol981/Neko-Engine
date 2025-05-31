@@ -362,7 +362,7 @@ public class Skybox : IDisposable {
     ulong bufferSize = ((ulong)Unsafe.SizeOf<TexturedVertex>()) * _vertexCount;
     ulong vertexSize = (ulong)Unsafe.SizeOf<TexturedVertex>();
 
-    var stagingBuffer = new NekoBuffer(
+    var stagingBuffer = new DwarfBuffer(
       _allocator,
       _device,
       vertexSize,
@@ -379,7 +379,7 @@ public class Skybox : IDisposable {
     }
     // stagingBuffer.WriteToBuffer(MemoryUtils.ToIntPtr(vertices), bufferSize);
 
-    _vertexBuffer = new NekoBuffer(
+    _vertexBuffer = new DwarfBuffer(
       _allocator,
       _device,
       vertexSize,
@@ -405,7 +405,7 @@ public class Skybox : IDisposable {
       .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
-    _skyboxBuffer = new NekoBuffer(
+    _skyboxBuffer = new DwarfBuffer(
       _allocator,
       _device,
       (ulong)Unsafe.SizeOf<SkyboxBufferObject>(),
@@ -451,9 +451,7 @@ public class Skybox : IDisposable {
       pipelineConfig,
       pipelineProvider,
       depthFormat.AsVkFormat(),
-      colorFormat.AsVkFormat(),
-      vertexName,
-      fragmentName
+      colorFormat.AsVkFormat()
     );
   }
 

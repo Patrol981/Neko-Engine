@@ -101,9 +101,7 @@ public class Rigidbody2D : IDisposable, ICloneable {
       _ => throw new NotImplementedException(),
     };
 
-    // Owner.AddComponent(new ColliderMesh(_app.Allocator, _app.Device, _collisionShape!));
-    Owner.AddComponent(new ColliderMesh(Owner, _app.Allocator, (VulkanDevice)_app.Device, _collisionShape!));
-    Application.Mutex.ReleaseMutex();
+    Owner.AddComponent(new ColliderMesh(_app.Allocator, _app.Device, _collisionShape!));
   }
 
   private Mesh GetFromOwner() {
@@ -158,8 +156,8 @@ public class Rigidbody2D : IDisposable, ICloneable {
     PhysicsBody2D.Position = vec2;
   }
 
-  public void InvokeCollision(CollisionState collisionState, Entity? otherColl, bool otherTrigger) {
-    if (Owner == null || Owner.CanBeDisposed) return;
+  public void InvokeCollision(CollisionState collisionState, Entity? otherColl) {
+    if (Owner.CanBeDisposed) return;
     var scripts = Owner!.GetScripts();
     for (short i = 0; i < scripts.Length; i++) {
       switch (collisionState) {

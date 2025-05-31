@@ -2,7 +2,7 @@ using Neko.Vulkan;
 
 using Vortice.Vulkan;
 
-namespace Neko.Rendering.Lightning;
+namespace Dwarf.Rendering.Lightning;
 
 public class PipelinePointLightProvider : VkPipelineProvider {
   public override unsafe VkVertexInputBindingDescription* GetBindingDescsFunc() {

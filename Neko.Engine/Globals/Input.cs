@@ -8,7 +8,7 @@ using SDL3;
 
 using static SDL3.SDL3;
 
-namespace Neko.Globals;
+namespace Dwarf.Globals;
 
 public class MouseButtons {
   public bool Left { get; set; }

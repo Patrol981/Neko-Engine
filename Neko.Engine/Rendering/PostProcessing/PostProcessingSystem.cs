@@ -1,10 +1,10 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Neko.AbstractionLayer;
-using Neko.Utils;
-using Neko.Vulkan;
-using Neko.Rendering;
+using Dwarf.AbstractionLayer;
+using Dwarf.Utils;
+using Dwarf.Vulkan;
+using Dwarf.Rendering;
 using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
@@ -70,25 +70,24 @@ public class PostProcessingSystem : SystemBase {
   private readonly ITexture[] _inputTextures = [];
 
   public PostProcessingSystem(
-    Application app,
     nint allocator,
-    VulkanDevice device,
+    IDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     SystemConfiguration systemConfiguration,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     IPipelineConfigInfo configInfo = null!
-  ) : base(app, allocator, device, renderer, textureManager, configInfo) {
+  ) : base(allocator, device, renderer, configInfo) {
     _textureManager = Application.Instance.TextureManager;
 
-    _setLayout = new VulkanDescriptorSetLayout.Builder((VulkanDevice)_device)
+    _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       .AddBinding(1, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       // .AddBinding(2, VkDescriptorType.SampledImage, VkShaderStageFlags.AllGraphics)
       // .AddBinding(3, VkDescriptorType.Sampler, VkShaderStageFlags.AllGraphics)
       .Build();
 
-    _textureSetLayout = new VulkanDescriptorSetLayout.Builder((VulkanDevice)_device)
+    _textureSetLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.AllGraphics)
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.AllGraphics)
       .Build();
@@ -123,11 +122,11 @@ public class PostProcessingSystem : SystemBase {
     _device.WaitQueue();
 
     _descriptorPool = new VulkanDescriptorPool.Builder((VulkanDevice)_device)
-      .SetMaxSets(CommonConstants.MAX_SETS)
-      .AddPoolSize(DescriptorType.SampledImage, CommonConstants.MAX_SETS)
-      .AddPoolSize(DescriptorType.Sampler, CommonConstants.MAX_SETS)
-      .AddPoolSize(DescriptorType.CombinedImageSampler, CommonConstants.MAX_SETS)
-      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
+      .SetMaxSets(4)
+      .AddPoolSize(DescriptorType.SampledImage, 10)
+      .AddPoolSize(DescriptorType.Sampler, 10)
+      .AddPoolSize(DescriptorType.CombinedImageSampler, 20)
+      .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
       .Build();
 
     var texLen = systemConfiguration.PostProcessInputTextures?.Length;

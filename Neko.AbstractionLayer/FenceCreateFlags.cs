@@ -1,4 +1,4 @@
-namespace Neko.AbstractionLayer;
+namespace Dwarf.AbstractionLayer;
 
 [Flags]
 public enum FenceCreateFlags {

@@ -5,7 +5,7 @@ using Neko.Vulkan;
 
 using Vortice.Vulkan;
 
-namespace Neko;
+namespace Dwarf;
 
 public class PipelineUIProvider : VkPipelineProvider {
   public override unsafe VkVertexInputBindingDescription* GetBindingDescsFunc() {

@@ -1,77 +1,47 @@
-using Neko.AbstractionLayer;
+using Dwarf.AbstractionLayer;
 
 using Vortice.Vulkan;
 
 using static Vortice.Vulkan.Vulkan;
 
-namespace Neko.Vulkan;
+namespace Dwarf.Vulkan;
 
 public class VulkanPipeline : IPipeline {
-  private readonly VulkanDevice _device;
+  private readonly IDevice _device;
 
   private VkPipeline _graphicsPipeline;
   private VkShaderModule _vertexShaderModule;
   private VkShaderModule _fragmentShaderModule;
-  private VkShaderModule _geometryShaderModule;
   private readonly VkPipelineProvider _pipelineProvider;
 
-  private readonly Lock _pipelineLock = new();
+  private readonly object _pipelineLock = new();
 
   public VulkanPipeline(
-    VulkanDevice device,
-    IPipelineConfigInfo configInfo,
-    VkPipelineProvider pipelineProvider,
-    VkFormat depthFormat,
-    VkFormat colorFormat,
-    string vertexName,
-    string fragmentName
-  ) {
-    _device = device;
-    _pipelineProvider = pipelineProvider;
-    CreateGraphicsPipeline(
-      (VkPipelineConfigInfo)configInfo,
-      depthFormat,
-      colorFormat,
-      vertexName,
-      fragmentName
-    );
-  }
-
-  public VulkanPipeline(
-    VulkanDevice device,
-    IPipelineConfigInfo configInfo,
-    VkPipelineProvider pipelineProvider,
-    VkFormat depthFormat,
-    VkFormat colorFormat,
+    IDevice device,
     string vertexName,
     string fragmentName,
-    string? geometryName = null
+    IPipelineConfigInfo configInfo,
+    VkPipelineProvider pipelineProvider,
+    VkFormat depthFormat,
+    VkFormat colorFormat
   ) {
     _device = device;
     _pipelineProvider = pipelineProvider;
-    CreateGraphicsPipeline(
-      (VkPipelineConfigInfo)configInfo,
-      depthFormat,
-      colorFormat,
-      vertexName,
-      fragmentName,
-      geometryName
-    );
+    CreateGraphicsPipeline(vertexName, fragmentName, (VkPipelineConfigInfo)configInfo, depthFormat, colorFormat);
   }
 
   public void Bind(nint commandBuffer) {
     lock (_pipelineLock) {
-      _device.DeviceApi.vkCmdBindPipeline(commandBuffer, VkPipelineBindPoint.Graphics, _graphicsPipeline);
+      vkCmdBindPipeline(commandBuffer, VkPipelineBindPoint.Graphics, _graphicsPipeline);
     }
   }
 
   private unsafe void CreateGraphicsPipeline(
-    VkPipelineConfigInfo configInfo,
-    VkFormat depthFormat,
-    VkFormat colorFormat,
     string vertexName,
     string fragmentName,
-    string? geometryName = null
+    VkPipelineConfigInfo configInfo,
+    VkFormat depthFormat,
+    VkFormat colorFormat
   ) {
     configInfo.RenderingCreateInfo = new() {
       colorAttachmentCount = 1,
@@ -87,31 +57,8 @@ public class VulkanPipeline : IPipeline {
     CreateShaderModule(vertexCode, out _vertexShaderModule);
     CreateShaderModule(fragmentCode, out _fragmentShaderModule);
 
-    if (geometryName != null) {
-      var geometryPath = Path.Combine(AppContext.BaseDirectory, "CompiledShaders/Vulkan", $"{geometryName}.spv");
-      var geometryCode = File.ReadAllBytes(geometryPath);
-      CreateShaderModule(geometryCode, out _geometryShaderModule);
-    }
-
     VkUtf8String entryPoint = "main"u8;
     VkPipelineShaderStageCreateInfo[] shaderStages =
-    geometryName == null ?
-    [
-      new() {
-        stage = VkShaderStageFlags.Vertex,
-        module = _vertexShaderModule,
-        pName = entryPoint,
-        flags = 0,
-        pNext = null
-      },
-      new() {
-        stage = VkShaderStageFlags.Fragment,
-        module = _fragmentShaderModule,
-        pName = entryPoint,
-        flags = 0,
-        pNext = null
-      }
-    ] :
     [
       new() {
         stage = VkShaderStageFlags.Vertex,
@@ -127,13 +74,6 @@ public class VulkanPipeline : IPipeline {
         flags = 0,
         pNext = null
       },
-      new() {
-        stage = VkShaderStageFlags.Geometry,
-        module = _geometryShaderModule,
-        pName = entryPoint,
-        flags = 0,
-        pNext = null
-      }
     ];
     var bindingDescriptions = _pipelineProvider.GetBindingDescsFunc();
     var attributeDescriptions = _pipelineProvider.GetAttribDescsFunc();
@@ -146,7 +86,7 @@ public class VulkanPipeline : IPipeline {
     };
 
     var pipelineInfo = new VkGraphicsPipelineCreateInfo();
-    pipelineInfo.stageCount = geometryName == null ? 2u : 3u;
+    pipelineInfo.stageCount = 2;
     fixed (VkPipelineShaderStageCreateInfo* ptr = shaderStages) {
       pipelineInfo.pStages = ptr;
     }
@@ -177,7 +117,7 @@ public class VulkanPipeline : IPipeline {
 
     VkPipeline graphicsPipeline = VkPipeline.Null;
 
-    var result = _device.DeviceApi.vkCreateGraphicsPipelines(
+    var result = vkCreateGraphicsPipelines(
       _device.LogicalDevice,
       VkPipelineCache.Null,
       1,
@@ -191,15 +131,12 @@ public class VulkanPipeline : IPipeline {
   }
 
   private unsafe void CreateShaderModule(byte[] data, out VkShaderModule module) {
-    _device.DeviceApi.vkCreateShaderModule(_device.LogicalDevice, data, null, out module).CheckResult();
+    vkCreateShaderModule(_device.LogicalDevice, data, null, out module).CheckResult();
   }
 
   public unsafe void Dispose() {
-    _device.DeviceApi.vkDestroyShaderModule(_device.LogicalDevice, _vertexShaderModule, null);
-    _device.DeviceApi.vkDestroyShaderModule(_device.LogicalDevice, _fragmentShaderModule, null);
-    if (_geometryShaderModule.IsNotNull) {
-      _device.DeviceApi.vkDestroyShaderModule(_device.LogicalDevice, _geometryShaderModule, null);
-    }
-    _device.DeviceApi.vkDestroyPipeline(_device.LogicalDevice, _graphicsPipeline);
+    vkDestroyShaderModule(_device.LogicalDevice, _vertexShaderModule, null);
+    vkDestroyShaderModule(_device.LogicalDevice, _fragmentShaderModule, null);
+    vkDestroyPipeline(_device.LogicalDevice, _graphicsPipeline);
   }
 }

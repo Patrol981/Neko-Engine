@@ -1,7 +1,7 @@
-﻿using Neko.AbstractionLayer;
+﻿using Dwarf.AbstractionLayer;
 using Vortice.Vulkan;
 
-namespace Neko.Vulkan;
+namespace Dwarf.Vulkan;
 
 public abstract class VkPipelineProvider : IPipelineProvider {
   public virtual unsafe VkVertexInputBindingDescription* GetBindingDescsFunc() {

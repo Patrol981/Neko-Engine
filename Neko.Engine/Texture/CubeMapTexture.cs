@@ -8,7 +8,7 @@ using Vortice.Vulkan;
 
 using static Vortice.Vulkan.Vulkan;
 
-namespace Neko;
+namespace Dwarf;
 
 public class CubeMapTexture : VulkanTexture {
   private readonly string[] _paths = [];
@@ -34,7 +34,7 @@ public class CubeMapTexture : VulkanTexture {
   }
 
   public new void SetTextureData(byte[] data) {
-    var stagingBuffer = new NekoBuffer(
+    var stagingBuffer = new DwarfBuffer(
       _allocator,
       _device,
       (ulong)_cubemapPack.Size,
@@ -57,7 +57,7 @@ public class CubeMapTexture : VulkanTexture {
   }
 
   public new void SetTextureData(nint dataPtr) {
-    var stagingBuffer = new NekoBuffer(
+    var stagingBuffer = new DwarfBuffer(
       _allocator,
       _device,
       (ulong)_cubemapPack.Size,

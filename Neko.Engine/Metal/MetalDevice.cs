@@ -1,7 +1,7 @@
-using Neko.AbstractionLayer;
+using Dwarf.AbstractionLayer;
 using Vortice.Vulkan;
 
-namespace Neko.Metal;
+namespace Dwarf.Metal;
 
 public class MetalDevice : IDevice {
   public RenderAPI RenderAPI => RenderAPI.Metal;
@@ -22,10 +22,6 @@ public class MetalDevice : IDevice {
   public ulong MinStorageBufferOffsetAlignment => throw new NotImplementedException();
 
   public ulong MinUniformBufferOffsetAlignment => throw new NotImplementedException();
-
-  public ulong MaxBufferSize => throw new NotImplementedException();
-
-  public ulong MaxHeapSize => throw new NotImplementedException();
 
   public void AllocateBuffer(ulong size, BufferUsage uFlags, MemoryProperty pFlags, ulong buffer, out ulong bufferMemory) {
     throw new NotImplementedException();
@@ -88,10 +84,6 @@ public class MetalDevice : IDevice {
   }
 
   public void DisposeCommandPool(ulong commandPool) {
-    throw new NotImplementedException();
-  }
-
-  public Task CopyBuffer(ulong srcBuffer, ulong dstBuffer, ulong size, ulong srcOffset, ulong dstOffset) {
     throw new NotImplementedException();
   }
 }

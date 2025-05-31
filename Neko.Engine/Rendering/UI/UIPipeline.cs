@@ -1,6 +1,6 @@
 using Vortice.Vulkan;
 
-namespace Neko.Vulkan;
+namespace Dwarf.Vulkan;
 
 public class UIPipeline : VkPipelineConfigInfo {
   public override VkPipelineConfigInfo GetConfigInfo() {

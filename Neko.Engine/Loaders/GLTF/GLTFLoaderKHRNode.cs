@@ -35,7 +35,6 @@ public static partial class GLTFLoaderKHR {
     for (int i = 0; i < scene.Nodes.Length; i++) {
       var node = gltf.Nodes[scene.Nodes[i]];
       LoadNode(
-        app,
         app.Allocator,
         app.Device,
         null!,
@@ -344,7 +343,6 @@ public static partial class GLTFLoaderKHR {
     };
   }
   private static void LoadNode(
-    Application app,
     nint allocator,
     IDevice device,
     Neko.Rendering.Renderer3D.Node parent,
@@ -390,7 +388,6 @@ public static partial class GLTFLoaderKHR {
     if (node.Children?.Length > 0) {
       for (int i = 0; i < node.Children.Length; i++) {
         LoadNode(
-          app,
           allocator,
           device,
           newNode,

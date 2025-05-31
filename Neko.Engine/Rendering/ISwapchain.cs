@@ -1,16 +1,14 @@
-using Neko.AbstractionLayer;
-using Neko.Math;
-using Vortice.Vulkan;
+using Dwarf.AbstractionLayer;
+using Dwarf.Math;
 
-namespace Neko.Rendering;
+namespace Dwarf.Rendering;
 
 public interface ISwapchain : IDisposable {
   ulong[] Images { get; }
   ulong[] ImageViews { get; }
-  NekoFormat ColorFormat { get; }
-  VkFormat SurfaceFormat { get; }
-  NekoColorSpace ColorSpace { get; }
-  NekoExtent2D Extent2D { get; }
+  DwarfFormat ColorFormat { get; }
+  DwarfColorSpace ColorSpace { get; }
+  DwarfExtent2D Extent2D { get; }
   uint QueueNodeIndex { get; }
   int CurrentFrame { get; set; }
   int PreviousFrame { get; set; }
