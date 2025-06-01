@@ -75,7 +75,7 @@ public class Application {
   private List<Entity> _entities = [];
   private readonly Queue<Entity> _entitiesQueue = new();
   private readonly Queue<MeshRenderer> _reloadQueue = new();
-  public readonly object EntitiesLock = new object();
+  public readonly Lock EntitiesLock = new();
 
   private Entity _camera = new();
 
@@ -104,7 +104,7 @@ public class Application {
   public bool VSync { get; init; } = false;
   public bool Fullscreen { get; init; } = false;
   public bool Debug { get; init; } = false;
-  public readonly object ApplicationLock = new object();
+  public readonly Lock ApplicationLock = new();
 
   public const int ThreadTimeoutTimeMS = 1000;
 

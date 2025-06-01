@@ -58,7 +58,7 @@ public class VulkanSwapchain : IDisposable {
   private uint _imageIndex = 0;
   private int _previousFrame = -1;
 
-  private readonly object _swapchainLock = new();
+  private readonly Lock _swapchainLock = new();
 
   public VulkanSwapchain(VulkanDevice device, VkExtent2D extent) {
     _device = device;

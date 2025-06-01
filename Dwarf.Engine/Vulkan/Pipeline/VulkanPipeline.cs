@@ -14,7 +14,7 @@ public class VulkanPipeline : IPipeline {
   private VkShaderModule _fragmentShaderModule;
   private readonly VkPipelineProvider _pipelineProvider;
 
-  private readonly object _pipelineLock = new();
+  private readonly Lock _pipelineLock = new();
 
   public VulkanPipeline(
     IDevice device,

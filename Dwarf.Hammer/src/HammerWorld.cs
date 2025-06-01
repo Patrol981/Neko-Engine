@@ -14,9 +14,9 @@ public class HammerWorld {
   private float _dt;
 
   private readonly HammerInstance _hammerInstance;
-  private readonly object _hammerWorldLock = new();
-  private readonly object _bodiesLock = new();
-  private readonly object _spritesLock = new();
+  private readonly Lock _hammerWorldLock = new();
+  private readonly Lock _bodiesLock = new();
+  private readonly Lock _spritesLock = new();
 
   public HammerWorld(HammerInstance hammerInstance) {
     _hammerInstance = hammerInstance;

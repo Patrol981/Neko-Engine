@@ -28,13 +28,13 @@ public class VulkanDevice : IDevice {
   private VkDevice _logicalDevice = VkDevice.Null;
 
   private readonly VkCommandPool _commandPool = VkCommandPool.Null;
-  private readonly object _commandPoolLock = new object();
+  private readonly Lock _commandPoolLock = new();
 
   private VkQueue _graphicsQueue = VkQueue.Null;
   // private VkQueue _presentQueue = VkQueue.Null;
   // private readonly VkQueue _transferQueue = VkQueue.Null;
 
-  internal readonly object _queueLock = new object();
+  internal readonly Lock _queueLock = new();
 
   // private readonly VkFence _singleTimeFence = VkFence.Null;
 
