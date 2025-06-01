@@ -14,10 +14,6 @@ using Dwarf.Rendering.UI.DirectRPG;
 using Dwarf.Utils;
 using Dwarf.Vulkan;
 using Dwarf.Windowing;
-// using Vortice.Vulkan;
-// using static Vortice.Vulkan.Vma;
-// using static Dwarf.GLFW.GLFW;
-// using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf;
 
@@ -319,10 +315,12 @@ public class Application {
       PerformCalculations();
 
       var cp = _entities.ToArray();
-      var updatable = cp.Where(x => x.CanBeDisposed == false).ToArray();
-      MasterFixedUpdate(updatable.GetScriptsAsSpan());
-      _onUpdate?.Invoke();
-      MasterUpdate(updatable.GetScriptsAsArray());
+      if (cp != null) {
+        var updatable = cp.Where(x => x.CanBeDisposed == false).ToArray();
+        MasterFixedUpdate(updatable.GetScriptsAsSpan());
+        _onUpdate?.Invoke();
+        MasterUpdate(updatable.GetScriptsAsArray());
+      }
 
       if (_newSceneShouldLoad) {
         SceneLoadReactor();

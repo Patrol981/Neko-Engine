@@ -349,25 +349,31 @@ public partial class ImGuiController : IDisposable {
     style.TabRounding = 4;
   }
 
-  private void WindowResized(object? sender, EventArgs e) {
-    var windowExtent = Application.Instance.Window.Extent;
-    _width = (int)windowExtent.Width;
-    _height = (int)windowExtent.Height;
-    Logger.Info($"[ImGUI] Window Resized ({_width}{_height})");
-  }
-
-  private void SetPerFrameImGuiData(double deltaSeconds) {
+  private void SetDisplaySize() {
     ImGuiIOPtr io = ImGui.GetIO();
     io.DisplaySize = new System.Numerics.Vector2(
       _width / _scaleFactor.X,
       _height / _scaleFactor.Y);
     io.DisplayFramebufferScale = _scaleFactor;
+  }
+
+  private void WindowResized(object? sender, EventArgs e) {
+    var windowExtent = Application.Instance.Window.Extent;
+    _width = (int)windowExtent.Width;
+    _height = (int)windowExtent.Height;
+    SetDisplaySize();
+    Logger.Info($"[ImGUI] Window Resized ({_width}{_height})");
+  }
+
+  private void SetPerFrameImGuiData(double deltaSeconds) {
+    SetDisplaySize();
+    ImGuiIOPtr io = ImGui.GetIO();
     if (deltaSeconds > 0) {
       io.DeltaTime = (float)deltaSeconds; // DeltaTime is in seconds.
     } else {
       io.DeltaTime = 0.00001f;
     }
-
+    // Logger.Info(io.DisplaySize);
   }
 
   public void Render(FrameInfo frameInfo) {

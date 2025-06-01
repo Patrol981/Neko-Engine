@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
@@ -183,9 +182,7 @@ public class Window : IWindow {
     }
   }
 
-  public void WaitEvents() {
-    // SDL_WaitEvent()
-  }
+  public void WaitEvents() { }
 
   private static unsafe void FrambufferResizedCallback(int width, int height) {
     if (width <= 0 || height <= 0) return;
@@ -205,17 +202,22 @@ public class Window : IWindow {
   }
 
   public void OnResizedEvent(EventArgs e) {
-    // Application.Instance.Window.OnResizedEventDispatcher?.Invoke(this, e);
+    OnResizedEventDispatcher?.Invoke(this, e);
   }
 
   public bool WasWindowResized() => FramebufferResized;
   public bool WasWindowMinimalized() => _windowMinimalized;
 
-  public unsafe VkSurfaceKHR CreateVkSurface(VkInstance instance) {
-    VkSurfaceKHR surface;
-    return SDL_Vulkan_CreateSurface(SDLWindow, instance, IntPtr.Zero, (ulong**)&surface) == false
-      ? throw new Exception("Failed to create SDL Surface")
-      : surface;
+  public unsafe ulong CreateSurface(nint instance) {
+    switch (Application.Instance.CurrentAPI) {
+      case AbstractionLayer.RenderAPI.Vulkan:
+        VkSurfaceKHR surface;
+        return SDL_Vulkan_CreateSurface(SDLWindow, instance, IntPtr.Zero, (ulong**)&surface) == false
+          ? throw new Exception("Failed to create SDL Surface")
+          : surface;
+      default:
+        throw new NotImplementedException();
+    }
   }
 
   public unsafe float GetRefreshRate() {

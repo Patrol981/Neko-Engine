@@ -200,8 +200,7 @@ public class VulkanDevice : IDevice {
 
   public VkFormat FindSupportedFormat(List<VkFormat> candidates, VkImageTiling tilling, VkFormatFeatureFlags features) {
     foreach (var format in candidates) {
-      VkFormatProperties props;
-      vkGetPhysicalDeviceFormatProperties(_physicalDevice, format, out props);
+      vkGetPhysicalDeviceFormatProperties(_physicalDevice, format, out VkFormatProperties props);
 
       if (tilling == VkImageTiling.Linear && (props.linearTilingFeatures & features) == features) {
         return format;
@@ -286,7 +285,7 @@ public class VulkanDevice : IDevice {
   public unsafe void WaitDevice() {
     var result = vkDeviceWaitIdle(_logicalDevice);
     if (result == VkResult.ErrorDeviceLost) {
-      throw new VkException($"[DWARF] Device Lost! {result.ToString()}");
+      throw new VkException($"[DWARF] Device Lost! {result}");
     }
   }
 
@@ -496,7 +495,7 @@ public class VulkanDevice : IDevice {
   }
 
   private unsafe void CreateSurface() {
-    Surface = _window.CreateVkSurface(_vkInstance.Handle);
+    Surface = _window.CreateSurface(_vkInstance.Handle);
   }
 
   private unsafe void PickPhysicalDevice() {

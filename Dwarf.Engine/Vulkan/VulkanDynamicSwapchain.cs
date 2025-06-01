@@ -191,6 +191,12 @@ public class VulkanDynamicSwapchain : ISwapchain {
       }
     }
 
+    VkSwapchainPresentScalingCreateInfoEXT scalingCreateInfoEXT = new() {
+      scalingBehavior = VkPresentScalingFlagsEXT.AspectRatioStretch,
+      presentGravityX = VkPresentGravityFlagsEXT.Centered,
+      presentGravityY = VkPresentGravityFlagsEXT.Centered,
+    };
+
     VkSwapchainCreateInfoKHR swapchainCI = new() {
       surface = _device.Surface,
       minImageCount = desiredNumberOfSwapchainImages,
@@ -205,7 +211,8 @@ public class VulkanDynamicSwapchain : ISwapchain {
       presentMode = swapchainPresentMode,
       clipped = true,
       compositeAlpha = compositeAlpha,
-      oldSwapchain = VkSwapchainKHR.Null
+      oldSwapchain = VkSwapchainKHR.Null,
+      pNext = &scalingCreateInfoEXT
     };
 
     vkCreateSwapchainKHR(_device.LogicalDevice, &swapchainCI, null, out _handle).CheckResult();
@@ -276,7 +283,11 @@ public class VulkanDynamicSwapchain : ISwapchain {
   }
 
   public float ExtentAspectRatio() {
-    return _extent2D.width / (float)_extent2D.height;
+    if (_extent2D.width > _extent2D.height) {
+      return _extent2D.width / (float)_extent2D.height;
+    } else {
+      return _extent2D.height / (float)_extent2D.width;
+    }
   }
 
   public unsafe void Dispose() {
