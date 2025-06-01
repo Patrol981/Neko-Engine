@@ -9,6 +9,54 @@ public partial class DirectRPG {
   public static void CreateLabel(
     string text,
     FontSize fontSize,
+    Vector2 position
+  ) {
+    var glyphSize = 0.0f;
+    switch (fontSize) {
+      case FontSize.Small:
+        ImGui.PushFont(GuiController.SmallFont);
+        glyphSize = GuiController.SmallFont.FontSize;
+        break;
+      case FontSize.Medium:
+        ImGui.PushFont(GuiController.MediumFont);
+        glyphSize = GuiController.MediumFont.FontSize;
+        break;
+      case FontSize.Large:
+        ImGui.PushFont(GuiController.LargeFont);
+        glyphSize = GuiController.LargeFont.FontSize;
+        break;
+    }
+
+    Vector2 textSize = ImGui.CalcTextSize(text);
+    textSize.X += glyphSize;
+    textSize.Y += glyphSize;
+
+    if (position.Y < 1) {
+      position.Y += textSize.Y;
+    }
+
+    ImGui.SetNextWindowSize(textSize);
+    ImGui.SetNextWindowPos(position - textSize);
+    ImGui.Begin(
+      $"label-{text}",
+      ImGuiWindowFlags.NoCollapse |
+      ImGuiWindowFlags.NoTitleBar |
+      ImGuiWindowFlags.NoResize
+    );
+
+    Vector2 drawPos = ImGui.GetCursorScreenPos();
+    drawPos.Y += glyphSize / 4;
+    drawPos.X += glyphSize / 4;
+    ImGui.GetWindowDrawList().AddText(drawPos, COLOR_WHITE, text);
+
+    ImGui.PopFont();
+
+    ImGui.End();
+  }
+
+  public static void CreateLabel(
+    string text,
+    FontSize fontSize,
     bool centerX = false,
     bool centerY = false
 ) {
