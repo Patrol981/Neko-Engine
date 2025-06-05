@@ -167,7 +167,7 @@ public class Rigidbody2D : Component, IDisposable {
   }
 
   public void Dispose() {
-    PhysicsBody2D.Dispose();
+    PhysicsBody2D?.Dispose();
     GC.SuppressFinalize(this);
   }
 

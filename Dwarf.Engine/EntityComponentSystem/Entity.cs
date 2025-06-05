@@ -107,6 +107,13 @@ public class Entity {
     }
   }
 
+  public void DisposeScripts() {
+    var scripts = GetScripts();
+    foreach (var script in scripts) {
+      script?.Dispose();
+    }
+  }
+
   public Component[] GetDisposables() {
     var components = _componentManager.GetAllComponents();
     var list = new List<Component>();

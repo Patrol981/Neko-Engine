@@ -1,11 +1,9 @@
 using System.Numerics;
 using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
-using Dwarf.Extensions.Logging;
 using Dwarf.Math;
 using Dwarf.Rendering.Renderer2D.Interfaces;
 using Dwarf.Rendering.Renderer2D.Models;
-using Dwarf.Vulkan;
 
 namespace Dwarf.Rendering.Renderer2D.Components;
 
