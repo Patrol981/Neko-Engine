@@ -471,9 +471,6 @@ public class Application {
 
   public void AddEntity(Entity entity, bool fenced = false) {
     Mutex.WaitOne();
-    // lock (EntitiesLock) {
-
-    // }
     MasterAwake(new[] { entity }.GetScriptsAsSpan());
     MasterStart(new[] { entity }.GetScriptsAsSpan());
     if (fenced) {

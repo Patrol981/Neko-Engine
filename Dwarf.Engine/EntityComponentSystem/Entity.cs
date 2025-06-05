@@ -1,5 +1,6 @@
 using Dwarf.Physics;
 using Dwarf.Rendering;
+using Dwarf.Rendering.Renderer2D.Components;
 using Dwarf.Rendering.Renderer3D;
 using Dwarf.Rendering.Renderer3D.Animations;
 namespace Dwarf.EntityComponentSystem;
@@ -145,14 +146,14 @@ public class Entity {
     var entities = Application.Instance.GetEntities();
     var target = entities.Where(x => x.HasComponent<T>() && !x.CanBeDisposed)
       .FirstOrDefault();
-    return target == null ? null : target.GetComponent<T>();
+    return target?.GetComponent<T>();
   }
 
   public static T? FindComponentByName<T>(string name) where T : Component, new() {
     var entities = Application.Instance.GetEntities();
     var target = entities.Where(x => x.Name == name && !x.CanBeDisposed)
       .FirstOrDefault();
-    return target == null ? null : target.GetComponent<T>();
+    return target?.GetComponent<T>();
   }
 
   public static Entity? FindEntityByName(string name) {
@@ -171,8 +172,14 @@ public class Entity {
 
     var transform = TryGetComponent<Transform>();
     var material = TryGetComponent<MaterialComponent>();
+
     var model = TryGetComponent<MeshRenderer>();
     var rigidbody = TryGetComponent<Rigidbody>();
+
+    var spriteRenderer = TryGetComponent<SpriteRenderer>();
+    var rigidbody2D = TryGetComponent<Rigidbody2D>();
+
+    var scripts = GetScripts();
 
     if (transform != null) {
       clone.AddTransform(transform.Position, transform.Rotation, transform.Scale);
@@ -180,6 +187,7 @@ public class Entity {
     if (material != null) {
       clone.AddMaterial(material.Color);
     }
+
     if (model != null) {
       clone.AddComponent(EntityCreator.CopyModel(in model));
       clone.AddComponent(new AnimationController());
@@ -194,6 +202,17 @@ public class Entity {
         rigidbody.Flipped
       );
       Application.Instance.Systems.PhysicsSystem.Init([clone]);
+    }
+
+    if (spriteRenderer != null) {
+      clone.AddComponent((SpriteRenderer)spriteRenderer.Clone());
+    }
+    if (rigidbody2D != null) {
+      clone.AddComponent((Rigidbody2D)rigidbody2D.Clone());
+    }
+
+    foreach (var script in scripts) {
+      clone.AddComponent((DwarfScript)script.Clone());
     }
 
     return clone;

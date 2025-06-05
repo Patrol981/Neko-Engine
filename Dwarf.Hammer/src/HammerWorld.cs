@@ -155,6 +155,8 @@ public class HammerWorld {
       var sprite1 = spriteValues[i];
       var sprite1Id = spriteKeys[i];
 
+      // if (sprite1.IsTrigger) continue;
+
       bool collidesWithAnythingGround = false;
 
       for (int j = 0; j < spriteValues.Length; j++) {
@@ -162,13 +164,16 @@ public class HammerWorld {
 
         var sprite2 = spriteValues[j];
         if (AABB.CheckCollisionMTV(sprite1, sprite2, out var mtv)) {
-          sprite1.Position += mtv;
-          sprite1.Velocity = new Vector2(sprite1.Velocity.X, 0);
+          if (!sprite2.IsTrigger && !sprite1.IsTrigger) {
+            sprite1.Position += mtv;
+            sprite1.Velocity = new Vector2(sprite1.Velocity.X, 0);
+          }
 
           lock (_hammerWorldLock) {
             var pair = (sprite1Id, spriteKeys[j]);
 
             if (_contactMap.TryAdd(pair, true)) {
+              // Console.WriteLine(sprite2.IsTrigger);
               _hammerInstance?.OnContactAdded?.Invoke(sprite1Id, spriteKeys[j]);
             } else {
               _hammerInstance?.OnContactPersisted?.Invoke(sprite1Id, spriteKeys[j]);
@@ -177,7 +182,7 @@ public class HammerWorld {
         }
       }
 
-      if (sprite1 != null) {
+      if (sprite1 != null && !sprite1.IsTrigger) {
         HandleTilemaps(sprite1, tilemaps, ref collidesWithAnythingGround);
         sprite1.Grounded = collidesWithAnythingGround;
       }

@@ -14,7 +14,7 @@ public interface IPhysicsBody2D : IDisposable {
   object CreateAndAddBody(object settings);
   object ColldierMeshToPhysicsShape(Entity entity, Mesh colliderMesh);
   object BodyId { get; }
-  void CreateAndAddBody(MotionType motionType, object shapeSettings, Vector2 position);
+  void CreateAndAddBody(MotionType motionType, object shapeSettings, Vector2 position, bool isTrigger);
   void RemoveBody();
   void SetActive(bool value);
   void AddForce(Vector2 force);

@@ -1,6 +1,6 @@
 ﻿namespace Dwarf.EntityComponentSystem;
 
-public class DwarfScript : Component {
+public class DwarfScript : Component, ICloneable {
   protected bool DidAwake { get; private set; }
   protected bool DidStart { get; private set; }
 
@@ -24,9 +24,19 @@ public class DwarfScript : Component {
   public virtual void FixedUpdate() { }
   public virtual void RenderUpdate() { }
 
+  public virtual void CollisionEnter(Entity? entity, bool IsTrigger) { }
+
+  public virtual void CollisionStay(Entity? entity, bool isTrigger) { }
+
+  public virtual void CollisionExit(Entity? entity, bool isTrigger) { }
+
   public virtual void CollisionEnter(Entity? entity) { }
 
   public virtual void CollisionStay(Entity? entity) { }
 
   public virtual void CollisionExit(Entity? entity) { }
+
+  public object Clone() {
+    return MemberwiseClone();
+  }
 }

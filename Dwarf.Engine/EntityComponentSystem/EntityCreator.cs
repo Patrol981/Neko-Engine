@@ -412,10 +412,11 @@ public static class EntityCreator {
   public static void AddRigidbody2D(
     this Entity entity,
     PrimitiveType primitiveType,
-    MotionType motionType
+    MotionType motionType,
+    bool isTrigger = false
   ) {
     var app = Application.Instance;
-    entity.AddComponent(new Rigidbody2D(app, primitiveType, motionType));
+    entity.AddComponent(new Rigidbody2D(app, primitiveType, motionType, isTrigger));
     entity.GetComponent<Rigidbody2D>().InitBase();
   }
 
@@ -424,10 +425,11 @@ public static class EntityCreator {
     PrimitiveType primitiveType,
     MotionType motionType,
     Vector2 min,
-    Vector2 max
+    Vector2 max,
+    bool isTrigger = false
   ) {
     var app = Application.Instance;
-    entity.AddComponent(new Rigidbody2D(app, primitiveType, motionType, min, max));
+    entity.AddComponent(new Rigidbody2D(app, primitiveType, motionType, min, max, isTrigger));
     entity.GetComponent<Rigidbody2D>().InitBase();
   }
 }

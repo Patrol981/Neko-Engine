@@ -15,6 +15,7 @@ internal class HammerObject {
   internal Mesh Mesh;
   internal AABB AABB = null!;
   internal bool Grounded { get; set; } = false;
+  internal bool IsTrigger { get; set; } = false;
 
   internal Edge[] Edges { get; set; } = [];
   internal AABB[] TilemapAABBs { get; set; } = [];

@@ -97,6 +97,17 @@ public class SpriteRenderer : Component, IDrawable2D {
     GC.SuppressFinalize(this);
   }
 
+  public object Clone() {
+    var sr = new SpriteRenderer() {
+      Sprites = [.. Sprites.Select(static x => {
+        var clone = (Sprite)x.Clone();
+        return clone;
+       })],
+    };
+
+    return sr;
+  }
+
   private void ResetSprite(int index) {
     Sprites[index].Reset();
   }
