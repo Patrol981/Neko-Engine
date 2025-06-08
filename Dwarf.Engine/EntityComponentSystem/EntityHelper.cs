@@ -130,7 +130,10 @@ public static class EntityHelper {
   public static Entity[] AsArray(this List<Entity> entities) {
     var tmpList = new List<Entity>();
     for (int i = 0; i < entities.Count; i++) {
-      if (entities[i].CanBeDisposed) continue;
+      var targetRef = entities[i];
+
+      if (targetRef == null) continue;
+      if (targetRef.CanBeDisposed) continue;
 
       var item = entities.ElementAtOrDefault(i);
       if (item is null) continue;
