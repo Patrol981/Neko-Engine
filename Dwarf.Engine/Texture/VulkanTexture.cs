@@ -330,7 +330,7 @@ public class VulkanTexture : ITexture {
   }
 
   private void ProcessTexture(DwarfBuffer stagingBuffer, VkImageCreateFlags createFlags = VkImageCreateFlags.None) {
-    Application.Instance.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     unsafe {
       if (_textureSampler.TextureImage.IsNotNull) {
         _device.WaitDevice();
@@ -365,7 +365,7 @@ public class VulkanTexture : ITexture {
     CreateSampler(_device, out _textureSampler.ImageSampler);
 
     stagingBuffer.Dispose();
-    Application.Instance.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
   }
 
   public static async Task<ITexture> LoadFromPath(nint allocator, VulkanDevice device, string path, int flip = 1, VkImageCreateFlags imageCreateFlags = VkImageCreateFlags.None) {
@@ -378,8 +378,10 @@ public class VulkanTexture : ITexture {
       textureData = await LoadDataFromPath(pathResult, flip);
     }
 
+    Application.Mutex.WaitOne();
     var texture = new VulkanTexture(allocator, device, textureData.Width, textureData.Height, path);
     texture.SetTextureData(textureData.Data, imageCreateFlags);
+    Application.Mutex.ReleaseMutex();
     return texture;
   }
 

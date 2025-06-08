@@ -449,7 +449,7 @@ public partial class ImGuiController : IDisposable {
       _vertexCount = drawData.TotalVtxCount;
 
       var app = Application.Instance;
-      app.Mutex.WaitOne();
+      Application.Mutex.WaitOne();
 
       var fence = app.Device.CreateFence(FenceCreateFlags.Signaled);
       app.Device.BeginWaitFence(fence, true);
@@ -467,14 +467,14 @@ public partial class ImGuiController : IDisposable {
         MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
         allocationStrategy: AllocationStrategy.Vulkan
       );
-      app.Mutex.ReleaseMutex();
+      Application.Mutex.ReleaseMutex();
     }
 
     if ((_indexBuffer.GetBuffer() == VkBuffer.Null) || (_indexCount < drawData.TotalIdxCount)) {
       _indexCount = drawData.TotalIdxCount;
 
       var app = Application.Instance;
-      app.Mutex.WaitOne();
+      Application.Mutex.WaitOne();
 
       var fence = app.Device.CreateFence(FenceCreateFlags.Signaled);
       app.Device.BeginWaitFence(fence, true);
@@ -492,7 +492,7 @@ public partial class ImGuiController : IDisposable {
         MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
         allocationStrategy: AllocationStrategy.Vulkan
       );
-      app.Mutex.ReleaseMutex();
+      Application.Mutex.ReleaseMutex();
     }
 
     ImDrawVert* vtxDst = null;

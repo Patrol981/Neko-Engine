@@ -101,7 +101,7 @@ public class Sprite : IDisposable, ICloneable {
 
     if (string.IsNullOrEmpty(path)) throw new ArgumentNullException(nameof(path), path);
 
-    app.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     _spriteTexture = _textureManager.AddTextureLocal(path, flip).Result;
     _textureIdRef = _textureManager.GetTextureIdLocal(_spriteTexture.TextureName);
     _isSpriteSheet = false;
@@ -109,7 +109,7 @@ public class Sprite : IDisposable, ICloneable {
 
     Init(vertexSize);
 
-    app.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
   }
 
   private Sprite(

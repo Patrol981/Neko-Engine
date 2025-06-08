@@ -101,6 +101,9 @@ public class SpriteRenderer : Component, IDrawable2D {
         var clone = (Sprite)x.Clone();
         return clone;
        })],
+      CurrentSprite = CurrentSprite,
+      FlipX = FlipX,
+      FlipY = FlipY
     };
 
     return sr;
@@ -165,7 +168,7 @@ public class SpriteRenderer : Component, IDrawable2D {
       _app = app;
       _entity = entity;
 
-      _app.Mutex.WaitOne();
+      Application.Mutex.WaitOne();
     }
 
     public Builder AddSpriteSheet(string spriteTexture, int rows, int columns) {
@@ -198,10 +201,10 @@ public class SpriteRenderer : Component, IDrawable2D {
       };
       if (_entity != null) {
         _entity.AddComponent(spriteRenderer);
-        _app.Mutex.ReleaseMutex();
+        Application.Mutex.ReleaseMutex();
         return null!;
       } else {
-        _app.Mutex.ReleaseMutex();
+        Application.Mutex.ReleaseMutex();
         return spriteRenderer;
       }
     }

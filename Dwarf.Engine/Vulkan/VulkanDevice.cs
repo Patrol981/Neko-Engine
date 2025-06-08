@@ -175,7 +175,9 @@ public class VulkanDevice : IDevice {
     fenceInfo.flags = VkFenceCreateFlags.None;
     vkCreateFence(_logicalDevice, &fenceInfo, null, out var fence).CheckResult();
     // Submit to the queue
+    Application.Mutex.WaitOne();
     vkQueueSubmit(queue, submitInfo, fence).CheckResult();
+    Application.Mutex.ReleaseMutex();
     vkWaitForFences(_logicalDevice, 1, &fence, VkBool32.True, 100000000000);
     vkDestroyFence(_logicalDevice, fence, null);
     if (free) {
@@ -310,7 +312,7 @@ public class VulkanDevice : IDevice {
     // WaitQueue(_presentQueue);
   }
 
-  private unsafe void SubmitQueue(VkQueue queue, VkCommandBuffer commandBuffer) {
+  private unsafe void SubmitQueue(VkCommandBuffer commandBuffer) {
     VkSubmitInfo submitInfo = new() {
       commandBufferCount = 1,
       pCommandBuffers = &commandBuffer,
@@ -320,30 +322,28 @@ public class VulkanDevice : IDevice {
     SubmitQueue(1, &submitInfo, fence, true);
   }
 
-  private void SubmitQueue(VkCommandBuffer commandBuffer) {
-    SubmitQueue(_graphicsQueue, commandBuffer);
-  }
+  // private void SubmitQueue(VkCommandBuffer commandBuffer) {
+  //   SubmitQueue(_graphicsQueue, commandBuffer);
+  // }
 
   public unsafe void SubmitQueue(uint submitCount, VkSubmitInfo* pSubmits, VkFence fence, bool destroy = false) {
-    Application.Instance.Mutex.WaitOne();
     vkQueueSubmit(_graphicsQueue, submitCount, pSubmits, fence).CheckResult();
     vkWaitForFences(_logicalDevice, 1, &fence, VkBool32.True, UInt64.MaxValue);
     if (destroy) {
       vkDestroyFence(_logicalDevice, fence);
     }
-    Application.Instance.Mutex.ReleaseMutex();
   }
 
   public unsafe void SubmitQueue2(uint submitCount, VkSubmitInfo2* pSubmits, VkFence fence, bool destroy = false) {
     try {
-      Application.Instance.Mutex.WaitOne();
+      Application.Mutex.WaitOne();
       vkQueueSubmit2(_graphicsQueue, submitCount, pSubmits, fence).CheckResult();
       vkWaitForFences(_logicalDevice, 1, &fence, VkBool32.True, UInt64.MaxValue);
       if (destroy) {
         vkDestroyFence(_logicalDevice, fence);
       }
     } finally {
-      Application.Instance.Mutex.ReleaseMutex();
+      Application.Mutex.ReleaseMutex();
     }
   }
 
@@ -410,6 +410,18 @@ public class VulkanDevice : IDevice {
         instanceExtensions.Add(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
       } else if (availableExtension == VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME) {
         instanceExtensions.Add(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+      }
+
+      if (availableExtension == VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME) {
+        instanceExtensions.Add(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
+      }
+
+      if (availableExtension == VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME) {
+        instanceExtensions.Add(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
+      }
+
+      if (availableExtension == VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME) {
+        instanceExtensions.Add(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
       }
     }
     // instanceExtensions.Add(VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME);
@@ -579,6 +591,7 @@ public class VulkanDevice : IDevice {
     if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
       enabledExtensions = [
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
         // VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME,
         // VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME,
         VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
@@ -586,6 +599,7 @@ public class VulkanDevice : IDevice {
     } else {
       enabledExtensions = [
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
         // VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME,
         // VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME
       ];

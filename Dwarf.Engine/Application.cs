@@ -26,7 +26,7 @@ public class Application {
   public IRenderer Renderer { get; } = null!;
   public TextureManager TextureManager => _textureManager;
   public nint Allocator { get; internal set; }
-  public Mutex Mutex { get; private set; }
+  public static Mutex Mutex { get; private set; } = new(false);
   public FrameInfo FrameInfo => _currentFrame;
   public DirectionalLight DirectionalLight = DirectionalLight.New();
   public ImGuiController GuiController { get; private set; } = null!;
@@ -148,8 +148,6 @@ public class Application {
 
     systemConfiguration ??= SystemConfiguration.Default;
     _systemConfiguration = systemConfiguration;
-
-    Mutex = new Mutex(false);
 
     _onAppLoading = () => {
       DirectRPG.BeginCanvas();
@@ -282,7 +280,9 @@ public class Application {
     };
     _renderThread.Start();
 
+    Application.Mutex.WaitOne();
     await Init();
+    Application.Mutex.ReleaseMutex();
 
     _renderShouldClose = true;
     Logger.Info("Waiting for renderer to close...");
@@ -314,9 +314,8 @@ public class Application {
 
       PerformCalculations();
 
-      var cp = _entities.ToArray();
-      if (cp != null) {
-        var updatable = cp.Where(x => x.CanBeDisposed == false).ToArray();
+      var updatable = _entities.AsArray();
+      if (updatable.Length > 0) {
         MasterFixedUpdate(updatable.GetScriptsAsSpan());
         _onUpdate?.Invoke();
         MasterUpdate(updatable.GetScriptsAsArray());
@@ -432,18 +431,24 @@ public class Application {
   private static void MasterAwake(ReadOnlySpan<DwarfScript> entities) {
 #if RUNTIME
     var ents = entities.ToArray();
-    Parallel.ForEach(ents, (entity) => {
-      entity.Awake();
-    });
+    // Parallel.ForEach(ents, (entity) => {
+    //   entity.Awake();
+    // });
+    foreach (var e in ents) {
+      e.Awake();
+    }
 #endif
   }
 
   private static void MasterStart(ReadOnlySpan<DwarfScript> entities) {
 #if RUNTIME
     var ents = entities.ToArray();
-    Parallel.ForEach(ents, (entity) => {
-      entity.Start();
-    });
+    // Parallel.ForEach(ents, (entity) => {
+    //   entity.Start();
+    // });
+    foreach (var e in ents) {
+      e.Start();
+    }
 #endif
   }
 

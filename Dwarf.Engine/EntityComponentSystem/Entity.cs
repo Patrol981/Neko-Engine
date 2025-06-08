@@ -25,11 +25,11 @@ public class Entity {
   }
 
   public void AddComponent(Component component) {
-    Application.Instance.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     if (CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
     component.Owner = this;
     _componentManager.AddComponent(component);
-    Application.Instance.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
   }
 
   public T GetComponent<T>() where T : Component, new() {
@@ -188,6 +188,8 @@ public class Entity {
 
     var scripts = GetScripts();
 
+    var debugMesh = TryGetComponent<ColliderMesh>();
+
     if (transform != null) {
       clone.AddTransform(transform.Position, transform.Rotation, transform.Scale);
     }
@@ -214,12 +216,18 @@ public class Entity {
     if (spriteRenderer != null) {
       clone.AddComponent((SpriteRenderer)spriteRenderer.Clone());
     }
-    if (rigidbody2D != null) {
-      clone.AddComponent((Rigidbody2D)rigidbody2D.Clone());
-    }
 
     foreach (var script in scripts) {
       clone.AddComponent((DwarfScript)script.Clone());
+    }
+
+    // if (debugMesh != null) {
+    //   clone.AddComponent((ColliderMesh)debugMesh.Clone());
+    // }
+
+    if (rigidbody2D != null) {
+      clone.AddComponent((Rigidbody2D)rigidbody2D.Clone());
+      clone.GetComponent<Rigidbody2D>().InitBase(scaleMinMax: false);
     }
 
     return clone;

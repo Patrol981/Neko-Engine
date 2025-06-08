@@ -133,10 +133,10 @@ public partial class ImGuiController {
     );
 
     _device.WaitDevice();
-    Application.Instance.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     stagingBuffer.Map((ulong)uploadSize);
     stagingBuffer.WriteToBuffer(fontData, (ulong)uploadSize);
-    Application.Instance.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
     // stagingBuffer.WriteToBuffer(fontData);
     stagingBuffer.Unmap();
 
@@ -182,9 +182,9 @@ public partial class ImGuiController {
       VkPipelineStageFlags.FragmentShader
     );
 
-    Application.Instance.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     _device.FlushCommandBuffer(copyCmd, copyQueue, true);
-    Application.Instance.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
     stagingBuffer.Dispose();
 
     // font texture sampler

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Numerics;
 using Dwarf.Hammer.Enums;
 using Dwarf.Hammer.Models;
@@ -114,6 +115,110 @@ public class HammerWorld {
   }
 
   internal void HandleSprites() {
+    var sprites = Bodies.Values.ToArray();
+    var indices = Bodies.Keys.ToArray();
+    var tilemapList = new List<HammerObject>();
+    lock (_spritesLock) {
+      for (int i = 0; i < sprites.Length; i++) {
+        if (sprites[i].ObjectType != ObjectType.Tilemap) continue;
+
+        tilemapList.Add(sprites[i]);
+      }
+    }
+
+    GetOldContacts(out var oldContacts);
+    GetRemovedContacts(oldContacts, Bodies, out var removedContacts);
+
+    for (int i = 0; i < sprites.Length; i++) {
+      if (sprites.Length != indices.Length) continue;
+
+      var sprite1 = sprites[i];
+      var sprite1Id = indices[i];
+
+      bool collidesWithAnythingGround = false;
+
+      for (int j = 0; j < sprites.Length; j++) {
+        if (i == j) continue;
+
+        var sprite2 = sprites[j];
+        var sprite2Id = indices[j];
+        if (AABB.CheckCollisionMTV(sprite1, sprite2, out var mtv)) {
+          if (!sprite2.IsTrigger && !sprite1.IsTrigger) {
+            sprite1.Position += mtv;
+            sprite1.Velocity = new Vector2(sprite1.Velocity.X, 0);
+          }
+
+          lock (_hammerWorldLock) {
+            var pair = (sprite1Id, sprite2Id);
+
+            if (_contactMap.TryAdd(pair, true)) {
+              _hammerInstance?.OnContactAdded?.Invoke(sprite1Id, sprite2Id);
+            } else {
+              _hammerInstance?.OnContactPersisted?.Invoke(sprite1Id, sprite2Id);
+            }
+          }
+        }
+      }
+
+      if (sprite1 != null && !sprite1.IsTrigger) {
+        HandleTilemaps(sprite1, tilemapList.ToArray(), ref collidesWithAnythingGround);
+        sprite1.Grounded = collidesWithAnythingGround;
+      }
+    }
+
+
+    lock (_hammerWorldLock) {
+      GetStillThereBodies(out var stillThere);
+      for (int i = 0; i < removedContacts.Count; i++) {
+        _hammerInstance?.OnContactExit?.Invoke(removedContacts[i].Item1, removedContacts[i].Item2);
+        _contactMap.Remove(removedContacts[i]);
+      }
+      for (int i = 0; i < oldContacts.Count; i++) {
+        var g1 = Bodies.TryGetValue(oldContacts[i].Item1, out var t1);
+        var g2 = Bodies.TryGetValue(oldContacts[i].Item2, out var t2);
+        if (!g2 || g1) continue;
+        var threshold = t1?.AABB.Width + t1?.AABB.Width;
+        var dist = Vector2.Distance(Bodies[oldContacts[i].Item1].Position, Bodies[oldContacts[i].Item2].Position);
+        if (dist > threshold) {
+          _hammerInstance?.OnContactExit?.Invoke(oldContacts[i].Item1, oldContacts[i].Item2);
+          _contactMap.Remove(oldContacts[i]);
+        }
+      }
+    }
+  }
+
+  private void GetOldContacts(
+    out List<(BodyId, BodyId)> oldContacts
+  ) {
+    oldContacts = [];
+    for (int i = 0; i < _contactMap.Keys.Count; i++) {
+      var target = _contactMap.Keys.ElementAtOrDefault(i);
+      oldContacts.Add(target);
+    }
+  }
+
+  private void GetRemovedContacts(
+    in List<(BodyId, BodyId)> oldContacts,
+    in Dictionary<BodyId, HammerObject> inBodies,
+    out List<(BodyId, BodyId)> removedContacts
+  ) {
+    removedContacts = [];
+    for (int i = 0; i < oldContacts.Count; i++) {
+      var target = oldContacts.ElementAtOrDefault(i);
+      if (inBodies.ContainsKey(target.Item1)) {
+        removedContacts.Add(target);
+      }
+    }
+  }
+
+  private void GetStillThereBodies(out List<(BodyId, BodyId)> stillThere) {
+    stillThere = [];
+    for (int i = 0; i < _contactMap.Keys.Count; i++) {
+      stillThere.Add(_contactMap.Keys.ElementAtOrDefault(i));
+    }
+  }
+
+  internal void HandleSpritesLinq() {
     HammerObject[] spriteValues;
     BodyId[] spriteKeys;
 
@@ -155,8 +260,6 @@ public class HammerWorld {
       var sprite1 = spriteValues[i];
       var sprite1Id = spriteKeys[i];
 
-      // if (sprite1.IsTrigger) continue;
-
       bool collidesWithAnythingGround = false;
 
       for (int j = 0; j < spriteValues.Length; j++) {
@@ -173,7 +276,6 @@ public class HammerWorld {
             var pair = (sprite1Id, spriteKeys[j]);
 
             if (_contactMap.TryAdd(pair, true)) {
-              // Console.WriteLine(sprite2.IsTrigger);
               _hammerInstance?.OnContactAdded?.Invoke(sprite1Id, spriteKeys[j]);
             } else {
               _hammerInstance?.OnContactPersisted?.Invoke(sprite1Id, spriteKeys[j]);
@@ -205,129 +307,6 @@ public class HammerWorld {
           _hammerInstance?.OnContactExit?.Invoke(pair.Item1, pair.Item2);
           _contactMap.Remove(pair);
         }
-      }
-      // foreach (var pair in oldContacts) {
-      //   if (!stillThere.Contains(pair)) {
-      //     _hammerInstance?.OnContactExit?.Invoke(pair.Item1, pair.Item2);
-      //     _contactMap.Remove(pair);
-      //   }
-      // }
-    }
-  }
-
-
-  internal void HandleSprites_Old() {
-    HammerObject[] spriteValues;
-    BodyId[] spriteKeys;
-
-    lock (_spritesLock) {
-      spriteValues = new HammerObject[_sprites.Count];
-      _sprites.Values.CopyTo(spriteValues, 0);
-
-      spriteKeys = new BodyId[_sprites.Count];
-      _sprites.Keys.CopyTo(spriteKeys, 0);
-    }
-
-    HammerObject[] tilemaps;
-
-    lock (_bodiesLock) {
-      var allBodies = new HammerObject[Bodies.Count];
-      Bodies.Values.CopyTo(allBodies, 0);
-
-      List<HammerObject> tilemapList = new();
-      for (int i = 0; i < allBodies.Length; i++) {
-        if (allBodies[i].ObjectType == ObjectType.Tilemap) {
-          tilemapList.Add(allBodies[i]);
-        }
-      }
-
-      tilemaps = [.. tilemapList];
-    }
-
-    for (int i = 0; i < spriteValues.Length; i++) {
-      var sprite1 = spriteValues[i];
-      var sprite1Id = spriteKeys[i];
-
-      bool collidesWithAnythingGround = false;
-
-      for (int j = 0; j < spriteValues.Length; j++) {
-        if (i == j) continue;
-
-        var sprite2 = spriteValues[j];
-        var isColl = AABB.CheckCollisionMTV(sprite1, sprite2, out var mtv);
-
-        if (isColl) {
-          if (sprite1 != null) {
-            sprite1.Position += mtv;
-            sprite1.Velocity.Y = 0;
-          }
-
-          lock (_hammerWorldLock) {
-            var pair = (sprite1Id, spriteKeys[j]);
-
-            if (_contactMap.TryAdd(pair, true))
-              _hammerInstance?.OnContactAdded?.Invoke(sprite1Id, spriteKeys[j]);
-            else
-              _hammerInstance?.OnContactPersisted?.Invoke(sprite1Id, spriteKeys[j]);
-          }
-        }
-      }
-
-      if (sprite1 != null) {
-        HandleTilemaps(sprite1, tilemaps, ref collidesWithAnythingGround);
-        sprite1.Grounded = collidesWithAnythingGround;
-      }
-    }
-  }
-
-
-  internal void HandleSprites_(object state) {
-    var cp = Bodies.Values.ToArray();
-    var tilemaps = cp.Where(x => x.ObjectType == Enums.ObjectType.Tilemap).ToArray();
-    var spriteCp = _sprites.ToArray();
-
-    // for(int s1 = 0; s1 < _sprites.)
-
-    foreach (var sprite1 in spriteCp) {
-      var collidesWithAnythingGround = false;
-      foreach (var sprite2 in spriteCp) {
-        if (sprite1.Value == sprite2.Value) continue;
-
-        var isColl = AABB.CheckCollisionMTV(sprite1.Value, sprite2.Value, out var mtv);
-        if (isColl) {
-          var dotProduct = Vector2.Dot(sprite1.Value.Velocity, sprite2.Value.Position);
-
-          sprite1.Value.Position += mtv;
-          sprite1.Value.Velocity.Y = 0;
-
-          lock (_hammerWorldLock) {
-            if (_contactMap.TryAdd((sprite1.Key, sprite2.Key), true)) {
-              _hammerInstance?.OnContactAdded?.Invoke(sprite1.Key, sprite2.Key);
-            } else {
-              _hammerInstance?.OnContactPersisted?.Invoke(sprite1.Key, sprite2.Key);
-            }
-          }
-        } else {
-          // lock (_hammerWorldLock) {
-          //   if (_contactMap.ContainsKey((sprite1.Key, sprite2.Key))) {
-          //     _contactMap.Remove((sprite1.Key, sprite2.Key));
-          //     _hammerInstance?.OnContactExit?.Invoke(sprite1.Key, sprite2.Key);
-          //   }
-          // }
-        }
-      }
-
-      float spriteMinX = sprite1.Value.Position.X;
-      float spriteMaxX = spriteMinX + sprite1.Value.AABB.Width;
-      float spriteMinY = sprite1.Value.Position.Y;
-      float spriteMaxY = spriteMinY + sprite1.Value.AABB.Height;
-
-      HandleTilemaps(sprite1.Value, tilemaps, ref collidesWithAnythingGround);
-
-      if (collidesWithAnythingGround) {
-        sprite1.Value.Grounded = true;
-      } else {
-        sprite1.Value.Grounded = false;
       }
     }
   }

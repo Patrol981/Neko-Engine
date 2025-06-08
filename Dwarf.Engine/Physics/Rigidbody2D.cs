@@ -9,11 +9,12 @@ using Dwarf.Rendering;
 using Dwarf.Rendering.Renderer2D.Components;
 using Dwarf.Rendering.Renderer2D.Helpers;
 using Dwarf.Rendering.Renderer2D.Interfaces;
+using Dwarf.Utils;
 using Vortice.Vulkan;
 
 namespace Dwarf.Physics;
 
-public class Rigidbody2D : Component, IDisposable {
+public class Rigidbody2D : Component, IDisposable, ICloneable {
   private readonly Application _app;
   private readonly nint _allocator = IntPtr.Zero;
   public IPhysicsBody2D PhysicsBody2D { get; private set; } = null!;
@@ -85,10 +86,13 @@ public class Rigidbody2D : Component, IDisposable {
     PhysicsBody2D.GravityFactor = 0.1f;
   }
 
-  public void InitBase() {
-    var scale = Owner.GetComponent<Transform>().Scale;
-    Min = new Vector2(Min.X * scale.X, Min.Y * scale.Y);
-    Max = new Vector2(Max.X * scale.X, Max.Y * scale.Y);
+  public void InitBase(bool scaleMinMax = true) {
+    Application.Mutex.WaitOne();
+    if (scaleMinMax) {
+      var scale = Owner.GetComponent<Transform>().Scale;
+      Min = new Vector2(Min.X * scale.X, Min.Y * scale.Y);
+      Max = new Vector2(Max.X * scale.X, Max.Y * scale.Y);
+    }
 
     _collisionShape = PrimitiveType switch {
       PrimitiveType.Convex => GetFromOwner(),
@@ -97,6 +101,7 @@ public class Rigidbody2D : Component, IDisposable {
     };
 
     Owner.AddComponent(new ColliderMesh(_app.Allocator, _app.Device, _collisionShape!));
+    Application.Mutex.ReleaseMutex();
   }
 
   private Mesh GetFromOwner() {
@@ -173,7 +178,6 @@ public class Rigidbody2D : Component, IDisposable {
 
   public object Clone() {
     var rb = new Rigidbody2D(_app, _allocator) {
-      _collisionShape = _collisionShape,
       MotionType = MotionType,
       Max = Max,
       Min = Min,

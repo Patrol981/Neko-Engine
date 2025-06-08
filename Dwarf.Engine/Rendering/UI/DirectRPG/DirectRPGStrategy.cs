@@ -13,8 +13,10 @@ public partial class DirectRPG {
   private static ITexture? s_RTSAtlas;
 
   public static void CreateRTSTheme(Application app, ref ITexture atlasTexture) {
+    Application.Mutex.WaitOne();
     s_MainBg = CreateTexture(app, "./Resources/UI/Banners/Carved_9Slides.png");
     s_RTSAtlas = atlasTexture;
+    Application.Mutex.ReleaseMutex();
   }
 
   public static void CreateBottomRTSPanel() {
