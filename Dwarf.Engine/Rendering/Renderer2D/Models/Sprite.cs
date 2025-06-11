@@ -9,7 +9,7 @@ using Vortice.Vulkan;
 
 namespace Dwarf.Rendering.Renderer2D.Models;
 
-public class Sprite {
+public class Sprite : IDisposable, ICloneable {
   private const float ASPECT_ONE = 1.0f;
   public const float VERTEX_SIZE = 0.2f;
   public const float SPRITE_TILE_SIZE_NONE = -1.0f;
@@ -101,7 +101,7 @@ public class Sprite {
 
     if (string.IsNullOrEmpty(path)) throw new ArgumentNullException(nameof(path), path);
 
-    app.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     _spriteTexture = _textureManager.AddTextureLocal(path, flip).Result;
     _textureIdRef = _textureManager.GetTextureIdLocal(_spriteTexture.TextureName);
     _isSpriteSheet = false;
@@ -109,7 +109,19 @@ public class Sprite {
 
     Init(vertexSize);
 
-    app.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
+  }
+
+  private Sprite(
+    IDevice device,
+    nint allocator,
+    TextureManager textureManager,
+    IRenderer renderer
+  ) {
+    _device = device;
+    _allocator = allocator;
+    _textureManager = textureManager;
+    _renderer = renderer;
   }
 
   public void BuildDescriptors(IDescriptorSetLayout descriptorSetLayout, IDescriptorPool descriptorPool) {
@@ -322,6 +334,23 @@ public class Sprite {
     _spriteMesh.Dispose();
     GC.SuppressFinalize(this);
   }
+
+  public object Clone() {
+    return new Sprite(_device, _allocator, _textureManager, _renderer) {
+      _spriteMesh = (Mesh)_spriteMesh.Clone(),
+      _spriteTexture = Texture,
+      _textureIdRef = _textureIdRef,
+      _aspectRatio = _aspectRatio,
+      _spriteSheetTileSize = _spriteSheetTileSize,
+      _spritesPerRow = _spritesPerRow,
+      _spritesPerColumn = _spritesPerColumn,
+      _isSpriteSheet = _isSpriteSheet,
+      _repeatCount = _repeatCount,
+      _stride = _stride,
+      SpriteIndex = SpriteIndex,
+    };
+  }
+
   public Guid GetTextureIdReference() {
     return _textureIdRef;
   }

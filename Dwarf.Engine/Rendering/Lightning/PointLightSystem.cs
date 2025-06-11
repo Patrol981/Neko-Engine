@@ -5,9 +5,7 @@ using System.Runtime.InteropServices;
 using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
 using Dwarf.EntityComponentSystem.Lightning;
-using Dwarf.Rendering.Lightning;
 using Dwarf.Utils;
-using Dwarf.Vulkan;
 
 using Vortice.Vulkan;
 

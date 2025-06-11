@@ -19,6 +19,7 @@ namespace Dwarf.Rendering.Renderer3D;
 public class Render3DSystem : SystemBase, IRenderSystem {
   public const string Simple3D = "simple3D";
   public const string Skinned3D = "skinned3D";
+  private const uint MAX_SETS = 10000;
 
   public const string HatchTextureName = "./Resources/T_crossHatching13_D.png";
   public static float HatchScale = 1;
@@ -226,13 +227,13 @@ public class Render3DSystem : SystemBase, IRenderSystem {
     Logger.Info("Recreating Renderer 3D");
 
     _descriptorPool = new VulkanDescriptorPool.Builder((VulkanDevice)_device)
-      .SetMaxSets(10000)
-      .AddPoolSize(DescriptorType.SampledImage, 1000)
-      .AddPoolSize(DescriptorType.Sampler, 1000)
-      .AddPoolSize(DescriptorType.UniformBufferDynamic, 1000)
-      .AddPoolSize(DescriptorType.InputAttachment, 1000)
-      .AddPoolSize(DescriptorType.UniformBuffer, 1000)
-      .AddPoolSize(DescriptorType.StorageBuffer, 1000)
+      .SetMaxSets(MAX_SETS)
+      .AddPoolSize(DescriptorType.SampledImage, MAX_SETS)
+      .AddPoolSize(DescriptorType.Sampler, MAX_SETS)
+      .AddPoolSize(DescriptorType.UniformBufferDynamic, MAX_SETS)
+      .AddPoolSize(DescriptorType.InputAttachment, MAX_SETS)
+      .AddPoolSize(DescriptorType.UniformBuffer, MAX_SETS)
+      .AddPoolSize(DescriptorType.StorageBuffer, MAX_SETS)
       .SetPoolFlags(DescriptorPoolCreateFlags.None)
       // .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
@@ -244,10 +245,10 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       _allocator,
       _device,
       (ulong)Unsafe.SizeOf<ModelUniformBufferObject>(),
-      (ulong)_texturesCount,
+      MAX_SETS,
       BufferUsage.UniformBuffer,
       MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      ((VulkanDevice)_device).Properties.limits.minUniformBufferOffsetAlignment
+      _device.MinUniformBufferOffsetAlignment
     );
 
     // LastKnownElemCount = entities.Length;
@@ -280,7 +281,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       _hatchTexture.BuildDescriptor(_textureSetLayout, _descriptorPool);
     }
 
-    CreateGlobalBuffers(entities);
+    // CreateGlobalBuffers(entities);
 
     var endTime = DateTime.Now;
     Logger.Warn($"[RENDER 3D RELOAD TIME]: {(endTime - startTime).TotalMilliseconds}");

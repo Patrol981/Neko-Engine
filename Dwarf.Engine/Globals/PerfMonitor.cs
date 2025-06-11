@@ -24,7 +24,7 @@ public static class PerfMonitor {
   }
 
   public static void ChangeWireframeMode() {
-    Application.Instance.CurrentPipelineConfig = Application.Instance.CurrentPipelineConfig.GetType() == typeof(VkPipelineConfigInfo)
+    Application.Instance.CurrentPipelineConfig = Application.Instance.CurrentPipelineConfig?.GetType() == typeof(VkPipelineConfigInfo)
       ? new VertexDebugPipeline()
       : new VkPipelineConfigInfo();
     Application.Instance.Systems.Reload3DRenderSystem = true;

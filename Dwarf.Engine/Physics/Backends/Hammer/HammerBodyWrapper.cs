@@ -46,7 +46,7 @@ public class HammerBodyWrapper : IPhysicsBody2D {
   }
 
   public object CreateAndAddBody(object settings) {
-    _bodyId = _hammerInterface.CreateAndAddBody((ShapeSettings)settings, Dwarf.Hammer.Enums.MotionType.Dynamic, Vector2.Zero);
+    _bodyId = _hammerInterface.CreateAndAddBody((ShapeSettings)settings, Dwarf.Hammer.Enums.MotionType.Dynamic, Vector2.Zero, false);
 
     return null!;
   }
@@ -99,11 +99,12 @@ public class HammerBodyWrapper : IPhysicsBody2D {
     return shapeSettings;
   }
 
-  public void CreateAndAddBody(MotionType motionType, object shapeSettings, Vector2 position) {
+  public void CreateAndAddBody(MotionType motionType, object shapeSettings, Vector2 position, bool isTrigger) {
     _bodyId = _hammerInterface.CreateAndAddBody(
       (ShapeSettings)shapeSettings,
       (Dwarf.Hammer.Enums.MotionType)motionType,
-      position
+      position,
+      isTrigger
     );
   }
 
@@ -127,10 +128,10 @@ public class HammerBodyWrapper : IPhysicsBody2D {
     throw new NotImplementedException();
   }
 
-  public static (Entity?, Entity?) GetCollisionData(BodyId body1, BodyId body2) {
+  public static (Rigidbody2D?, Rigidbody2D?) GetCollisionData(BodyId body1, BodyId body2) {
     var entities = Application.Instance.GetEntities().Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody2D>());
-    var first = entities.Where(x => (BodyId)x.GetComponent<Rigidbody2D>().PhysicsBody2D.BodyId == body1).FirstOrDefault();
-    var second = entities.Where(x => (BodyId)x.GetComponent<Rigidbody2D>().PhysicsBody2D.BodyId == body2).FirstOrDefault();
+    var first = entities.Where(x => (BodyId)x.GetComponent<Rigidbody2D>().PhysicsBody2D.BodyId == body1).FirstOrDefault()?.GetComponent<Rigidbody2D>();
+    var second = entities.Where(x => (BodyId)x.GetComponent<Rigidbody2D>().PhysicsBody2D.BodyId == body2).FirstOrDefault()?.GetComponent<Rigidbody2D>(); ;
 
     return (first, second);
   }

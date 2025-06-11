@@ -119,8 +119,11 @@ public class VulkanDynamicSwapchain : ISwapchain {
   }
 
   private unsafe void Init(bool vsync) {
-    VkSurfaceCapabilitiesKHR surfCaps;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(_device.PhysicalDevice, _device.Surface, &surfCaps).CheckResult();
+    // VkSurfaceCapabilities2KHR surfCaps;
+    // vkGetPhysicalDeviceSurfaceCapabilities2KHR(_device.PhysicalDevice, _device.Surface, &surfCaps).CheckResult();
+
+    var support = VkUtils.QuerySwapChainSupport2(_device.PhysicalDevice, _device.Surface);
+    var surfCaps = support.Capabilities.surfaceCapabilities;
 
     // if (surfCaps.currentExtent.width < 1) {
     //   // Surface doesn't specify the size, so use our provided width and height.
@@ -191,6 +194,12 @@ public class VulkanDynamicSwapchain : ISwapchain {
       }
     }
 
+    VkSwapchainPresentScalingCreateInfoEXT scalingCreateInfoEXT = new() {
+      scalingBehavior = VkPresentScalingFlagsEXT.None,
+      presentGravityX = VkPresentGravityFlagsEXT.Centered,
+      presentGravityY = VkPresentGravityFlagsEXT.Centered,
+    };
+
     VkSwapchainCreateInfoKHR swapchainCI = new() {
       surface = _device.Surface,
       minImageCount = desiredNumberOfSwapchainImages,
@@ -205,7 +214,8 @@ public class VulkanDynamicSwapchain : ISwapchain {
       presentMode = swapchainPresentMode,
       clipped = true,
       compositeAlpha = compositeAlpha,
-      oldSwapchain = VkSwapchainKHR.Null
+      oldSwapchain = VkSwapchainKHR.Null,
+      pNext = &scalingCreateInfoEXT
     };
 
     vkCreateSwapchainKHR(_device.LogicalDevice, &swapchainCI, null, out _handle).CheckResult();
@@ -276,10 +286,15 @@ public class VulkanDynamicSwapchain : ISwapchain {
   }
 
   public float ExtentAspectRatio() {
-    return _extent2D.width / (float)_extent2D.height;
+    if (_extent2D.width > _extent2D.height) {
+      return _extent2D.width / (float)_extent2D.height;
+    } else {
+      return _extent2D.height / (float)_extent2D.width;
+    }
   }
 
   public unsafe void Dispose() {
+    Application.Mutex.WaitOne();
     _device.WaitDevice();
 
     if (_handle != VkSwapchainKHR.Null) {
@@ -289,5 +304,6 @@ public class VulkanDynamicSwapchain : ISwapchain {
       }
       vkDestroySwapchainKHR(_device.LogicalDevice, _handle, null);
     }
+    Application.Mutex.ReleaseMutex();
   }
 }

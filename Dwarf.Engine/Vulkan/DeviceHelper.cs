@@ -6,6 +6,7 @@ using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Vulkan;
+
 public static unsafe class DeviceHelper {
   public static VkPhysicalDevice GetPhysicalDevice(VkInstance instance, VkSurfaceKHR surface) {
     VkPhysicalDevice returnDevice = VkPhysicalDevice.Null;
@@ -158,14 +159,14 @@ public static unsafe class DeviceHelper {
   }
 
   private static bool IsDeviceSuitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
-    var checkQueueFamilies = FindQueueFamilies(physicalDevice, surface);
+    var checkQueueFamilies = FindQueueFamilies2(physicalDevice, surface);
     if (checkQueueFamilies.graphicsFamily == VK_QUEUE_FAMILY_IGNORED)
       return false;
 
     if (checkQueueFamilies.presentFamily == VK_QUEUE_FAMILY_IGNORED)
       return false;
 
-    SwapChainSupportDetails swapChainSupport = VkUtils.QuerySwapChainSupport(physicalDevice, surface);
+    SwapChainSupportDetails2 swapChainSupport = VkUtils.QuerySwapChainSupport2(physicalDevice, surface);
     return !swapChainSupport.Formats.IsEmpty && !swapChainSupport.PresentModes.IsEmpty;
   }
 
@@ -205,6 +206,48 @@ public static unsafe class DeviceHelper {
     uint i = 0;
     foreach (VkQueueFamilyProperties queueFamily in queueFamilies) {
       if ((queueFamily.queueFlags & VkQueueFlags.Graphics) != VkQueueFlags.None) {
+        graphicsFamily = i;
+      }
+
+      vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, out VkBool32 presentSupport);
+      if (presentSupport) {
+        presentFamily = i;
+      }
+
+      if (graphicsFamily != VK_QUEUE_FAMILY_IGNORED
+          && presentFamily != VK_QUEUE_FAMILY_IGNORED) {
+        break;
+      }
+
+      i++;
+    }
+
+    return (graphicsFamily, presentFamily);
+  }
+
+  public static (uint graphicsFamily, uint presentFamily) FindQueueFamilies2(
+    VkPhysicalDevice device,
+    VkSurfaceKHR surface
+  ) {
+    // var queueFamilies = vkGetPhysicalDeviceQueueFamilyProperties2(device);
+
+    uint propCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties2(device, &propCount, null);
+    var props = new VkQueueFamilyProperties2[propCount];
+    for (int x = 0; x < props.Length; x++) {
+      props[x].sType = VkStructureType.QueueFamilyProperties2;
+      props[x].pNext = null;
+    }
+    fixed (VkQueueFamilyProperties2* propPtr = props) {
+      vkGetPhysicalDeviceQueueFamilyProperties2(device, &propCount, propPtr);
+    }
+
+    uint graphicsFamily = VK_QUEUE_FAMILY_IGNORED;
+    uint presentFamily = VK_QUEUE_FAMILY_IGNORED;
+    uint i = 0;
+
+    foreach (VkQueueFamilyProperties2 queueFamily in props) {
+      if ((queueFamily.queueFamilyProperties.queueFlags & VkQueueFlags.Graphics) != VkQueueFlags.None) {
         graphicsFamily = i;
       }
 

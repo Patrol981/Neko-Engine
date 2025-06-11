@@ -53,18 +53,18 @@ public static class EntityCreator {
   /// Adds <c>Transform</c> component to an <c>Entity</c>
   /// </summary>
   public static void AddTransform(this Entity entity, Vector3 position) {
-    Application.Instance.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     entity.AddTransform(position, Vector3.Zero, Vector3.One);
-    Application.Instance.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
   }
 
   /// <summary>
   /// Adds <c>Transform</c> component to an <c>Entity</c>
   /// </summary>
   public static void AddTransform(this Entity entity, Vector3 position, Vector3 rotation) {
-    Application.Instance.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     entity.AddTransform(position, rotation, Vector3.One);
-    Application.Instance.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
   }
 
   /// <summary>
@@ -75,23 +75,23 @@ public static class EntityCreator {
     if (rotation == null) { rotation = Vector3.Zero; }
     if (scale == null) { scale = Vector3.One; }
 
-    Application.Instance.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     entity.AddComponent(new Transform(position.Value));
     entity.GetComponent<Transform>().Rotation = rotation.Value;
     entity.GetComponent<Transform>().Scale = scale.Value;
-    Application.Instance.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
   }
 
   public static void AddMaterial(this Entity entity) {
-    Application.Instance.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     entity.AddMaterial(Vector3.One);
-    Application.Instance.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
   }
 
   public static void AddMaterial(this Entity entity, MaterialData materialData) {
-    Application.Instance.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     entity.AddComponent(new MaterialComponent(materialData));
-    Application.Instance.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
   }
 
   public static void AddMaterial(this Entity entity, Vector3? color) {
@@ -206,7 +206,7 @@ public static class EntityCreator {
     var app = Application.Instance;
 
     var entity = await CreateBase(entityName, position, rotation, scale);
-    app.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     var mesh = Primitives.CreatePrimitive(primitiveType);
     var model = new MeshRenderer(app.Device, app.Renderer);
     Node node = new() { Mesh = mesh };
@@ -214,7 +214,7 @@ public static class EntityCreator {
     model.AddLinearNode(node);
     model.Init();
     entity.AddComponent(model);
-    app.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
 
     return entity;
   }
@@ -222,7 +222,7 @@ public static class EntityCreator {
   public static async void AddPrimitive(this Entity entity, string texturePath, PrimitiveType primitiveType = PrimitiveType.Cylinder) {
     var app = Application.Instance;
 
-    app.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     var mesh = Primitives.CreatePrimitive(primitiveType);
     var model = new MeshRenderer(app.Device, app.Renderer);
     Node node = new() { Mesh = mesh };
@@ -231,7 +231,7 @@ public static class EntityCreator {
     model.Init();
     entity.AddComponent(model);
     await app.TextureManager.AddTextureLocal(texturePath);
-    app.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
   }
 
   public static void AddRigidbody(
@@ -412,10 +412,11 @@ public static class EntityCreator {
   public static void AddRigidbody2D(
     this Entity entity,
     PrimitiveType primitiveType,
-    MotionType motionType
+    MotionType motionType,
+    bool isTrigger = false
   ) {
     var app = Application.Instance;
-    entity.AddComponent(new Rigidbody2D(app, primitiveType, motionType));
+    entity.AddComponent(new Rigidbody2D(app, primitiveType, motionType, isTrigger));
     entity.GetComponent<Rigidbody2D>().InitBase();
   }
 
@@ -424,10 +425,13 @@ public static class EntityCreator {
     PrimitiveType primitiveType,
     MotionType motionType,
     Vector2 min,
-    Vector2 max
+    Vector2 max,
+    bool isTrigger = false
   ) {
     var app = Application.Instance;
-    entity.AddComponent(new Rigidbody2D(app, primitiveType, motionType, min, max));
+    Application.Mutex.WaitOne();
+    entity.AddComponent(new Rigidbody2D(app, primitiveType, motionType, min, max, isTrigger));
     entity.GetComponent<Rigidbody2D>().InitBase();
+    Application.Mutex.ReleaseMutex();
   }
 }

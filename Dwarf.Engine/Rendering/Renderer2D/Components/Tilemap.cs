@@ -141,6 +141,10 @@ public class Tilemap : Component, IDrawable2D {
     GC.SuppressFinalize(this);
   }
 
+  public object Clone() {
+    throw new NotImplementedException();
+  }
+
   public Vector2I SpriteSheetSize => new(1, 1);
   public Vector3 WorldSize {
     get {

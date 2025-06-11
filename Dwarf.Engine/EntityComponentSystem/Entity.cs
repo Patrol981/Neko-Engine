@@ -1,5 +1,6 @@
 using Dwarf.Physics;
 using Dwarf.Rendering;
+using Dwarf.Rendering.Renderer2D.Components;
 using Dwarf.Rendering.Renderer3D;
 using Dwarf.Rendering.Renderer3D.Animations;
 namespace Dwarf.EntityComponentSystem;
@@ -11,7 +12,7 @@ public class Entity {
   public bool IsImportant = false;
 
   private readonly ComponentManager _componentManager;
-  private readonly object _componentLock = new();
+  private readonly Lock _componentLock = new();
 
   public Entity() {
     EntityID = Guid.NewGuid();
@@ -24,11 +25,11 @@ public class Entity {
   }
 
   public void AddComponent(Component component) {
-    Application.Instance.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     if (CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
     component.Owner = this;
     _componentManager.AddComponent(component);
-    Application.Instance.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
   }
 
   public T GetComponent<T>() where T : Component, new() {
@@ -106,6 +107,13 @@ public class Entity {
     }
   }
 
+  public void DisposeScripts() {
+    var scripts = GetScripts();
+    foreach (var script in scripts) {
+      script?.Dispose();
+    }
+  }
+
   public Component[] GetDisposables() {
     var components = _componentManager.GetAllComponents();
     var list = new List<Component>();
@@ -145,14 +153,14 @@ public class Entity {
     var entities = Application.Instance.GetEntities();
     var target = entities.Where(x => x.HasComponent<T>() && !x.CanBeDisposed)
       .FirstOrDefault();
-    return target == null ? null : target.GetComponent<T>();
+    return target?.GetComponent<T>();
   }
 
   public static T? FindComponentByName<T>(string name) where T : Component, new() {
     var entities = Application.Instance.GetEntities();
     var target = entities.Where(x => x.Name == name && !x.CanBeDisposed)
       .FirstOrDefault();
-    return target == null ? null : target.GetComponent<T>();
+    return target?.GetComponent<T>();
   }
 
   public static Entity? FindEntityByName(string name) {
@@ -171,8 +179,16 @@ public class Entity {
 
     var transform = TryGetComponent<Transform>();
     var material = TryGetComponent<MaterialComponent>();
+
     var model = TryGetComponent<MeshRenderer>();
     var rigidbody = TryGetComponent<Rigidbody>();
+
+    var spriteRenderer = TryGetComponent<SpriteRenderer>();
+    var rigidbody2D = TryGetComponent<Rigidbody2D>();
+
+    var scripts = GetScripts();
+
+    var debugMesh = TryGetComponent<ColliderMesh>();
 
     if (transform != null) {
       clone.AddTransform(transform.Position, transform.Rotation, transform.Scale);
@@ -180,6 +196,7 @@ public class Entity {
     if (material != null) {
       clone.AddMaterial(material.Color);
     }
+
     if (model != null) {
       clone.AddComponent(EntityCreator.CopyModel(in model));
       clone.AddComponent(new AnimationController());
@@ -194,6 +211,23 @@ public class Entity {
         rigidbody.Flipped
       );
       Application.Instance.Systems.PhysicsSystem.Init([clone]);
+    }
+
+    if (spriteRenderer != null) {
+      clone.AddComponent((SpriteRenderer)spriteRenderer.Clone());
+    }
+
+    foreach (var script in scripts) {
+      clone.AddComponent((DwarfScript)script.Clone());
+    }
+
+    // if (debugMesh != null) {
+    //   clone.AddComponent((ColliderMesh)debugMesh.Clone());
+    // }
+
+    if (rigidbody2D != null) {
+      clone.AddComponent((Rigidbody2D)rigidbody2D.Clone());
+      clone.GetComponent<Rigidbody2D>().InitBase(scaleMinMax: false);
     }
 
     return clone;

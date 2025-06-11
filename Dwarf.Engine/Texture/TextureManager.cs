@@ -43,8 +43,10 @@ public class TextureManager : IDisposable {
         return tex.Value;
       }
     }
+    Application.Mutex.WaitOne();
     var texture = await TextureLoader.LoadFromPath(_allocator, _device, texturePath, flip);
     PerSceneLoadedTextures.Add(Guid.NewGuid(), texture);
+    Application.Mutex.ReleaseMutex();
     return texture;
   }
 

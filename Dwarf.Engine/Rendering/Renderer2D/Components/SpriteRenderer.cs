@@ -1,11 +1,9 @@
 using System.Numerics;
 using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
-using Dwarf.Extensions.Logging;
 using Dwarf.Math;
 using Dwarf.Rendering.Renderer2D.Interfaces;
 using Dwarf.Rendering.Renderer2D.Models;
-using Dwarf.Vulkan;
 
 namespace Dwarf.Rendering.Renderer2D.Components;
 
@@ -97,6 +95,20 @@ public class SpriteRenderer : Component, IDrawable2D {
     GC.SuppressFinalize(this);
   }
 
+  public object Clone() {
+    var sr = new SpriteRenderer() {
+      Sprites = [.. Sprites.Select(static x => {
+        var clone = (Sprite)x.Clone();
+        return clone;
+       })],
+      CurrentSprite = CurrentSprite,
+      FlipX = FlipX,
+      FlipY = FlipY
+    };
+
+    return sr;
+  }
+
   private void ResetSprite(int index) {
     Sprites[index].Reset();
   }
@@ -156,7 +168,7 @@ public class SpriteRenderer : Component, IDrawable2D {
       _app = app;
       _entity = entity;
 
-      _app.Mutex.WaitOne();
+      Application.Mutex.WaitOne();
     }
 
     public Builder AddSpriteSheet(string spriteTexture, int rows, int columns) {
@@ -189,10 +201,10 @@ public class SpriteRenderer : Component, IDrawable2D {
       };
       if (_entity != null) {
         _entity.AddComponent(spriteRenderer);
-        _app.Mutex.ReleaseMutex();
+        Application.Mutex.ReleaseMutex();
         return null!;
       } else {
-        _app.Mutex.ReleaseMutex();
+        Application.Mutex.ReleaseMutex();
         return spriteRenderer;
       }
     }

@@ -60,11 +60,12 @@ public class HammerInterface {
     return _hammerWorld.Bodies[bodyId].MotionQuality;
   }
 
-  public BodyId CreateAndAddBody(ShapeSettings shapeSettings, MotionType motionType, Vector2 position) {
+  public BodyId CreateAndAddBody(ShapeSettings shapeSettings, MotionType motionType, Vector2 position, bool isTrigger) {
     var body = _hammerWorld.AddBody(position);
     _hammerWorld.Bodies[body].MotionType = motionType;
     _hammerWorld.Bodies[body].Mesh = shapeSettings.Mesh;
     _hammerWorld.Bodies[body].ObjectType = shapeSettings.ObjectType;
+    _hammerWorld.Bodies[body].IsTrigger = isTrigger;
     if (shapeSettings.ObjectType == ObjectType.Sprite && shapeSettings.UserData != null) {
       var minMax = ((Vector2, Vector2))shapeSettings.UserData;
       _hammerWorld.Bodies[body].AABB = new AABB() { Min = minMax.Item1, Max = minMax.Item2 };

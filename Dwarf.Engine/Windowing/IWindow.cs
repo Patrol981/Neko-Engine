@@ -27,5 +27,5 @@ public interface IWindow : IDisposable {
 
   float GetRefreshRate();
 
-  VkSurfaceKHR CreateVkSurface(VkInstance instance);
+  ulong CreateSurface(nint instance);
 }

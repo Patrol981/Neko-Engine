@@ -367,9 +367,9 @@ public unsafe class VkDynamicRenderer : IRenderer {
 
       vkResetFences(_device.LogicalDevice, _waitFences[Swapchain.CurrentFrame]);
 
-      Application.Instance.Mutex.WaitOne();
+      Application.Mutex.WaitOne();
       var queueResult = vkQueueSubmit(_device.GraphicsQueue, 1, &submitInfo, _waitFences[Swapchain.CurrentFrame]);
-      Application.Instance.Mutex.ReleaseMutex();
+      Application.Mutex.ReleaseMutex();
       SubmitFrame();
 
       IsFrameInProgress = false;

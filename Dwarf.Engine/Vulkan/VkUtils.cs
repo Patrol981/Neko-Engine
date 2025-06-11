@@ -9,6 +9,13 @@ public ref struct SwapChainSupportDetails {
   public ReadOnlySpan<VkSurfaceFormatKHR> Formats;
   public ReadOnlySpan<VkPresentModeKHR> PresentModes;
 }
+
+public ref struct SwapChainSupportDetails2 {
+  public VkSurfaceCapabilities2KHR Capabilities;
+  public ReadOnlySpan<VkSurfaceFormat2KHR> Formats;
+  public ReadOnlySpan<VkPresentModeKHR> PresentModes;
+}
+
 public static class VkUtils {
   public static SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
     SwapChainSupportDetails details = new SwapChainSupportDetails();
@@ -16,6 +23,50 @@ public static class VkUtils {
 
     details.Formats = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface);
     details.PresentModes = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface);
+    return details;
+  }
+
+  public static unsafe SwapChainSupportDetails2 QuerySwapChainSupport2(
+    VkPhysicalDevice physicalDevice,
+    VkSurfaceKHR surface) {
+    var details = new SwapChainSupportDetails2 {
+      Capabilities = new(),
+      Formats = new(),
+      PresentModes = new()
+    };
+
+    var surfaceInfo = new VkPhysicalDeviceSurfaceInfo2KHR() {
+      sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR,
+      pNext = null,
+      surface = surface
+    };
+    vkGetPhysicalDeviceSurfaceCapabilities2KHR(physicalDevice, &surfaceInfo, &details.Capabilities);
+
+    uint formatCount = 0;
+    vkGetPhysicalDeviceSurfaceFormats2KHR(physicalDevice, &surfaceInfo, &formatCount, null);
+    var formats = new VkSurfaceFormat2KHR[formatCount];
+    for (int i = 0; i < formats.Length; i++) {
+      formats[i] = new();
+    }
+    fixed (VkSurfaceFormat2KHR* pFormats = formats) {
+      vkGetPhysicalDeviceSurfaceFormats2KHR(physicalDevice, &surfaceInfo, &formatCount, pFormats);
+    }
+    details.Formats = formats;
+
+    // uint presentCount = 0;
+    details.PresentModes = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface);
+    // vkGetPhysicalDeviceSurfacePresentModes2EXT(physicalDevice, &surfaceInfo, &presentCount, null).CheckResult();
+
+    // var presentModes = new VkPresentModeKHR[presentCount];
+    // fixed (VkPresentModeKHR* pPresent = presentModes) {
+    //   vkGetPhysicalDeviceSurfacePresentModes2EXT(
+    //       physicalDevice,
+    //       &surfaceInfo,
+    //       &presentCount,
+    //       pPresent);
+    // }
+    // details.PresentModes = presentModes;
+
     return details;
   }
 

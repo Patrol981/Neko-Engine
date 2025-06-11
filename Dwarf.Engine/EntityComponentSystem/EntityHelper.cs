@@ -4,6 +4,7 @@ using Dwarf.Rendering.Renderer2D.Interfaces;
 using Dwarf.Rendering.Renderer3D;
 
 namespace Dwarf.EntityComponentSystem;
+
 public static class EntityHelper {
   public static Entity[] Distinct<T>(this List<Entity> entities) where T : Component {
     return entities.Where(e => !e.CanBeDisposed && e.HasComponent<T>()).ToArray();
@@ -110,6 +111,37 @@ public static class EntityHelper {
     }
 
     return [.. list];
+  }
+
+  public static ReadOnlySpan<Entity> AsReadOnlySpan(this List<Entity> entities) {
+    var tmpList = new List<Entity>();
+    for (int i = 0; i < entities.Count; i++) {
+      if (entities[i].CanBeDisposed) continue;
+
+      var item = entities.ElementAtOrDefault(i);
+      if (item is null) continue;
+
+      tmpList.Add(item);
+    }
+
+    return tmpList.ToArray();
+  }
+
+  public static Entity[] AsArray(this List<Entity> entities) {
+    var tmpList = new List<Entity>();
+    for (int i = 0; i < entities.Count; i++) {
+      var targetRef = entities[i];
+
+      if (targetRef == null) continue;
+      if (targetRef.CanBeDisposed) continue;
+
+      var item = entities.ElementAtOrDefault(i);
+      if (item is null) continue;
+
+      tmpList.Add(item);
+    }
+
+    return [.. tmpList];
   }
 
   private sealed class Drawable2DComparer : IComparer<IDrawable2D> {

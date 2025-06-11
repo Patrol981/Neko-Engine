@@ -9,11 +9,12 @@ using Dwarf.Rendering;
 using Dwarf.Rendering.Renderer2D.Components;
 using Dwarf.Rendering.Renderer2D.Helpers;
 using Dwarf.Rendering.Renderer2D.Interfaces;
+using Dwarf.Utils;
 using Vortice.Vulkan;
 
 namespace Dwarf.Physics;
 
-public class Rigidbody2D : Component, IDisposable {
+public class Rigidbody2D : Component, IDisposable, ICloneable {
   private readonly Application _app;
   private readonly nint _allocator = IntPtr.Zero;
   public IPhysicsBody2D PhysicsBody2D { get; private set; } = null!;
@@ -22,6 +23,7 @@ public class Rigidbody2D : Component, IDisposable {
   public Vector2 Max { get; private set; } = Vector2.Zero;
   public MotionType MotionType { get; init; } = MotionType.Dynamic;
   public PrimitiveType PrimitiveType { get; init; } = PrimitiveType.None;
+  public bool IsTrigger { get; private set; } = false;
 
   public Vector2 Velocity => Vector2.Zero;
   public bool Kinematic => false;
@@ -35,12 +37,14 @@ public class Rigidbody2D : Component, IDisposable {
   public Rigidbody2D(
     Application app,
     PrimitiveType primitiveType,
-    MotionType motionType
+    MotionType motionType,
+    bool isTrigger
   ) {
     _app = app;
     _allocator = _app.Allocator;
     MotionType = motionType;
     PrimitiveType = primitiveType;
+    IsTrigger = isTrigger;
   }
 
   public Rigidbody2D(
@@ -48,7 +52,8 @@ public class Rigidbody2D : Component, IDisposable {
     PrimitiveType primitiveType,
     MotionType motionType,
     Vector2 min,
-    Vector2 max
+    Vector2 max,
+    bool isTrigger
   ) {
     _app = app;
     _allocator = _app.Allocator;
@@ -56,6 +61,15 @@ public class Rigidbody2D : Component, IDisposable {
     MotionType = motionType;
     Min = min;
     Max = max;
+    IsTrigger = isTrigger;
+  }
+
+  private Rigidbody2D(
+    Application app,
+    nint allocator
+  ) {
+    _app = app;
+    _allocator = allocator;
   }
 
   public void Init(in IPhysicsBody2D physicsBody2D) {
@@ -68,14 +82,17 @@ public class Rigidbody2D : Component, IDisposable {
 
     var pos = Owner.GetComponent<Transform>().Position;
     var shapeSettings = PhysicsBody2D.ColldierMeshToPhysicsShape(Owner, _collisionShape);
-    PhysicsBody2D.CreateAndAddBody(MotionType, shapeSettings, pos.ToVector2());
+    PhysicsBody2D.CreateAndAddBody(MotionType, shapeSettings, pos.ToVector2(), IsTrigger);
     PhysicsBody2D.GravityFactor = 0.1f;
   }
 
-  public void InitBase() {
-    var scale = Owner.GetComponent<Transform>().Scale;
-    Min = new Vector2(Min.X * scale.X, Min.Y * scale.Y);
-    Max = new Vector2(Max.X * scale.X, Max.Y * scale.Y);
+  public void InitBase(bool scaleMinMax = true) {
+    Application.Mutex.WaitOne();
+    if (scaleMinMax) {
+      var scale = Owner.GetComponent<Transform>().Scale;
+      Min = new Vector2(Min.X * scale.X, Min.Y * scale.Y);
+      Max = new Vector2(Max.X * scale.X, Max.Y * scale.Y);
+    }
 
     _collisionShape = PrimitiveType switch {
       PrimitiveType.Convex => GetFromOwner(),
@@ -84,6 +101,7 @@ public class Rigidbody2D : Component, IDisposable {
     };
 
     Owner.AddComponent(new ColliderMesh(_app.Allocator, _app.Device, _collisionShape!));
+    Application.Mutex.ReleaseMutex();
   }
 
   private Mesh GetFromOwner() {
@@ -133,19 +151,19 @@ public class Rigidbody2D : Component, IDisposable {
     PhysicsBody2D.Position = vec2;
   }
 
-  public void InvokeCollision(CollisionState collisionState, Entity? otherColl) {
+  public void InvokeCollision(CollisionState collisionState, Entity? otherColl, bool otherTrigger) {
     if (Owner.CanBeDisposed) return;
     var scripts = Owner!.GetScripts();
     for (short i = 0; i < scripts.Length; i++) {
       switch (collisionState) {
         case CollisionState.Enter:
-          scripts[i].CollisionEnter(otherColl);
+          scripts[i].CollisionEnter(otherColl, otherTrigger);
           break;
         case CollisionState.Stay:
-          scripts[i].CollisionStay(otherColl);
+          scripts[i].CollisionStay(otherColl, otherTrigger);
           break;
         case CollisionState.Exit:
-          scripts[i].CollisionExit(otherColl);
+          scripts[i].CollisionExit(otherColl, otherTrigger);
           break;
         default:
           break;
@@ -154,7 +172,18 @@ public class Rigidbody2D : Component, IDisposable {
   }
 
   public void Dispose() {
-    PhysicsBody2D.Dispose();
+    PhysicsBody2D?.Dispose();
     GC.SuppressFinalize(this);
+  }
+
+  public object Clone() {
+    var rb = new Rigidbody2D(_app, _allocator) {
+      MotionType = MotionType,
+      Max = Max,
+      Min = Min,
+      PrimitiveType = PrimitiveType,
+      IsTrigger = IsTrigger
+    };
+    return rb;
   }
 }

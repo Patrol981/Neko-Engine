@@ -1,6 +1,6 @@
 ﻿namespace Dwarf.EntityComponentSystem;
 
-public class DwarfScript : Component {
+public class DwarfScript : Component, ICloneable, IDisposable {
   protected bool DidAwake { get; private set; }
   protected bool DidStart { get; private set; }
 
@@ -19,14 +19,32 @@ public class DwarfScript : Component {
   public virtual void Update() { }
 
   /// <summary>
-  /// Performs update calculations on <b> Main Threead </b>
+  /// Performs update calculations on <b> Main Thread </b>
   /// </summary>
   public virtual void FixedUpdate() { }
+
+  /// <summary>
+  /// Invokes update call on <b> Render Thread </b>
+  /// </summary>
   public virtual void RenderUpdate() { }
+
+  public virtual void CollisionEnter(Entity? entity, bool IsTrigger) { }
+
+  public virtual void CollisionStay(Entity? entity, bool isTrigger) { }
+
+  public virtual void CollisionExit(Entity? entity, bool isTrigger) { }
 
   public virtual void CollisionEnter(Entity? entity) { }
 
   public virtual void CollisionStay(Entity? entity) { }
 
   public virtual void CollisionExit(Entity? entity) { }
+
+  public virtual object Clone() {
+    return MemberwiseClone();
+  }
+
+  public virtual void Dispose() {
+    GC.SuppressFinalize(this);
+  }
 }

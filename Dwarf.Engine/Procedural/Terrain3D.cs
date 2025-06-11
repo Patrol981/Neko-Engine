@@ -6,6 +6,7 @@ using Dwarf.Rendering;
 using Dwarf.Rendering.Renderer3D;
 
 namespace Dwarf.Procedural;
+
 public class Terrain3D : Component {
   const int HEIGHT = 512;
   const int WIDTH = 512;
@@ -64,9 +65,9 @@ public class Terrain3D : Component {
   }
 
   private async void SetupTexture(Application app) {
-    app.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
     await app.TextureManager.AddTextureLocal(_texturePath);
-    app.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
   }
 
   private static void ApplyPerlinNoiseToMesh(

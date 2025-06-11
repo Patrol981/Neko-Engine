@@ -71,7 +71,7 @@ public class Render2DSystem : SystemBase {
       return;
     }
 
-    Logger.Info("Recreating Renderer 2D");
+    Logger.Info($"Recreating Renderer 2D [{_texturesCount}]");
 
     // _spritePushConstant =
     //   (SpritePushConstant*)Marshal.AllocHGlobal(Unsafe.SizeOf<SpritePushConstant>());

@@ -4,7 +4,7 @@ public class PublicList<T> {
   private T[] _data;
   private int _capacity;
 
-  private readonly object _lock = new object();
+  private readonly Lock _lock = new();
 
   public PublicList(int initialCapacity = 8) {
     if (initialCapacity < 1) initialCapacity = 1;

@@ -6,13 +6,12 @@ using Dwarf.EntityComponentSystem;
 using Dwarf.Math;
 using Dwarf.Physics.Interfaces;
 using Dwarf.Rendering;
-using Dwarf.Rendering.Renderer3D;
 using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Physics;
 
-public class ColliderMesh : Component, IDebugRenderObject {
+public class ColliderMesh : Component, IDebugRenderObject, ICloneable {
   private readonly IDevice _device = null!;
   private readonly nint _allocator = IntPtr.Zero;
 
@@ -25,26 +24,30 @@ public class ColliderMesh : Component, IDebugRenderObject {
   public ColliderMesh() { }
 
   public ColliderMesh(nint allocator, IDevice device, Mesh mesh) {
+    Application.Mutex.WaitOne();
     _allocator = allocator;
     _device = device;
     Mesh = mesh;
 
     if (Mesh.Indices.Length > 0) _hasIndexBuffer = true;
 
-    Init();
+    Init().Wait();
+    Application.Mutex.ReleaseMutex();
   }
 
   public ColliderMesh(nint allocator, IDevice device, AABB aabb) {
+    Application.Mutex.WaitOne();
     _device = device;
     _allocator = allocator;
 
     Mesh = CreateMeshOutOfAABB(allocator, device, aabb);
 
     if (Mesh.Indices.Length > 0) _hasIndexBuffer = true;
-    Init();
+    Init().Wait();
+    Application.Mutex.ReleaseMutex();
   }
 
-  public async void Init() {
+  public async Task Init() {
     await CreateVertexBuffer(Mesh.Vertices);
     await CreateIndexBuffer(Mesh.Indices);
     FinishedInitialization = true;
@@ -125,9 +128,7 @@ public class ColliderMesh : Component, IDebugRenderObject {
       MemoryProperty.DeviceLocal
     );
 
-    Application.Instance.Mutex.WaitOne();
     _device.CopyBuffer(stagingBuffer.GetBuffer(), _vertexBuffer.GetBuffer(), bufferSize);
-    Application.Instance.Mutex.ReleaseMutex();
     stagingBuffer.Dispose();
     return Task.CompletedTask;
   }
@@ -306,5 +307,12 @@ public class ColliderMesh : Component, IDebugRenderObject {
   }
   public void Disable() {
     Enabled = false;
+  }
+
+  public object Clone() {
+    var cm = new ColliderMesh(_allocator, _device, (Mesh)Mesh.Clone()) {
+    };
+    cm.Init().Wait();
+    return cm;
   }
 }

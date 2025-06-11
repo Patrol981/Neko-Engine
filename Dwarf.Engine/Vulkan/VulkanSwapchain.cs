@@ -58,7 +58,7 @@ public class VulkanSwapchain : IDisposable {
   private uint _imageIndex = 0;
   private int _previousFrame = -1;
 
-  private readonly object _swapchainLock = new();
+  private readonly Lock _swapchainLock = new();
 
   public VulkanSwapchain(VulkanDevice device, VkExtent2D extent) {
     _device = device;
@@ -1007,7 +1007,7 @@ public class VulkanSwapchain : IDisposable {
     return result;
   }
   public unsafe VkResult SubmitCommandBuffers(VkCommandBuffer* buffers, uint imageIndex) {
-    Application.Instance.Mutex.WaitOne();
+    Application.Mutex.WaitOne();
 
     // if (_imagesInFlight[imageIndex] != VkFence.Null) {
     //   vkWaitForFences(_device.LogicalDevice, 1, &_inFlightFences[_currentFrame], true, UInt64.MaxValue);
@@ -1057,7 +1057,7 @@ public class VulkanSwapchain : IDisposable {
     _previousFrame = _currentFrame;
     _currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
-    Application.Instance.Mutex.ReleaseMutex();
+    Application.Mutex.ReleaseMutex();
     return result;
   }
 
