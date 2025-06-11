@@ -77,25 +77,6 @@ public class HammerWorld {
     }
   }
 
-  internal void HandleGravity_Old(object state) {
-    foreach (var body in Bodies) {
-      if (body.Value.MotionType == Enums.MotionType.Dynamic) {
-        HandleGrounded(body.Value, _dt);
-      }
-
-      if (body.Value.MotionType != Enums.MotionType.Static) {
-        var x = body.Value.Velocity.X * _dt;
-        var y = body.Value.Velocity.Y * _dt;
-
-        body.Value.Velocity.X -= x;
-        body.Value.Velocity.Y -= y;
-
-        body.Value.Position.X += x;
-        body.Value.Position.Y += y;
-      }
-    }
-  }
-
   internal void HandleGrounded(in HammerObject body, float dt) {
     if (body.Grounded) {
       if (body.Force.Y < 0) {
@@ -197,16 +178,16 @@ public class HammerWorld {
     }
   }
 
-  private void GetRemovedContacts(
+  private static void GetRemovedContacts(
     in List<(BodyId, BodyId)> oldContacts,
     in Dictionary<BodyId, HammerObject> inBodies,
     out List<(BodyId, BodyId)> removedContacts
   ) {
     removedContacts = [];
     for (int i = 0; i < oldContacts.Count; i++) {
-      var target = oldContacts.ElementAtOrDefault(i);
-      if (inBodies.ContainsKey(target.Item1)) {
-        removedContacts.Add(target);
+      var (id1, id2) = oldContacts[i];
+      if (!inBodies.ContainsKey(id1) || !inBodies.ContainsKey(id2)) {
+        removedContacts.Add((id1, id2));
       }
     }
   }
