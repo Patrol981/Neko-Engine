@@ -19,6 +19,10 @@ public class TextureManager : IDisposable {
   public IDescriptorPool ManagerPool { get; private set; } = null!;
   public IDescriptorSetLayout AllTexturesSetLayout { get; private set; } = null!;
 
+  public Dictionary<Guid, ITexture> PerSceneLoadedTextures { get; }
+  public Dictionary<Guid, ITexture> GlobalLoadedTextures { get; }
+  public Dictionary<Guid, VulkanTextureArray> TextureArray { get; }
+
   private ulong _allTexturesSampler;
   private object[] _allTexturesInfos = new object[CommonConstants.MAX_TEXTURE];
   public ulong AllTexturesDescriptor { get; private set; }
@@ -360,10 +364,6 @@ public class TextureManager : IDisposable {
       AllTexturesDescriptor = descriptorSet;
     }
   }
-
-  public Dictionary<Guid, ITexture> PerSceneLoadedTextures { get; }
-  public Dictionary<Guid, ITexture> GlobalLoadedTextures { get; }
-  public Dictionary<Guid, VulkanTextureArray> TextureArray { get; }
 
   public void DisposeLocal() {
     foreach (var tex in PerSceneLoadedTextures) {
