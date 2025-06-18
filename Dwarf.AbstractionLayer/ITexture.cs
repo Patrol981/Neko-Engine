@@ -47,6 +47,7 @@ public interface ITexture : IDisposable {
   public ulong Sampler { get; }
   public ulong ImageView { get; }
   public int TextureIndex { get; set; }
+  public int TextureManagerIndex { get; set; }
   public ulong TextureImage { get; }
   public ulong TextureDescriptor { get; }
   public void BuildDescriptor(IDescriptorSetLayout descriptorSetLayout, IDescriptorPool descriptorPool, uint dstBindingStartIndex = 0);

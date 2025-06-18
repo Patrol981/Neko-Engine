@@ -145,9 +145,10 @@ public class VulkanTexture : ITexture {
       sampler = Sampler
     };
 
-    var allocInfo = new VkDescriptorSetAllocateInfo();
-    allocInfo.descriptorPool = descriptorPool.GetHandle();
-    allocInfo.descriptorSetCount = 1;
+    var allocInfo = new VkDescriptorSetAllocateInfo {
+      descriptorPool = descriptorPool.GetHandle(),
+      descriptorSetCount = 1
+    };
     var setLayout = descriptorSetLayout.GetDescriptorSetLayoutPointer();
     allocInfo.pSetLayouts = (VkDescriptorSetLayout*)&setLayout;
     vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
@@ -190,9 +191,10 @@ public class VulkanTexture : ITexture {
       sampler = Sampler
     };
 
-    var allocInfo = new VkDescriptorSetAllocateInfo();
-    allocInfo.descriptorPool = descriptorPool.GetVkDescriptorPool();
-    allocInfo.descriptorSetCount = 1;
+    var allocInfo = new VkDescriptorSetAllocateInfo {
+      descriptorPool = descriptorPool.GetVkDescriptorPool(),
+      descriptorSetCount = 1
+    };
     var setLayout = descriptorSetLayout.GetDescriptorSetLayout();
     allocInfo.pSetLayouts = &setLayout;
     vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
@@ -605,19 +607,20 @@ public class VulkanTexture : ITexture {
     VkPhysicalDeviceProperties properties = new();
     vkGetPhysicalDeviceProperties(device.PhysicalDevice, &properties);
 
-    VkSamplerCreateInfo samplerInfo = new();
-    samplerInfo.magFilter = VkFilter.Nearest;
-    samplerInfo.minFilter = VkFilter.Nearest;
-    samplerInfo.addressModeU = VkSamplerAddressMode.Repeat;
-    samplerInfo.addressModeV = VkSamplerAddressMode.Repeat;
-    samplerInfo.addressModeW = VkSamplerAddressMode.Repeat;
-    samplerInfo.anisotropyEnable = true;
-    samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-    samplerInfo.borderColor = VkBorderColor.IntOpaqueBlack;
-    samplerInfo.unnormalizedCoordinates = false;
-    samplerInfo.compareEnable = false;
-    samplerInfo.compareOp = VkCompareOp.Always;
-    samplerInfo.mipmapMode = VkSamplerMipmapMode.Nearest;
+    VkSamplerCreateInfo samplerInfo = new() {
+      magFilter = VkFilter.Nearest,
+      minFilter = VkFilter.Nearest,
+      addressModeU = VkSamplerAddressMode.Repeat,
+      addressModeV = VkSamplerAddressMode.Repeat,
+      addressModeW = VkSamplerAddressMode.Repeat,
+      anisotropyEnable = true,
+      maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+      borderColor = VkBorderColor.IntOpaqueBlack,
+      unnormalizedCoordinates = false,
+      compareEnable = false,
+      compareOp = VkCompareOp.Always,
+      mipmapMode = VkSamplerMipmapMode.Nearest
+    };
 
     vkCreateSampler(device.LogicalDevice, &samplerInfo, null, out imageSampler).CheckResult();
   }
@@ -649,4 +652,5 @@ public class VulkanTexture : ITexture {
   }
   public byte[] TextureData { get; private set; } = [];
   public string TextureName { get; }
+  public int TextureManagerIndex { get; set; } = -1;
 }

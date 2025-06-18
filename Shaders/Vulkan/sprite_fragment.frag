@@ -4,21 +4,13 @@ layout (location = 0) in vec2 texCoord;
 
 layout (location = 0) out vec4 outColor;
 
-// layout (push_constant) uniform Push {
-//   mat4 transform;
-//   vec3 spriteColor;
-//   bool useTexture;
-//   ivec2 spriteSheetSize;
-//   int spriteIndex;
-// } push;
-
 layout (push_constant) uniform Push {
   mat4 transform;
   vec3 spriteSheetData;
   bool flipX;
   bool flipY;
+  uint textureIndex;
 } push;
-
 
 layout (set = 0, binding = 0) uniform GlobalUbo {
   mat4 view;
@@ -30,8 +22,8 @@ layout (set = 0, binding = 0) uniform GlobalUbo {
   int layer;
 } globalUBO;
 
-
-layout (set = 2, binding = 0) uniform texture2D _texture;
+const uint MAX_TEXTURES = 128;
+layout (set = 2, binding = 0) uniform texture2D _texture[MAX_TEXTURES];
 layout (set = 2, binding = 1) uniform sampler _sampler;
 
 void main() {
@@ -48,11 +40,5 @@ void main() {
 
   vec2 spriteUV = offset + adjustedTexCoord * cellSize;
 
-  outColor = texture(sampler2D(_texture, _sampler), spriteUV);
-
-  // if(push.useTexture) {
-  //   outColor = vec4(push.spriteColor, 1.0) * texture(sampler2D(_texture, _sampler), spriteUV);
-  // } else {
-  //   outColor = vec4(push.spriteColor, 1.0);
-  // }
+  outColor = texture(sampler2D(_texture[push.textureIndex], _sampler), spriteUV);
 }

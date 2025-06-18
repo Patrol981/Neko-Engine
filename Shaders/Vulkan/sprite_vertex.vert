@@ -12,6 +12,7 @@ layout (push_constant) uniform Push {
   vec3 spriteSheetData;
   bool flipX;
   bool flipY;
+  uint textureIndex;
 } push;
 
 

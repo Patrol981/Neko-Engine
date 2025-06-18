@@ -351,4 +351,13 @@ public class HammerWorld {
   internal void RemoveBody(in BodyId bodyId) {
     Bodies.Remove(bodyId);
   }
+
+  internal HammerObject? GetBody(in BodyId bodyId) {
+    try {
+      var body = Bodies[bodyId];
+      return body;
+    } catch {
+      return null;
+    }
+  }
 }

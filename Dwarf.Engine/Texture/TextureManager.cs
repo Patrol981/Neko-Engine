@@ -1,11 +1,27 @@
 using Dwarf.AbstractionLayer;
 using Dwarf.Extensions.Logging;
 using Dwarf.Vulkan;
+using Vortice.Vulkan;
+using static Vortice.Vulkan.Vulkan;
+
 namespace Dwarf;
 
 public class TextureManager : IDisposable {
   private readonly IDevice _device;
   private readonly nint _allocator;
+
+  private int _nextLocalIndex = 0;
+  private readonly Stack<int> _freeLocalSlots = new();
+
+  private int _nextGlobalIndex = 0;
+  private readonly Stack<int> _freeGlobalSlots = new();
+
+  public IDescriptorPool ManagerPool { get; private set; } = null!;
+  public IDescriptorSetLayout AllTexturesSetLayout { get; private set; } = null!;
+
+  private ulong _allTexturesSampler;
+  private VkDescriptorImageInfo[] _allTexturesInfos = new VkDescriptorImageInfo[CommonConstants.MAX_TEXTURE];
+  public ulong AllTexturesDescriptor { get; private set; }
 
   public TextureManager(nint allocator, IDevice device) {
     _device = device;
@@ -13,16 +29,41 @@ public class TextureManager : IDisposable {
     PerSceneLoadedTextures = [];
     GlobalLoadedTextures = [];
     TextureArray = [];
+
+    Init();
+  }
+
+  private int AllocateLocalIndex() {
+    return _freeLocalSlots.Count > 0
+      ? _freeLocalSlots.Pop()
+      : _nextLocalIndex++;
+  }
+
+  private void FreeLocalIndex(int idx) {
+    _freeLocalSlots.Push(idx);
+  }
+
+  private int AllocateGlobalIndex() {
+    return _freeGlobalSlots.Count > 0
+      ? _freeGlobalSlots.Pop()
+      : _nextGlobalIndex++;
+  }
+
+  private void FreeGlobalIndex(int idx) {
+    _freeGlobalSlots.Push(idx);
   }
 
   public void AddRangeLocal(ITexture[] textures) {
     for (int i = 0; i < textures.Length; i++) {
+      textures[i].TextureManagerIndex = AllocateLocalIndex();
       PerSceneLoadedTextures.Add(Guid.NewGuid(), textures[i]);
     }
+    RebuildDescriptors();
   }
 
   public void AddRangeGlobal(ITexture[] textures) {
     for (int i = 0; i < textures.Length; i++) {
+      textures[i].TextureManagerIndex = AllocateGlobalIndex();
       GlobalLoadedTextures.Add(Guid.NewGuid(), textures[i]);
     }
   }
@@ -32,7 +73,6 @@ public class TextureManager : IDisposable {
     var id = Guid.NewGuid();
     var texture = new VulkanTextureArray(_allocator, (VulkanDevice)_device, baseData.Width, baseData.Height, paths, textureName);
     TextureArray.TryAdd(id, texture);
-
     return Task.CompletedTask;
   }
 
@@ -45,7 +85,9 @@ public class TextureManager : IDisposable {
     }
     Application.Mutex.WaitOne();
     var texture = await TextureLoader.LoadFromPath(_allocator, _device, texturePath, flip);
+    texture.TextureManagerIndex = AllocateLocalIndex();
     PerSceneLoadedTextures.Add(Guid.NewGuid(), texture);
+    RebuildDescriptors();
     Application.Mutex.ReleaseMutex();
     return texture;
   }
@@ -58,6 +100,7 @@ public class TextureManager : IDisposable {
       }
     }
     var texture = await TextureLoader.LoadFromPath(_allocator, _device, texturePath, flip);
+    texture.TextureManagerIndex = AllocateGlobalIndex();
     GlobalLoadedTextures.Add(Guid.NewGuid(), texture);
     return texture;
   }
@@ -70,7 +113,9 @@ public class TextureManager : IDisposable {
       }
     }
     var guid = Guid.NewGuid();
+    texture.TextureManagerIndex = AllocateLocalIndex();
     PerSceneLoadedTextures.Add(guid, texture);
+    RebuildDescriptors();
     return guid;
   }
 
@@ -82,6 +127,7 @@ public class TextureManager : IDisposable {
       }
     }
     var guid = Guid.NewGuid();
+    texture.TextureManagerIndex = AllocateGlobalIndex();
     GlobalLoadedTextures.Add(guid, texture);
     return guid;
   }
@@ -148,11 +194,13 @@ public class TextureManager : IDisposable {
   }
 
   public void RemoveTextureLocal(Guid key) {
+    FreeLocalIndex(PerSceneLoadedTextures[key].TextureManagerIndex);
     PerSceneLoadedTextures[key].Dispose();
     PerSceneLoadedTextures.Remove(key);
   }
 
   public void RemoveTextureGlobal(Guid key) {
+    FreeGlobalIndex(GlobalLoadedTextures[key].TextureManagerIndex);
     GlobalLoadedTextures[key].Dispose();
     GlobalLoadedTextures.Remove(key);
   }
@@ -198,6 +246,116 @@ public class TextureManager : IDisposable {
     return Guid.Empty;
   }
 
+  private void RebuildDescriptors() {
+    switch (_device.RenderAPI) {
+      case RenderAPI.Vulkan:
+        RebuildVkDescriptors();
+        break;
+      default:
+        break;
+    }
+  }
+
+  private void Init() {
+    switch (_device.RenderAPI) {
+      case RenderAPI.Vulkan:
+        VkInit();
+        break;
+      default:
+        break;
+    }
+  }
+
+  private void VkInit() {
+    ManagerPool = new VulkanDescriptorPool.Builder(_device)
+      .SetMaxSets(CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.SampledImage, CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.Sampler, CommonConstants.MAX_SETS)
+      .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
+      .Build();
+
+    AllTexturesSetLayout = new VulkanDescriptorSetLayout.Builder(_device)
+      .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.Fragment, CommonConstants.MAX_TEXTURE)
+      .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)
+      .Build();
+  }
+
+  private unsafe void RebuildVkDescriptors() {
+    if (AllTexturesDescriptor != 0) {
+      vkFreeDescriptorSets(_device.LogicalDevice, ManagerPool.GetHandle(), AllTexturesDescriptor);
+    }
+    Array.Clear(_allTexturesInfos);
+
+    if (_allTexturesSampler == 0) {
+      VkPhysicalDeviceProperties properties = new();
+      vkGetPhysicalDeviceProperties(_device.PhysicalDevice, &properties);
+
+      var samplerCreateInfo = new VkSamplerCreateInfo() {
+        magFilter = VkFilter.Nearest,
+        minFilter = VkFilter.Nearest,
+        addressModeU = VkSamplerAddressMode.Repeat,
+        addressModeV = VkSamplerAddressMode.Repeat,
+        addressModeW = VkSamplerAddressMode.Repeat,
+        anisotropyEnable = true,
+        maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+        borderColor = VkBorderColor.IntOpaqueBlack,
+        unnormalizedCoordinates = false,
+        compareEnable = false,
+        compareOp = VkCompareOp.Always,
+        mipmapMode = VkSamplerMipmapMode.Nearest
+      };
+      vkCreateSampler(_device.LogicalDevice, &samplerCreateInfo, null, out var sampler).CheckResult();
+      _allTexturesSampler = sampler.Handle;
+    }
+
+    var textureValues = PerSceneLoadedTextures.Values.ToArray();
+    for (int i = 0; i < textureValues.Length; i++) {
+      _allTexturesInfos[i] = new() {
+        sampler = 0,
+        imageLayout = VkImageLayout.ShaderReadOnlyOptimal,
+        imageView = textureValues[i].ImageView
+      };
+    }
+
+    VkDescriptorSet descriptorSet = new();
+    var allocInfo = new VkDescriptorSetAllocateInfo {
+      descriptorPool = ManagerPool.GetHandle(),
+      descriptorSetCount = 1
+    };
+    var setLayout = AllTexturesSetLayout.GetDescriptorSetLayoutPointer();
+    allocInfo.pSetLayouts = (VkDescriptorSetLayout*)&setLayout;
+    vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
+
+    var samplerInfo = new VkDescriptorImageInfo() {
+      sampler = _allTexturesSampler
+    };
+
+    fixed (VkDescriptorImageInfo* pImageInfos = _allTexturesInfos) {
+      VkWriteDescriptorSet* writes = stackalloc VkWriteDescriptorSet[2];
+      writes[0] = new VkWriteDescriptorSet() {
+        dstBinding = 0,
+        dstArrayElement = 0,
+        descriptorType = VkDescriptorType.SampledImage,
+        descriptorCount = CommonConstants.MAX_TEXTURE,
+        pBufferInfo = null,
+        dstSet = descriptorSet,
+        pImageInfo = pImageInfos
+      };
+      writes[1] = new VkWriteDescriptorSet() {
+        dstBinding = 1,
+        dstArrayElement = 0,
+        descriptorType = VkDescriptorType.Sampler,
+        descriptorCount = 1,
+        dstSet = descriptorSet,
+        pBufferInfo = null,
+        pImageInfo = &samplerInfo
+      };
+
+      vkUpdateDescriptorSets(_device.LogicalDevice, 2, writes, 0, null);
+      AllTexturesDescriptor = descriptorSet;
+    }
+  }
+
   public Dictionary<Guid, ITexture> PerSceneLoadedTextures { get; }
   public Dictionary<Guid, ITexture> GlobalLoadedTextures { get; }
   public Dictionary<Guid, VulkanTextureArray> TextureArray { get; }
@@ -206,12 +364,24 @@ public class TextureManager : IDisposable {
     foreach (var tex in PerSceneLoadedTextures) {
       RemoveTextureLocal(tex.Key);
     }
+    _nextLocalIndex = 0;
+    _freeLocalSlots.Clear();
   }
 
   public void DisposeGlobal() {
     foreach (var tex in GlobalLoadedTextures) {
       RemoveTextureGlobal(tex.Key);
     }
+    _nextGlobalIndex = 0;
+    _freeGlobalSlots.Clear();
+  }
+
+  private unsafe void VkDispose() {
+    Array.Clear(_allTexturesInfos);
+    vkDestroySampler(_device.LogicalDevice, _allTexturesSampler);
+    vkFreeDescriptorSets(_device.LogicalDevice, ManagerPool.GetHandle(), AllTexturesDescriptor);
+    vkDestroyDescriptorPool(_device.LogicalDevice, ManagerPool.GetHandle());
+    vkDestroyDescriptorSetLayout(_device.LogicalDevice, AllTexturesSetLayout.GetDescriptorSetLayoutPointer());
   }
 
   public void Dispose() {
@@ -219,6 +389,14 @@ public class TextureManager : IDisposable {
     DisposeGlobal();
     foreach (var tex in TextureArray) {
       RemoveTextureArray(tex.Key);
+    }
+
+    switch (_device.RenderAPI) {
+      case RenderAPI.Vulkan:
+        VkDispose();
+        break;
+      default:
+        break;
     }
   }
 }

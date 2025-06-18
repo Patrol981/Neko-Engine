@@ -60,9 +60,10 @@ public class Render3DSystem : SystemBase, IRenderSystem {
     nint allocator,
     IDevice device,
     IRenderer renderer,
+    TextureManager textureManager,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     IPipelineConfigInfo configInfo = null!
-  ) : base(allocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, textureManager, configInfo) {
     _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBufferDynamic, ShaderStageFlags.AllGraphics)
       .Build();

@@ -50,6 +50,7 @@ public abstract class SystemBase {
   protected readonly IDevice _device = null!;
   protected readonly nint _allocator = IntPtr.Zero;
   protected readonly IRenderer _renderer = null!;
+  protected readonly TextureManager _textureManager = null!;
   protected IPipelineConfigInfo _pipelineConfigInfo;
   protected Dictionary<string, PipelineData> _pipelines = [];
 
@@ -65,11 +66,13 @@ public abstract class SystemBase {
     nint allocator,
     IDevice device,
     IRenderer renderer,
+    TextureManager textureManager,
     IPipelineConfigInfo configInfo = null!
   ) {
     _allocator = allocator;
     _device = device;
     _renderer = renderer;
+    _textureManager = textureManager;
 
     _pipelineConfigInfo = configInfo ?? null!;
   }

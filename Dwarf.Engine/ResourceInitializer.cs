@@ -210,6 +210,14 @@ public class ResourceInitializer {
         device.MinStorageBufferOffsetAlignment,
         true
       );
+
+      // storageCollection.CreateStorage(
+      //   device,
+      //   DescriptorType.StorageImage,
+      //   BufferUsage.StorageBuffer,
+      //   renderer.MAX_FRAMES_IN_FLIGHT,
+      //   (ulong)Unsafe.SizeOf<>
+      // );
     }
 
     // if (useSkybox) {

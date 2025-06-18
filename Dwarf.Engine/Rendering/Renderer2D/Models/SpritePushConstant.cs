@@ -10,6 +10,7 @@ public struct SpritePushConstant {
   [FieldOffset(64)] public Vector3 SpriteSheetData; // sizeX, sizeY, index
   [FieldOffset(76)] public bool FlipX;
   [FieldOffset(80)] public bool FlipY;
+  [FieldOffset(84)] public uint TextureIndex;
   // [FieldOffset(80)] public Vector2I SheetSize;
   // [FieldOffset(88)] public int SpriteIndex;
 }

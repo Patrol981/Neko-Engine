@@ -133,11 +133,12 @@ public class SystemCollection : IDisposable {
       allocator,
       (VulkanDevice)device,
       renderer,
+      textureManager,
       layouts,
       configInfo
     );
     // _subpassConnectorSystem = new(allocator, device, renderer, layouts, new SecondSubpassPipeline());
-    _postProcessingSystem = new(allocator, device, renderer, systemConfiguration, layouts, new PostProcessingPipeline());
+    _postProcessingSystem = new(allocator, device, renderer, textureManager, systemConfiguration, layouts, new PostProcessingPipeline());
 
     var entities = app.GetEntities();
     var objs3D = entities.DistinctInterface<IRender3DElement>();
@@ -171,6 +172,7 @@ public class SystemCollection : IDisposable {
       allocator,
       device,
       renderer,
+      textureManager,
       externalLayouts,
       pipelineConfig
     );
@@ -210,6 +212,7 @@ public class SystemCollection : IDisposable {
       allocator,
       (VulkanDevice)device,
       renderer,
+      textureManager,
       globalLayout,
       pipelineConfig
     );
@@ -229,6 +232,7 @@ public class SystemCollection : IDisposable {
       allocator,
       device,
       renderer,
+      textureManager,
       globalLayout,
       pipelineConfig
     );

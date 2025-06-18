@@ -14,6 +14,7 @@ public interface IDrawable2D : IDrawable, ICloneable {
   Entity Entity { get; }
   bool Active { get; }
   ITexture Texture { get; }
+  ITexture[]? SpriteSheet { get; }
   Vector2I SpriteSheetSize { get; }
   int SpriteIndex { get; }
   int SpriteCount { get; }
@@ -21,4 +22,5 @@ public interface IDrawable2D : IDrawable, ICloneable {
   bool FlipY { get; set; }
   bool NeedPipelineCache { get; }
   Mesh CollisionMesh { get; }
+  Mesh Mesh { get; }
 }

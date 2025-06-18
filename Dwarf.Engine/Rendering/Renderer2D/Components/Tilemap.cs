@@ -20,6 +20,8 @@ public class Tilemap : Component, IDrawable2D {
   public List<TilemapLayer> Layers { get; init; } = [];
   public List<Sprite> Backgrounds { get; init; } = [];
   public Mesh CollisionMesh => Layers.Where(x => x.IsCollision).First().LayerMesh;
+  public Mesh Mesh => Layers.Where(x => x.IsCollision).First().LayerMesh;
+  public ITexture[]? SpriteSheet => [.. Layers.Select(x => x.LayerTexture)];
 
   private VkPipelineLayout _pipelineLayout;
 

@@ -13,27 +13,39 @@ public class HammerInterface {
   }
 
   public Vector2 GetPosition(in BodyId bodyId) {
-    return _hammerWorld.Bodies[bodyId].Position;
+    return _hammerWorld.GetBody(bodyId)?.Position ?? Vector2.Zero;
   }
 
   public void SetPosition(in BodyId bodyId, in Vector2 position) {
-    _hammerWorld.Bodies[bodyId].Position = position;
+    var body = _hammerWorld.GetBody(bodyId);
+    if (body != null) {
+      body.Position = position;
+    }
   }
 
   public void AddVelocity(in BodyId bodyId, in Vector2 velocity) {
-    _hammerWorld.Bodies[bodyId].Velocity += velocity;
+    var body = _hammerWorld.GetBody(bodyId);
+    if (body != null) {
+      body.Velocity += velocity;
+    }
   }
 
   public void SetVelocity(in BodyId bodyId, in Vector2 velocity) {
-    _hammerWorld.Bodies[bodyId].Velocity = velocity;
+    var body = _hammerWorld.GetBody(bodyId);
+    if (body != null) {
+      body.Velocity = velocity;
+    }
   }
 
   public Vector2 GetVelocity(in BodyId bodyId) {
-    return _hammerWorld.Bodies[bodyId].Velocity;
+    return _hammerWorld.GetBody(bodyId)?.Velocity ?? Vector2.Zero;
   }
 
   public void AddForce(in BodyId bodyId, in Vector2 force) {
-    _hammerWorld.Bodies[bodyId].Force += force;
+    var body = _hammerWorld.GetBody(bodyId);
+    if (body != null) {
+      body.Force += force;
+    }
   }
 
   public void SetGravity(float gravity) {
@@ -45,7 +57,10 @@ public class HammerInterface {
   }
 
   public void SetMotionType(in BodyId bodyId, MotionType motionType) {
-    _hammerWorld.Bodies[bodyId].MotionType = motionType;
+    var body = _hammerWorld.GetBody(bodyId);
+    if (body != null) {
+      body.MotionType = motionType;
+    }
   }
 
   public MotionType GetMotionType(in BodyId bodyId) {
@@ -53,7 +68,10 @@ public class HammerInterface {
   }
 
   public void SetMotionQuality(in BodyId bodyId, MotionQuality motionQuality) {
-    _hammerWorld.Bodies[bodyId].MotionQuality = motionQuality;
+    var body = _hammerWorld.GetBody(bodyId);
+    if (body != null) {
+      body.MotionQuality = motionQuality;
+    }
   }
 
   public MotionQuality GetMotionQuality(in BodyId bodyId) {

@@ -73,10 +73,11 @@ public class PostProcessingSystem : SystemBase {
     nint allocator,
     IDevice device,
     IRenderer renderer,
+    TextureManager textureManager,
     SystemConfiguration systemConfiguration,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     IPipelineConfigInfo configInfo = null!
-  ) : base(allocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, textureManager, configInfo) {
     _textureManager = Application.Instance.TextureManager;
 
     _setLayout = new VulkanDescriptorSetLayout.Builder(_device)

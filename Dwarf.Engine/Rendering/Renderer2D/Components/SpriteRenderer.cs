@@ -18,6 +18,7 @@ public class SpriteRenderer : Component, IDrawable2D {
   public Vector2 Size => GetSize();
   public Bounds2D Bounds => GetBounds();
   public Mesh CollisionMesh => Sprites[CurrentSprite].SpriteMesh;
+  public Mesh Mesh => Sprites[CurrentSprite].SpriteMesh;
 
 
   public Entity Entity => Owner;
@@ -25,6 +26,7 @@ public class SpriteRenderer : Component, IDrawable2D {
   public int SpriteIndex => Sprites[CurrentSprite].SpriteIndex;
   public int SpriteCount => Sprites.Length;
   public ITexture Texture => Sprites[CurrentSprite].Texture;
+  public ITexture[] SpriteSheet => [.. Sprites.Select(x => x.Texture)];
   public Vector2I SpriteSheetSize => Sprites[CurrentSprite].SpriteSheetSize;
   public bool FlipX { get; set; }
   public bool FlipY { get; set; }
