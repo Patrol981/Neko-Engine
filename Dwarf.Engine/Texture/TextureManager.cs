@@ -20,7 +20,7 @@ public class TextureManager : IDisposable {
   public IDescriptorSetLayout AllTexturesSetLayout { get; private set; } = null!;
 
   private ulong _allTexturesSampler;
-  private VkDescriptorImageInfo[] _allTexturesInfos = new VkDescriptorImageInfo[CommonConstants.MAX_TEXTURE];
+  private object[] _allTexturesInfos = new object[CommonConstants.MAX_TEXTURE];
   public ulong AllTexturesDescriptor { get; private set; }
 
   public TextureManager(nint allocator, IDevice device) {
@@ -310,7 +310,7 @@ public class TextureManager : IDisposable {
 
     var textureValues = PerSceneLoadedTextures.Values.ToArray();
     for (int i = 0; i < textureValues.Length; i++) {
-      _allTexturesInfos[i] = new() {
+      _allTexturesInfos[i] = new VkDescriptorImageInfo() {
         sampler = 0,
         imageLayout = VkImageLayout.ShaderReadOnlyOptimal,
         imageView = textureValues[i].ImageView
@@ -330,7 +330,12 @@ public class TextureManager : IDisposable {
       sampler = _allTexturesSampler
     };
 
-    fixed (VkDescriptorImageInfo* pImageInfos = _allTexturesInfos) {
+    var infos = _allTexturesInfos
+    .Where(x => x != null)
+    .Select(x => {
+      return (VkDescriptorImageInfo)x;
+    }).ToArray();
+    fixed (VkDescriptorImageInfo* pImageInfos = infos) {
       VkWriteDescriptorSet* writes = stackalloc VkWriteDescriptorSet[2];
       writes[0] = new VkWriteDescriptorSet() {
         dstBinding = 0,
