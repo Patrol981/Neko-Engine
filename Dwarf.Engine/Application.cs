@@ -8,6 +8,7 @@ using Dwarf.Globals;
 using Dwarf.Math;
 using Dwarf.Rendering;
 using Dwarf.Rendering.Lightning;
+using Dwarf.Rendering.Renderer2D.Models;
 using Dwarf.Rendering.Renderer3D;
 using Dwarf.Rendering.UI;
 using Dwarf.Rendering.UI.DirectRPG;
@@ -591,6 +592,7 @@ public class Application {
       _currentFrame.GlobalDescriptorSet = StorageCollection.GetDescriptor("GlobalStorage", frameIndex);
       _currentFrame.PointLightsDescriptorSet = StorageCollection.GetDescriptor("PointStorage", frameIndex);
       _currentFrame.ObjectDataDescriptorSet = StorageCollection.GetDescriptor("ObjectStorage", frameIndex);
+      _currentFrame.SpriteDataDescriptorSet = StorageCollection.GetDescriptor("SpriteStorage", frameIndex);
       _currentFrame.JointsBufferDescriptorSet = StorageCollection.GetDescriptor("JointsStorage", frameIndex);
       _currentFrame.TextureManager = _textureManager;
       _currentFrame.ImportantEntity = _entities.Where(x => x.IsImportant).FirstOrDefault() ?? null!;
@@ -634,6 +636,7 @@ public class Application {
       }
 
       var i3D = _entities.ToArray().DistinctI3D();
+      var i2D = _entities.ToArray().DistinctI2D();
 
       if (Systems.Render3DSystem != null) {
         Systems.Render3DSystem.Update(
@@ -658,6 +661,19 @@ public class Application {
             frameIndex,
             (nint)pMatrices,
             (ulong)Unsafe.SizeOf<Matrix4x4>() * (ulong)flatArray.Length
+          );
+        }
+      }
+
+      if (Systems.Render2DSystem != null) {
+        Systems.Render2DSystem.Update(i2D, out var spriteData);
+
+        fixed (SpritePushConstant140* pSpriteData = spriteData) {
+          StorageCollection.WriteBuffer(
+            "SpriteStorage",
+            frameIndex,
+            (nint)pSpriteData,
+            (ulong)Unsafe.SizeOf<SpritePushConstant140>() * (ulong)i2D.Length
           );
         }
       }
@@ -695,6 +711,10 @@ public class Application {
       if (Systems.Render3DSystem != null) {
         StorageCollection.CheckSize("ObjectStorage", frameIndex, Systems.Render3DSystem.LastKnownElemCount, _descriptorSetLayouts["ObjectData"], default);
         StorageCollection.CheckSize("JointsStorage", frameIndex, (int)Systems.Render3DSystem.LastKnownSkinnedElemJointsCount, _descriptorSetLayouts["JointsBuffer"], default);
+      }
+
+      if (Systems.Render2DSystem != null) {
+        StorageCollection.CheckSize("SpriteStorage", frameIndex, Systems.Render2DSystem.LastKnownElemCount, _descriptorSetLayouts["SpriteData"], default);
       }
 
       while (_reloadQueue.Count > 0) {

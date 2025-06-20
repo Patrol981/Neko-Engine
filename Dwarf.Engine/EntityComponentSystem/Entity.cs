@@ -51,7 +51,9 @@ public class Entity {
 
   public DwarfScript[] GetScripts() {
     lock (_componentLock) {
-      if (CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+      if (CanBeDisposed) {
+        return [];
+      }
 
       var components = _componentManager.GetAllComponents();
       var list = new List<DwarfScript>();

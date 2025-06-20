@@ -87,7 +87,7 @@ public class SystemCreator {
     if (hasRenderer2D) {
       Logger.Info("[SYSTEM CREATOR] Creating 2D Renderer");
       systemCollection.Render2DSystem =
-        new(allocator, device, renderer, textureManager, layouts["Global"], configInfo);
+        new(allocator, device, renderer, textureManager, layouts, configInfo);
     }
 
     if (usePhysics3D) {

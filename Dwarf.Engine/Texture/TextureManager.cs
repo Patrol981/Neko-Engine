@@ -83,7 +83,7 @@ public class TextureManager : IDisposable {
   public async Task<ITexture> AddTextureLocal(string texturePath, int flip = 1) {
     foreach (var tex in PerSceneLoadedTextures) {
       if (tex.Value.TextureName == texturePath) {
-        Logger.Warn($"Texture [{texturePath}] is already loaded. Skipping current add call.");
+        // Logger.Warn($"Texture [{texturePath}] is already loaded. Skipping current add call.");
         return tex.Value;
       }
     }

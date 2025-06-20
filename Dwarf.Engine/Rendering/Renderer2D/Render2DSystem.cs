@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using Dwarf.AbstractionLayer;
 using Dwarf.Extensions.Logging;
@@ -21,28 +22,23 @@ public class Render2DSystem : SystemBase {
 
   private List<VkDrawIndexedIndirectCommand> _indirectDrawCommands = [];
 
-  private int _prevTexCount = -1;
-  // private int _texCount = -1;
+  public int LastKnownElemCount { get; private set; } = 0;
 
   public Render2DSystem(
     nint allocator,
     IDevice device,
     IRenderer renderer,
     TextureManager textureManager,
-    IDescriptorSetLayout globalSetLayout,
+    Dictionary<string, IDescriptorSetLayout> externalLayouts,
     IPipelineConfigInfo configInfo = null!
   ) : base(allocator, device, renderer, textureManager, configInfo) {
-    _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
-      .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
-      .Build();
-
     IDescriptorSetLayout[] descriptorSetLayouts = [
-      globalSetLayout,
-      _setLayout,
-      _textureManager.AllTexturesSetLayout
+      externalLayouts["Global"],
+      externalLayouts["SpriteData"],
+      _textureManager.AllTexturesSetLayout,
     ];
 
-    AddPipelineData<SpritePushConstant>(new() {
+    AddPipelineData(new() {
       RenderPass = renderer.GetSwapchainRenderPass(),
       VertexName = "sprite_vertex",
       FragmentName = "sprite_fragment",
@@ -53,6 +49,10 @@ public class Render2DSystem : SystemBase {
     _descriptorPool = new VulkanDescriptorPool.Builder(_device)
       .SetMaxSets(CommonConstants.MAX_SETS)
       .AddPoolSize(DescriptorType.UniformBuffer, CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.SampledImage, CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.Sampler, CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.InputAttachment, CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.StorageBuffer, CommonConstants.MAX_SETS)
       .SetPoolFlags(DescriptorPoolCreateFlags.None)
       .Build();
 
@@ -68,6 +68,7 @@ public class Render2DSystem : SystemBase {
     Logger.Info($"Recreating Renderer 2D [{_texturesCount}]");
 
     _texturesCount = CalculateTextureCount(drawables);
+    LastKnownElemCount = drawables.Length;
 
     CreateVertexBuffer(drawables);
     CreateIndexBuffer(drawables);
@@ -83,16 +84,7 @@ public class Render2DSystem : SystemBase {
       ((VulkanDevice)_device).Properties.limits.minUniformBufferOffsetAlignment
     );
 
-    for (int i = 0; i < drawables.Length; i++) {
-      var cmd = new VkDrawIndexedIndirectCommand() {
-        instanceCount = CommonConstants.MAX_INSTANCE,
-        firstInstance = (uint)(i * CommonConstants.MAX_INSTANCE),
-        firstIndex = drawables[i].Mesh.Indices[0],
-        indexCount = (uint)drawables[i].Mesh.IndexCount
-      };
-      _indirectDrawCommands.Add(cmd);
-    }
-
+    CreateIndirectCommands(drawables);
     CreateIndirectBuffer();
   }
 
@@ -102,6 +94,12 @@ public class Render2DSystem : SystemBase {
     //   // Setup(drawables, ref textureManager);
     // }
     var newCount = CalculateTextureCount(drawables);
+    if (newCount != LastKnownElemCount) {
+      LastKnownElemCount = newCount;
+      CreateIndirectCommands(drawables);
+      CreateIndirectBuffer();
+    }
+
     if (newCount > _texturesCount) {
       return false;
     }
@@ -132,39 +130,55 @@ public class Render2DSystem : SystemBase {
     return count;
   }
 
-  public unsafe void Render_(FrameInfo frameInfo, ReadOnlySpan<IDrawable2D> drawables) {
+  public void Update(ReadOnlySpan<IDrawable2D> drawables, out SpritePushConstant140[] spriteData) {
+    spriteData = new SpritePushConstant140[drawables.Length];
+
+    for (int i = 0; i < drawables.Length; i++) {
+      var target = drawables[i];
+
+      var myTexId = GetIndexOfMyTexture(target.Texture.TextureName);
+      Debug.Assert(myTexId.HasValue);
+
+      spriteData[i] = new() {
+        SpriteMatrix = target.Entity.TryGetComponent<Transform>()?.Matrix4 ?? Matrix4x4.Identity,
+        SpriteSheetData = new(target.SpriteSheetSize.X, target.SpriteSheetSize.Y, target.SpriteIndex, target.FlipX ? 1.0f : 0.0f),
+        SpriteSheetData2 = new(target.FlipY ? 1.0f : 0.0f, myTexId.Value, -1, -1)
+      };
+    }
+  }
+
+  public unsafe void Render(FrameInfo frameInfo, ReadOnlySpan<IDrawable2D> drawables) {
+    if (_globalIndexBuffer is null || _globalVertexBuffer is null || _indirectBuffer is null) return;
     BindPipeline(frameInfo.CommandBuffer);
 
-    vkCmdDrawIndexedIndirect(
+    Descriptor.BindDescriptorSet(frameInfo.GlobalDescriptorSet, frameInfo, PipelineLayout, 0, 1);
+    Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, PipelineLayout, 2, 1);
+    Descriptor.BindDescriptorSet(frameInfo.SpriteDataDescriptorSet, frameInfo, PipelineLayout, 1, 1);
+    _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _globalVertexBuffer, 0);
+    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer, 0);
+    _renderer.CommandList.DrawIndexedIndirect(
       frameInfo.CommandBuffer,
-      _indirectBuffer!.GetBuffer(),
+      _indirectBuffer.GetBuffer(),
       0,
       (uint)_indirectDrawCommands.Count,
       (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
     );
   }
 
-  public unsafe void Render(FrameInfo frameInfo, ReadOnlySpan<IDrawable2D> drawables) {
-    if (_globalIndexBuffer is null || _globalVertexBuffer is null) return;
+  public unsafe void Render_(FrameInfo frameInfo, ReadOnlySpan<IDrawable2D> drawables) {
+    if (
+      _globalIndexBuffer is null ||
+      _globalVertexBuffer is null ||
+      _textureManager.AllTexturesDescriptor == 0
+    ) return;
 
     BindPipeline(frameInfo.CommandBuffer);
 
-    vkCmdBindDescriptorSets(
-      frameInfo.CommandBuffer,
-      VkPipelineBindPoint.Graphics,
-      PipelineLayout,
-      0,
-      1,
-      &frameInfo.GlobalDescriptorSet,
-      0,
-      null
-    );
-
     int indexOffset = 0;
 
-    var pipelineLayout = _pipelines["main"].PipelineLayout;
-    // Descriptor.BindDescriptorSet(_textureArraySet, frameInfo, pipelineLayout, 2, 1);
-    Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, pipelineLayout, 2, 1);
+    Descriptor.BindDescriptorSet(frameInfo.GlobalDescriptorSet, frameInfo, PipelineLayout, 0, 1);
+    Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, PipelineLayout, 2, 1);
+    Descriptor.BindDescriptorSet(frameInfo.SpriteDataDescriptorSet, frameInfo, PipelineLayout, 1, 1);
     _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _globalVertexBuffer, 0);
     _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer, 0);
 
@@ -179,23 +193,6 @@ public class Render2DSystem : SystemBase {
       var myTexId = GetIndexOfMyTexture(drawables[i].Texture.TextureName);
       Debug.Assert(myTexId.HasValue);
 
-      var pushConstantData = new SpritePushConstant {
-        SpriteMatrix = drawables[i].Entity.GetComponent<Transform>().Matrix4,
-        SpriteSheetData = new(drawables[i].SpriteSheetSize.X, drawables[i].SpriteSheetSize.Y, drawables[i].SpriteIndex),
-        FlipX = drawables[i].FlipX,
-        FlipY = drawables[i].FlipY,
-        TextureIndex = (uint)myTexId
-      };
-
-      vkCmdPushConstants(
-          frameInfo.CommandBuffer,
-          PipelineLayout,
-          VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
-          0,
-          (uint)Unsafe.SizeOf<SpritePushConstant>(),
-          &pushConstantData
-        );
-
       if (!drawables[i].Entity.CanBeDisposed && drawables[i].Active) {
         var indexCount = drawables[i].Mesh.IndexCount;
         _renderer.CommandList.DrawIndexed(
@@ -204,7 +201,7 @@ public class Render2DSystem : SystemBase {
           instanceCount: 1,
           firstIndex: indexSize.HasValue ? (uint)indexSize : 0,
           vertexOffset: 0,
-          firstInstance: 0
+          firstInstance: (uint)i
         );
       }
 
@@ -215,6 +212,22 @@ public class Render2DSystem : SystemBase {
   private int? GetIndexOfMyTexture(string texName) {
     return Application.Instance.TextureManager.PerSceneLoadedTextures.Where(x => x.Value.TextureName == texName).FirstOrDefault().Value.TextureManagerIndex;
   }
+
+  private void CreateIndirectCommands(ReadOnlySpan<IDrawable2D> drawables) {
+    _indirectDrawCommands?.Clear();
+    _indirectDrawCommands = [];
+
+    for (int i = 0; i < drawables.Length; i++) {
+      var cmd = new VkDrawIndexedIndirectCommand() {
+        instanceCount = 1,
+        firstInstance = (uint)(i),
+        firstIndex = drawables[i].Mesh.Indices[0],
+        indexCount = (uint)drawables[i].Mesh.IndexCount
+      };
+      _indirectDrawCommands.Add(cmd);
+    }
+  }
+
   private unsafe void CreateIndirectBuffer() {
     _indirectBuffer?.Dispose();
 
