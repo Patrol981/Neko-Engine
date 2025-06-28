@@ -28,7 +28,7 @@ public class HammerWorld {
 
     Dictionary<BodyId, HammerObject> snapshot;
     lock (_bodiesLock) {
-      snapshot = new Dictionary<BodyId, HammerObject>(Bodies);
+      snapshot = new Dictionary<BodyId, HammerObject>([.. Bodies]);
     }
 
     _sprites.Clear();
