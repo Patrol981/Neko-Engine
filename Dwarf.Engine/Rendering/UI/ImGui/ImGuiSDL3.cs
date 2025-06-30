@@ -17,8 +17,6 @@ public unsafe struct ImGuiSdl3Data {
 };
 
 public partial class ImGuiController {
-  private static bool s_shiftModHold = false;
-
   public unsafe static ImGuiSdl3Data* GetSdl3BackendData() {
     return ImGui.GetCurrentContext() != IntPtr.Zero ? (ImGuiSdl3Data*)ImGui.GetIO().BackendPlatformUserData : null;
   }

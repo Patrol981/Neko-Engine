@@ -59,6 +59,9 @@ public partial class ImGuiController : IDisposable {
   public ImFontPtr LargeFont { get; private set; }
   public ImFontPtr CurrentFont { get; private set; }
 
+  private static bool s_shiftModHold = false;
+  public static bool InputFocused { get; set; } = false;
+
   // private readonly Keys[] _allKeys = Enum.GetValues<Keys>();
   // private readonly List<char> _pressedChars = new List<char>();
 
@@ -145,7 +148,6 @@ public partial class ImGuiController : IDisposable {
     io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
     io.DisplaySize = new(width, height);
     io.DisplayFramebufferScale = new(1.0f, 1.0f);
-    io.WantTextInput = true;
 
     // InitResources(_renderer.GetSwapchainRenderPass(), _device.GraphicsQueue, "imgui_vertex", "imgui_fragment");
     await InitResources();
@@ -474,6 +476,8 @@ public partial class ImGuiController : IDisposable {
     if (Window.MouseCursorState != CursorState.Centered && Window.MouseCursorState != CursorState.Hidden) {
       io.MousePos = new System.Numerics.Vector2(screenPoint.X, screenPoint.Y);
     }
+
+    InputFocused = io.WantTextInput;
   }
 
   public unsafe void UpdateBuffers(ImDrawDataPtr drawData) {
