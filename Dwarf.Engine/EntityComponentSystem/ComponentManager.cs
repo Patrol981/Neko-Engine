@@ -1,10 +1,12 @@
+using System.Collections.Concurrent;
+
 namespace Dwarf.EntityComponentSystem;
 
 public class ComponentManager {
-  private Dictionary<Type, Component> _components;
+  private ConcurrentDictionary<Type, Component> _components;
 
   public ComponentManager() {
-    _components = new Dictionary<Type, Component>();
+    _components = [];
   }
 
   public void AddComponent(Component component) {
@@ -17,10 +19,10 @@ public class ComponentManager {
   }
 
   public void RemoveComponent<T>() where T : Component {
-    _components.Remove(typeof(T));
+    _components.Remove(typeof(T), out _);
   }
 
-  public Dictionary<Type, Component> GetAllComponents() {
+  public ConcurrentDictionary<Type, Component> GetAllComponents() {
     return _components;
   }
 }

@@ -53,25 +53,44 @@ public static class EntityHelper {
   }
 
   public static Span<IDrawable2D> DistinctI2D(this Entity[] entities) {
-    int len = entities.Length;
-    var buffer = new IDrawable2D[len];
-    int count = 0;
+    // int len = entities.Length;
+    // var buffer = new IDrawable2D[len];
+    var buffer = new List<IDrawable2D>();
+    // int count = 0;
 
-    for (int i = 0; i < len; i++) {
+    for (int i = 0; i < entities.Length; i++) {
       var e = entities[i];
       if (e.CanBeDisposed)
         continue;
 
       var drawable = e.GetDrawable<IDrawable2D>();
-      if (drawable != null)
-        buffer[count++] = (IDrawable2D)drawable;
+      if (drawable == null) continue;
+
+      var castDrawable = (IDrawable2D)drawable;
+
+      // if (castDrawable.Children.Length > 0) {
+      //   for (int j = 0; j < castDrawable.Children.Length; j++) {
+      //     // buffer[count++] = castDrawable.Children[j];
+      //     buffer.Add(castDrawable.Children[j]);
+      //     count++;
+      //   }
+      // } else {
+      //   // buffer[count++] = (IDrawable2D)drawable;
+      //   buffer.Add(castDrawable);
+      //   count++;
+      // }
+
+      buffer.Add(castDrawable);
+      // count++;
     }
 
-    if (count > 1) {
-      Array.Sort(buffer, 0, count, Drawable2DComparer.Instance);
+    if (buffer.Count != 0) {
+      // Array.Sort(buffer, 0, count, Drawable2DComparer.Instance);
+      buffer.Sort(Drawable2DComparer.Instance);
     }
 
-    return new Span<IDrawable2D>(buffer, 0, count);
+    // return new Span<IDrawable2D>(buffer.ToArray(), 0, count);
+    return buffer.ToArray();
   }
 
   public static ReadOnlySpan<Entity> DistinctInterface<T>(this ReadOnlySpan<Entity> entities) where T : IDrawable {

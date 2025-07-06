@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Numerics;
 using Dwarf.Hammer.Enums;
 using Dwarf.Hammer.Models;
@@ -10,8 +10,8 @@ public class HammerWorld {
   internal float Gravity = 9.80665f;
   const float THRESHOLD = 0.5f;
 
-  private Dictionary<BodyId, HammerObject> _sprites = [];
-  private Dictionary<(BodyId, BodyId), bool> _contactMap = [];
+  private ConcurrentDictionary<BodyId, HammerObject> _sprites = [];
+  private ConcurrentDictionary<(BodyId, BodyId), bool> _contactMap = [];
   private float _dt;
 
   private readonly HammerInstance _hammerInstance;
@@ -152,7 +152,7 @@ public class HammerWorld {
       GetStillThereBodies(out var stillThere);
       for (int i = 0; i < removedContacts.Count; i++) {
         _hammerInstance?.OnContactExit?.Invoke(removedContacts[i].Item1, removedContacts[i].Item2);
-        _contactMap.Remove(removedContacts[i]);
+        _contactMap.Remove(removedContacts[i], out _);
       }
       for (int i = 0; i < oldContacts.Count; i++) {
         var g1 = Bodies.TryGetValue(oldContacts[i].Item1, out var t1);
@@ -162,7 +162,7 @@ public class HammerWorld {
         var dist = Vector2.Distance(Bodies[oldContacts[i].Item1].Position, Bodies[oldContacts[i].Item2].Position);
         if (dist > threshold) {
           _hammerInstance?.OnContactExit?.Invoke(oldContacts[i].Item1, oldContacts[i].Item2);
-          _contactMap.Remove(oldContacts[i]);
+          _contactMap.Remove(oldContacts[i], out _);
         }
       }
     }
@@ -276,7 +276,7 @@ public class HammerWorld {
       stillThere = [.. _contactMap.Keys];
       foreach (var pair in removedContacts) {
         _hammerInstance?.OnContactExit?.Invoke(pair.Item1, pair.Item2);
-        _contactMap.Remove(pair);
+        _contactMap.Remove(pair, out _);
       }
       foreach (var pair in oldContacts) {
         var g1 = Bodies.TryGetValue(pair.Item1, out var t1);
@@ -286,7 +286,7 @@ public class HammerWorld {
         var dist = Vector2.Distance(Bodies[pair.Item1].Position, Bodies[pair.Item2].Position);
         if (dist > threshold) {
           _hammerInstance?.OnContactExit?.Invoke(pair.Item1, pair.Item2);
-          _contactMap.Remove(pair);
+          _contactMap.Remove(pair, out _);
         }
       }
     }
