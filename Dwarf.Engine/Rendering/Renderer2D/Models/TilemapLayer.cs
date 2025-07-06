@@ -1,7 +1,11 @@
 using System.Numerics;
 using Dwarf.AbstractionLayer;
+using Dwarf.EntityComponentSystem;
+using Dwarf.Extensions.Logging;
+using Dwarf.Math;
 using Dwarf.Rendering.Renderer2D.Components;
 using Dwarf.Rendering.Renderer2D.Helpers;
+using Dwarf.Rendering.Renderer2D.Interfaces;
 
 namespace Dwarf.Rendering.Renderer2D.Models;
 
@@ -13,6 +17,22 @@ public class TilemapLayer {
   public ITexture LayerTexture { get; private set; } = null!;
   public TileInfo[,] Tiles { get; set; }
   public bool IsCollision { get; init; }
+  public bool DescriptorBuilt => throw new NotImplementedException();
+  public Entity Entity => _parent.Owner;
+  public bool Active => _parent.Owner.Active;
+  public ITexture Texture => LayerTexture;
+  public ITexture[] SpriteSheet => [LayerTexture];
+  public Vector2I SpriteSheetSize => new(1, 1);
+  public int SpriteIndex => 0;
+  public int SpriteCount => 1;
+  public bool FlipX { get; set; }
+  public bool FlipY { get; set; }
+  public bool NeedPipelineCache => throw new NotImplementedException();
+  public Mesh CollisionMesh => throw new NotImplementedException();
+  public Mesh Mesh => LayerMesh;
+  public Mesh[] Meshes => [LayerMesh];
+  public bool HasMultipleMeshes => false;
+  public IDrawable2D[] Children => [];
 
   public TilemapLayer(Application app, Tilemap parent, TileInfo[,] tiles, string path, bool isCollision) {
     _app = app;
@@ -185,5 +205,25 @@ public class TilemapLayer {
 
   public void Dispose() {
     LayerMesh.Dispose();
+  }
+
+  public void BuildDescriptors(IDescriptorSetLayout descriptorSetLayout, IDescriptorPool descriptorPool) {
+    throw new NotImplementedException();
+  }
+
+  public void CachePipelineLayout(object pipelineLayout) {
+    throw new NotImplementedException();
+  }
+
+  public Task Bind(nint commandBuffer, uint index) {
+    throw new NotImplementedException();
+  }
+
+  public Task Draw(nint commandBuffer, uint index = 0, uint firstInstance = 0) {
+    throw new NotImplementedException();
+  }
+
+  public object Clone() {
+    throw new NotImplementedException();
   }
 }
