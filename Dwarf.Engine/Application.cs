@@ -645,6 +645,7 @@ public class Application {
           out var skinnedObjects,
           out var flatJoints
         );
+
         fixed (ObjectData* pObjectData = objectData) {
           StorageCollection.WriteBuffer(
             "ObjectStorage",
@@ -666,7 +667,7 @@ public class Application {
       }
 
       if (Systems.Render2DSystem != null) {
-        Systems.Render2DSystem.Update(i2D, out var spriteData);
+        Rendering.Renderer2D.Render2DSystem.Update(i2D, out var spriteData);
 
         fixed (SpritePushConstant140* pSpriteData = spriteData) {
           StorageCollection.WriteBuffer(

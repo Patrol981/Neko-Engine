@@ -123,7 +123,7 @@ public class ResourceInitializer {
       .Build());
 
     descriptorSetLayouts.TryAdd("ObjectData", new VulkanDescriptorSetLayout.Builder(device)
-      .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.Vertex)
+      .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.AllGraphics)
       // .AddBinding(1, VkDescriptorType.StorageBuffer, VkShaderStageFlags.AllGraphics)
       .Build());
 
