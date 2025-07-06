@@ -19,17 +19,16 @@ public class Tilemap : Component, IDrawable2D {
   public int TileSize { get; private set; }
   public List<TilemapLayer> Layers { get; init; } = [];
   public List<Sprite> Backgrounds { get; init; } = [];
-  public Mesh CollisionMesh => Layers.Where(x => x.IsCollision).First().LayerMesh;
-  public Mesh Mesh => Layers.Where(x => x.IsCollision).First().LayerMesh;
-  public ITexture[]? SpriteSheet => [.. Layers.Select(x => x.LayerTexture)];
+  public Mesh CollisionMesh => Layers[0].LayerMesh;
+  public Mesh Mesh => Layers[0].LayerMesh;
+  public ITexture[] SpriteSheet => [Layers[0].LayerTexture];
+  public IDrawable2D[] Children => [];
 
   private VkPipelineLayout _pipelineLayout;
 
   public Entity Entity => Owner;
   public bool Active => Owner.Active;
-  public bool NeedPipelineCache => true;
-  public bool DescriptorBuilt => Texture != null && Texture.TextureDescriptor != 0;
-  public ITexture Texture => null!;
+  public ITexture Texture => Layers[0].LayerTexture;
 
   public Tilemap() {
     _application = Application.Instance;
@@ -86,13 +85,6 @@ public class Tilemap : Component, IDrawable2D {
       Backgrounds[i].Bind(commandBuffer, 0);
       Backgrounds[i].Draw(commandBuffer);
     }
-  }
-
-  public void BuildDescriptors(IDescriptorSetLayout descriptorSetLayout, IDescriptorPool descriptorPool) {
-    foreach (var layer in Layers) {
-      layer.LayerTexture.BuildDescriptor(descriptorSetLayout, descriptorPool);
-    }
-    // _tilemapAtlas?.BuildDescriptor(descriptorSetLayout, descriptorPool);
   }
 
   public void CreateTilemap(string[] imageSource) {

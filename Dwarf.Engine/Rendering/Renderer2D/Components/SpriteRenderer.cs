@@ -19,7 +19,7 @@ public class SpriteRenderer : Component, IDrawable2D {
   public Bounds2D Bounds => GetBounds();
   public Mesh CollisionMesh => Sprites[CurrentSprite].SpriteMesh;
   public Mesh Mesh => Sprites[CurrentSprite].SpriteMesh;
-
+  public IDrawable2D[] Children => [];
 
   public Entity Entity => Owner;
   public bool Active => Owner.Active;
@@ -30,8 +30,6 @@ public class SpriteRenderer : Component, IDrawable2D {
   public Vector2I SpriteSheetSize => Sprites[CurrentSprite].SpriteSheetSize;
   public bool FlipX { get; set; }
   public bool FlipY { get; set; }
-  public bool NeedPipelineCache => false;
-  public bool DescriptorBuilt => Sprites.Any(x => x.Texture.TextureDescriptor != 0);
 
   public float DirectionX => FlipX ? -1 : 1;
 

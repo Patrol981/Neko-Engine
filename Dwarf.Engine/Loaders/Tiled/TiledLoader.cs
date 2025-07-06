@@ -25,12 +25,12 @@ public static class TiledLoader {
       if (layer is TileLayer tileLayer) {
         tilemap.Layers.Add(CreateTilemap(app, tileLayer, map, ref tilemap, ref tileSources));
       } else if (layer is ImageLayer imageLayer) {
-        CreateImages(app, imageLayer, map, ref tilemap, ref bgSources);
+        // CreateImages(app, imageLayer, map, ref tilemap, ref bgSources);
       }
     }
 
     tilemap.CreateTilemap([.. tileSources]);
-    tilemap.CreateBackgrounds([.. bgSources]);
+    // tilemap.CreateBackgrounds([.. bgSources]);
 
     return tilemap;
   }
