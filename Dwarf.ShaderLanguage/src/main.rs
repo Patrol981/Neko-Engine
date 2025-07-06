@@ -1,6 +1,7 @@
 pub mod shader_objects;
 
 use std::{
+  collections::HashSet,
   env,
   fs::{self, File},
   io::Write,
@@ -13,70 +14,78 @@ fn main() {
   // dsl.exe SRC_DIR DST_DIR
 
   let args: Vec<String> = env::args().collect();
-
   let src_dir = &args[1];
   let dst_dir = &args[2];
 
-  let cur_dir = match env::current_dir() {
-    Ok(path) => path,
-    Err(err) => {
-      println!("Could not get current directory data. [{err}]");
-      return;
-    }
-  };
+  let cur_dir = env::current_dir().expect("Could not get current directory");
 
   println!("current dir -> {}", cur_dir.display());
-  println!("src dir -> {src_dir}");
-  println!("dst dir -> {dst_dir}");
+  println!("src dir -> {}", src_dir);
+  println!("dst dir -> {}", dst_dir);
 
-  // list all structures in src directory
-  let combined_path = cur_dir.join(src_dir).join("structs");
-  let struct_paths = match fs::read_dir(combined_path) {
-    Ok(result) => result,
-    Err(err) => {
-      println!("Could not get src directory path. [{err}]");
-      return;
+  // --- LOAD IGNORE LIST ---
+  let ignore_list_path = cur_dir.join(src_dir).join("ignore_list.txt");
+  let ignore_list: HashSet<String> = match fs::read_to_string(&ignore_list_path) {
+    Ok(contents) => contents
+      .lines()
+      .map(str::trim)
+      .filter(|l| !l.is_empty())
+      .map(String::from)
+      .collect(),
+    Err(_) => {
+      println!(
+        "Warning: could not open '{}', proceeding without ignores.",
+        ignore_list_path.display()
+      );
+      HashSet::new()
     }
   };
 
+  // list all structures in src directory
+  let struct_dir = cur_dir.join(src_dir).join("structs");
+  let struct_paths = fs::read_dir(&struct_dir)
+    .unwrap_or_else(|e| panic!("Could not read structs dir {}: {}", struct_dir.display(), e));
+
   let mut shader_structs: Vec<ShaderStructObject> = Vec::new();
-  for path in struct_paths {
-    let path_buf = path.unwrap().path();
-    if !path_buf.is_file() {
+  for entry in struct_paths {
+    let path = entry.unwrap().path();
+    if !path.is_file() {
       continue;
     }
     shader_structs.push(ShaderStructObject::new(
-      get_file_name(&path_buf),
-      read_file(&path_buf),
-    ))
+      get_file_name(&path),
+      read_file(&path),
+    ));
   }
 
   // get all vertex and fragment files
-  let combined_path = cur_dir.join(src_dir);
-  let shader_paths = match fs::read_dir(combined_path) {
-    Ok(result) => result,
-    Err(err) => {
-      println!("Could not get src directory path. [{err}]");
-      return;
-    }
-  };
+  let shader_dir = cur_dir.join(src_dir);
+  let shader_paths = fs::read_dir(&shader_dir)
+    .unwrap_or_else(|e| panic!("Could not read shaders dir {}: {}", shader_dir.display(), e));
 
   let mut shader_codes: Vec<ShaderCode> = Vec::new();
-  for path in shader_paths {
-    let path_buf = path.unwrap().path();
-    if !path_buf.is_file() {
+  for entry in shader_paths {
+    let path = entry.unwrap().path();
+    if !path.is_file() {
+      continue;
+    }
+    // check ignore list by file-stem (no extension)
+    let file_stem = path.file_stem().unwrap().to_str().unwrap();
+    if ignore_list.contains(file_stem) {
+      println!("Ignoring shader -> {}", file_stem);
       continue;
     }
     shader_codes.push(ShaderCode::new(
-      get_file_name(&path_buf),
-      get_file_name_ext(&path_buf),
-      read_file(&path_buf),
-    ))
+      file_stem.to_string(),
+      get_file_name_ext(&path),
+      read_file(&path),
+    ));
   }
 
+  // process & write
   for mut sc in shader_codes {
     edit_shader_code(&mut sc, &shader_structs);
-    let dst_path = cur_dir.join(dst_dir).join(sc.file_name_ext.clone());
+    let dst_path = cur_dir.join(dst_dir).join(&sc.file_name_ext);
     write_file(&dst_path, &sc.data);
   }
 }
