@@ -23,6 +23,8 @@ layout(location = 0) out vec4 outColor;
 #include object_data
 #include sobel
 
+#include light_calc
+
 #define MAX_NUM_JOINTS 128
 int MAX_JOINT_INFLUENCE = 4;
 
@@ -53,6 +55,26 @@ void main() {
   //   result += calc_point_light(light, surfaceNormal, viewDir);
   // }
 
+  result += calc_dir_light(
+    ubo.directionalLight,
+    surfaceNormal,
+    viewDir,
+    objectBuffer.objectData[id].specularAndShininess.w,
+    objectBuffer.objectData[id].diffuseAndTexId1.xyz,
+    objectBuffer.objectData[id].specularAndShininess.xyz
+  );
+  for(int i = 0; i < ubo.pointLightLength; i++) {
+    PointLight light = pointLightBuffer.pointLights[i];
+    result += calc_point_light(
+      light,
+      surfaceNormal,
+      viewDir,
+      objectBuffer.objectData[id].specularAndShininess.w,
+      objectBuffer.objectData[id].ambientAndTexId0.xyz,
+      objectBuffer.objectData[id].specularAndShininess.xyz
+    );
+  }
+
   float alpha = 1.0;
 
   if (ubo.hasImportantEntity == 1 && filterFlag == 1) {
@@ -68,7 +90,7 @@ void main() {
 
   vec4 texColor = texture(sampler2D(_texture[int(objectBuffer.objectData[id].ambientAndTexId0.w)], _sampler), texCoord).rgba;
 
-  // outColor = texColor * vec4(result, alpha);
-  outColor = texColor;
+  outColor = texColor * vec4(result, alpha);
+  // outColor = texColor;
   outColor = mix(ubo.fogColor, outColor, fogVisiblity);
 }
