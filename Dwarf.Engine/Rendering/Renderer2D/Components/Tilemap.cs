@@ -19,16 +19,16 @@ public class Tilemap : Component, IDrawable2D {
   public int TileSize { get; private set; }
   public List<TilemapLayer> Layers { get; init; } = [];
   public List<Sprite> Backgrounds { get; init; } = [];
-  public Mesh CollisionMesh => Layers[0].LayerMesh;
-  public Mesh Mesh => Layers[0].LayerMesh;
-  public ITexture[] SpriteSheet => [Layers[0].LayerTexture];
-  public IDrawable2D[] Children => [];
+  public Mesh CollisionMesh => Layers.Where(x => x.IsCollision).First().LayerMesh;
+  public Mesh Mesh => throw new NotImplementedException();
+  public ITexture[] SpriteSheet => [];
+  public IDrawable2D[] Children => [.. Layers];
 
   private VkPipelineLayout _pipelineLayout;
 
   public Entity Entity => Owner;
   public bool Active => Owner.Active;
-  public ITexture Texture => Layers[0].LayerTexture;
+  public ITexture Texture => throw new NotImplementedException();
 
   public Tilemap() {
     _application = Application.Instance;

@@ -9,7 +9,7 @@ using Dwarf.Rendering.Renderer2D.Interfaces;
 
 namespace Dwarf.Rendering.Renderer2D.Models;
 
-public class TilemapLayer {
+public class TilemapLayer : IDrawable2D {
   private readonly Application _app;
   private readonly Tilemap _parent;
 
