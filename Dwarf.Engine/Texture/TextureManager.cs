@@ -275,7 +275,7 @@ public class TextureManager : IDisposable {
       .SetMaxSets(CommonConstants.MAX_SETS)
       .AddPoolSize(DescriptorType.SampledImage, CommonConstants.MAX_SETS)
       .AddPoolSize(DescriptorType.Sampler, CommonConstants.MAX_SETS)
-      .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
     AllTexturesSetLayout = new VulkanDescriptorSetLayout.Builder(_device)
@@ -285,9 +285,9 @@ public class TextureManager : IDisposable {
   }
 
   private unsafe void RebuildVkDescriptors() {
-    if (AllTexturesDescriptor != 0) {
-      vkFreeDescriptorSets(_device.LogicalDevice, ManagerPool.GetHandle(), AllTexturesDescriptor);
-    }
+    // if (AllTexturesDescriptor != 0) {
+    //   vkFreeDescriptorSets(_device.LogicalDevice, ManagerPool.GetHandle(), AllTexturesDescriptor);
+    // }
     Array.Clear(_allTexturesInfos);
 
     if (_allTexturesSampler == 0) {
@@ -334,23 +334,36 @@ public class TextureManager : IDisposable {
       sampler = _allTexturesSampler
     };
 
-    var infos = _allTexturesInfos
-    .Where(x => x != null)
-    .Select(x => {
-      return (VkDescriptorImageInfo)x;
-    }).ToArray();
+    // var infos = _allTexturesInfos
+    // .Where(x => x != null)
+    // .Select(x => {
+    //   return (VkDescriptorImageInfo)x;
+    // }).ToArray();
+
+    var textureCount = textureValues.Length;
+    var infos = new VkDescriptorImageInfo[textureCount];
+    for (int i = 0; i < textureCount; i++) {
+      infos[i] = new VkDescriptorImageInfo {
+        sampler = 0,
+        imageView = textureValues[i].ImageView,
+        imageLayout = VkImageLayout.ShaderReadOnlyOptimal
+      };
+    }
+
     fixed (VkDescriptorImageInfo* pImageInfos = infos) {
       VkWriteDescriptorSet* writes = stackalloc VkWriteDescriptorSet[2];
       writes[0] = new VkWriteDescriptorSet() {
+        sType = VkStructureType.WriteDescriptorSet,
         dstBinding = 0,
         dstArrayElement = 0,
         descriptorType = VkDescriptorType.SampledImage,
-        descriptorCount = CommonConstants.MAX_TEXTURE,
+        descriptorCount = (uint)textureCount,
         pBufferInfo = null,
         dstSet = descriptorSet,
         pImageInfo = pImageInfos
       };
       writes[1] = new VkWriteDescriptorSet() {
+        sType = VkStructureType.WriteDescriptorSet,
         dstBinding = 1,
         dstArrayElement = 0,
         descriptorType = VkDescriptorType.Sampler,

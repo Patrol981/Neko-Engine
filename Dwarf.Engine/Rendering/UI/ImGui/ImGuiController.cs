@@ -94,7 +94,7 @@ public partial class ImGuiController : IDisposable {
       .SetMaxSets(10000)
       .AddPoolSize(DescriptorType.SampledImage, 1000)
       .AddPoolSize(DescriptorType.Sampler, 1000)
-      .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
 

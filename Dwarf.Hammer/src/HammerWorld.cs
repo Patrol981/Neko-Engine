@@ -10,8 +10,8 @@ public class HammerWorld {
   internal float Gravity = 9.80665f;
   const float THRESHOLD = 0.5f;
 
-  private ConcurrentDictionary<BodyId, HammerObject> _sprites = [];
-  private ConcurrentDictionary<(BodyId, BodyId), bool> _contactMap = [];
+  private readonly ConcurrentDictionary<BodyId, HammerObject> _sprites = [];
+  private readonly ConcurrentDictionary<(BodyId, BodyId), bool> _contactMap = [];
   private float _dt;
 
   private readonly HammerInstance _hammerInstance;
@@ -24,7 +24,8 @@ public class HammerWorld {
   }
 
   public Task Simulate(float dt) {
-    _dt = dt;
+    // _dt = dt;
+    _dt = 1 / (float)60;
 
     Dictionary<BodyId, HammerObject> snapshot;
     lock (_bodiesLock) {
@@ -42,8 +43,6 @@ public class HammerWorld {
     }
 
     _ = ThreadPool.QueueUserWorkItem(HandleSprites!);
-    // Task.Run(() => HandleSprites());
-    // Task.Run(() => HandleGravity());
     _ = ThreadPool.QueueUserWorkItem(HandleGravity!);
 
     return Task.CompletedTask;

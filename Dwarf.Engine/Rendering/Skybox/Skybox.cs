@@ -395,13 +395,13 @@ public class Skybox : IDisposable {
     _descriptorPool = new VulkanDescriptorPool.Builder(_device)
       .SetMaxSets(1000)
       .AddPoolSize(DescriptorType.UniformBufferDynamic, 1000)
-      .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
     _texturePool = new VulkanDescriptorPool.Builder(_device)
       .SetMaxSets(6)
       .AddPoolSize(DescriptorType.CombinedImageSampler, 1)
-      .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
     _skyboxBuffer = new DwarfBuffer(

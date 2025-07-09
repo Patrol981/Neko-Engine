@@ -29,7 +29,7 @@ public class VkStorageCollection : IStorageCollection {
     _dynamicPool = new VulkanDescriptorPool.Builder(_device)
       .SetMaxSets(30)
       .AddPoolSize(DescriptorType.StorageBuffer, 30)
-      .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet | DescriptorPoolCreateFlags.UpdateAfterBind)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
   }
 

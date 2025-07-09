@@ -52,7 +52,7 @@ public class Render2DSystem : SystemBase {
       .AddPoolSize(DescriptorType.Sampler, CommonConstants.MAX_SETS)
       .AddPoolSize(DescriptorType.InputAttachment, CommonConstants.MAX_SETS)
       .AddPoolSize(DescriptorType.StorageBuffer, CommonConstants.MAX_SETS)
-      .SetPoolFlags(DescriptorPoolCreateFlags.None)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
     _texturesCount = -1;

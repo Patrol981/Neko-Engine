@@ -112,6 +112,7 @@ public class ResourceInitializer {
       .AddPoolSize(DescriptorType.SampledImage, (uint)renderer.MAX_FRAMES_IN_FLIGHT)
       .AddPoolSize(DescriptorType.Sampler, (uint)renderer.MAX_FRAMES_IN_FLIGHT)
       .AddPoolSize(DescriptorType.StorageBuffer, (uint)renderer.MAX_FRAMES_IN_FLIGHT * 100)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
     descriptorSetLayouts.TryAdd("Global", new VulkanDescriptorSetLayout.Builder(device)

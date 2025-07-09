@@ -126,7 +126,7 @@ public class PostProcessingSystem : SystemBase {
       .AddPoolSize(DescriptorType.SampledImage, 10)
       .AddPoolSize(DescriptorType.Sampler, 10)
       .AddPoolSize(DescriptorType.CombinedImageSampler, 20)
-      .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
     var texLen = systemConfiguration.PostProcessInputTextures?.Length;

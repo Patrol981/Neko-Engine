@@ -55,8 +55,12 @@ public class VulkanDescriptorSetLayout : IDescriptorSetLayout {
 
     var bindingFlags = new VkDescriptorBindingFlags[bindingCount];
     for (int i = 0; i < bindingCount; i++) {
-      bindingFlags[i] = VkDescriptorBindingFlags.PartiallyBound;
+      bindingFlags[i] = VkDescriptorBindingFlags.PartiallyBound |
+                        VkDescriptorBindingFlags.UpdateUnusedWhilePending |
+                        VkDescriptorBindingFlags.UpdateAfterBind;
     }
+
+    var flags = VkDescriptorSetLayoutCreateFlags.UpdateAfterBindPool;
 
     fixed (VkDescriptorSetLayoutBinding* bindingsPtr = setLayoutBindings)
     fixed (VkDescriptorBindingFlags* flagsPtr = bindingFlags) {
@@ -70,7 +74,8 @@ public class VulkanDescriptorSetLayout : IDescriptorSetLayout {
         sType = VkStructureType.DescriptorSetLayoutCreateInfo,
         pNext = &flagsCreateInfo,
         bindingCount = bindingCount,
-        pBindings = bindingsPtr
+        pBindings = bindingsPtr,
+        flags = flags
       };
 
       vkCreateDescriptorSetLayout(

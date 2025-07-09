@@ -95,7 +95,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       .AddPoolSize(DescriptorType.Sampler, CommonConstants.MAX_SETS)
       .AddPoolSize(DescriptorType.InputAttachment, CommonConstants.MAX_SETS)
       .AddPoolSize(DescriptorType.StorageBuffer, CommonConstants.MAX_SETS)
-      .SetPoolFlags(DescriptorPoolCreateFlags.None)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
   }
