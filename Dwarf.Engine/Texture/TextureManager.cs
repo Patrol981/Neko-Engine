@@ -397,7 +397,7 @@ public class TextureManager : IDisposable {
   private unsafe void VkDispose() {
     Array.Clear(_allTexturesInfos);
     vkDestroySampler(_device.LogicalDevice, _allTexturesSampler);
-    vkFreeDescriptorSets(_device.LogicalDevice, ManagerPool.GetHandle(), AllTexturesDescriptor);
+    // vkFreeDescriptorSets(_device.LogicalDevice, ManagerPool.GetHandle(), AllTexturesDescriptor);
     vkDestroyDescriptorPool(_device.LogicalDevice, ManagerPool.GetHandle());
     vkDestroyDescriptorSetLayout(_device.LogicalDevice, AllTexturesSetLayout.GetDescriptorSetLayoutPointer());
   }

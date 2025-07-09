@@ -567,6 +567,7 @@ public class VulkanDevice : IDevice {
       descriptorBindingSampledImageUpdateAfterBind = true,
       descriptorBindingUpdateUnusedWhilePending = true,
       descriptorBindingStorageBufferUpdateAfterBind = true,
+      descriptorBindingUniformBufferUpdateAfterBind = true,
       pNext = &vk11Features,
     };
 
