@@ -384,8 +384,6 @@ public class Render2DSystem : SystemBase {
     _globalVertexBuffer?.Dispose();
     _globalIndexBuffer?.Dispose();
     _indirectBuffer?.Dispose();
-    // MemoryUtils.FreeIntPtr<SpritePushConstant>((nint)_spritePushConstant);
-    // Marshal.FreeHGlobal((nint)_spritePushConstant);
     base.Dispose();
   }
 }
