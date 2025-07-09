@@ -19,7 +19,6 @@ namespace Dwarf.Rendering.Renderer3D;
 public class Render3DSystem : SystemBase, IRenderSystem {
   public const string Simple3D = "simple3D";
   public const string Skinned3D = "skinned3D";
-  private const uint MAX_SETS = 10000;
 
   public const string HatchTextureName = "./Resources/T_crossHatching13_D.png";
   public static float HatchScale = 1;
