@@ -1,3 +1,4 @@
+using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.AbstractionLayer;
@@ -33,4 +34,6 @@ public enum BufferUsage {
   MicromapStorageEXT = VK_BUFFER_USAGE_MICROMAP_STORAGE_BIT_EXT,
   ShaderDeviceAddressEXT = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
   ShaderDeviceAddressKHR = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+
+  VmaCpuToGpu = VmaMemoryUsage.CpuToGpu
 }

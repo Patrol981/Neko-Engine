@@ -30,7 +30,7 @@ public static class TiledLoader {
     }
 
     tilemap.CreateTilemap([.. tileSources]);
-    tilemap.CreateBackgrounds([.. bgSources]);
+    // tilemap.CreateBackgrounds([.. bgSources]);
 
     return tilemap;
   }

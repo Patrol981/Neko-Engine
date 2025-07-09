@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
 using Dwarf.Math;
+using Dwarf.Rendering.UI;
 using Dwarf.Utils;
 using SDL3;
 using StbImageSharp;
@@ -24,6 +25,8 @@ public class Window : IWindow {
 
   private readonly bool _windowMinimalized = false;
   private SDL_Cursor _cursor;
+
+  private Application? _app;
 
   public void Init(string windowName, bool fullscreen, int width, int height, bool debug = false) {
     InitWindow(windowName, fullscreen, debug, width, height);
@@ -78,7 +81,8 @@ public class Window : IWindow {
     _ = SDL_SetWindowPosition(SDLWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     // SDL_SetWindowOpacity(SDLWindow, 0.1f);
 
-    Application.Instance.Window.Extent = new DwarfExtent2D((uint)width, (uint)height);
+    _app = Application.Instance;
+    _app.Window.Extent = new DwarfExtent2D((uint)width, (uint)height);
   }
 
   private unsafe void LoadIcons() {
@@ -178,6 +182,10 @@ public class Window : IWindow {
           break;
         default:
           break;
+      }
+
+      if (_app != null && _app.UseImGui) {
+        ImGuiController.ImGuiSdl3ProcessEvent(e);
       }
     }
   }

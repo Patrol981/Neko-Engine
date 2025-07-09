@@ -423,6 +423,10 @@ public class VulkanDevice : IDevice {
       if (availableExtension == VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME) {
         instanceExtensions.Add(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
       }
+
+      if (availableExtension == VK_EXT_ROBUSTNESS_2_EXTENSION_NAME) {
+        instanceExtensions.Add(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
+      }
     }
     // instanceExtensions.Add(VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME);
     // instanceExtensions.Add(VK_EXT_dynamic_rendering_unused_attachments);
@@ -549,6 +553,7 @@ public class VulkanDevice : IDevice {
       depthClamp = true,
     };
 
+
     VkPhysicalDeviceVulkan11Features vk11Features = new() {
       shaderDrawParameters = true,
     };
@@ -556,6 +561,13 @@ public class VulkanDevice : IDevice {
     VkPhysicalDeviceVulkan12Features vk12Features = new() {
       timelineSemaphore = true,
       descriptorIndexing = true,
+      descriptorBindingPartiallyBound = true,
+      descriptorBindingVariableDescriptorCount = true,
+      runtimeDescriptorArray = true,
+      descriptorBindingSampledImageUpdateAfterBind = true,
+      descriptorBindingUpdateUnusedWhilePending = true,
+      descriptorBindingStorageBufferUpdateAfterBind = true,
+      descriptorBindingUniformBufferUpdateAfterBind = true,
       pNext = &vk11Features,
     };
 
@@ -578,9 +590,20 @@ public class VulkanDevice : IDevice {
     //   pNext = &vk14Features
     // };
 
+    VkPhysicalDeviceRobustness2FeaturesEXT physicalDeviceRobustness = new() {
+      nullDescriptor = true,
+      pNext = &vk14Features
+    };
+
+    VkPhysicalDeviceFeatures2 deviceFeatures2 = new() {
+      features = deviceFeatures,
+      pNext = &physicalDeviceRobustness
+    };
+
+
     VkDeviceCreateInfo createInfo = new() {
       queueCreateInfoCount = queueCount,
-      pNext = &vk14Features
+      pNext = &deviceFeatures2
     };
 
     fixed (VkDeviceQueueCreateInfo* ptr = queueCreateInfos) {
@@ -588,30 +611,22 @@ public class VulkanDevice : IDevice {
     }
 
     List<VkUtf8String> enabledExtensions;
-    if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
-      enabledExtensions = [
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
-        // VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME,
-        // VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME,
-        VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
-      ];
-    } else {
-      enabledExtensions = [
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
-        // VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME,
-        // VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME
-      ];
-    }
+    enabledExtensions = [
+      VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+      VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
+      VK_EXT_ROBUSTNESS_2_EXTENSION_NAME
+      // VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME,
+      // VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME
+    ];
 
     using var deviceExtensionNames = new VkStringArray(enabledExtensions);
 
-    createInfo.pEnabledFeatures = &deviceFeatures;
+    // createInfo.pEnabledFeatures = &deviceFeatures;
+    createInfo.pNext = &deviceFeatures2;
     createInfo.enabledExtensionCount = deviceExtensionNames.Length;
     createInfo.ppEnabledExtensionNames = deviceExtensionNames;
 
-    Features = deviceFeatures;
+    Features = deviceFeatures2.features;
     DeviceExtensions = enabledExtensions;
 
     var result = vkCreateDevice(_physicalDevice, &createInfo, null, out _logicalDevice);

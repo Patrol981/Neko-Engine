@@ -5,6 +5,7 @@ using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Vulkan;
+
 public class VulkanCommandList : CommandList {
   public override void BindVertex(
     nint commandBuffer,
@@ -65,6 +66,16 @@ public class VulkanCommandList : CommandList {
     vkCmdDraw(commandBuffer, (uint)vertexCount, instanceCount, firstVertex, firstInstance);
   }
 
+  public override void DrawIndirect(
+    nint commandBuffer,
+    ulong indirectBuffer,
+    ulong offset,
+    uint drawCount,
+    uint stride
+  ) {
+    vkCmdDrawIndirect(commandBuffer, indirectBuffer, offset, drawCount, stride);
+  }
+
   public override void DrawIndexed(
     nint commandBuffer,
     uint meshIndex,
@@ -86,6 +97,16 @@ public class VulkanCommandList : CommandList {
     uint firstInstance
   ) {
     vkCmdDrawIndexed(commandBuffer, (uint)indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+  }
+
+  public override void DrawIndexedIndirect(
+    nint commandBuffer,
+    ulong indirectBuffer,
+    ulong offset,
+    uint drawCount,
+    uint stride
+  ) {
+    vkCmdDrawIndexedIndirect(commandBuffer, indirectBuffer, offset, drawCount, stride);
   }
 
   public override void SetViewport(

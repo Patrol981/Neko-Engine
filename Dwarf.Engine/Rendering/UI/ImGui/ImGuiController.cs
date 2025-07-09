@@ -59,6 +59,9 @@ public partial class ImGuiController : IDisposable {
   public ImFontPtr LargeFont { get; private set; }
   public ImFontPtr CurrentFont { get; private set; }
 
+  private static bool s_shiftModHold = false;
+  public static bool InputFocused { get; set; } = false;
+
   // private readonly Keys[] _allKeys = Enum.GetValues<Keys>();
   // private readonly List<char> _pressedChars = new List<char>();
 
@@ -91,7 +94,7 @@ public partial class ImGuiController : IDisposable {
       .SetMaxSets(10000)
       .AddPoolSize(DescriptorType.SampledImage, 1000)
       .AddPoolSize(DescriptorType.Sampler, 1000)
-      .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
 
@@ -160,7 +163,73 @@ public partial class ImGuiController : IDisposable {
     return Task.CompletedTask;
   }
 
-  private bool TryMapKey(Keys key, out ImGuiKey keyResult) {
+  private static bool TryMapKey(Scancode key, out ImGuiKey keyResult) {
+    // Helper to linearly translate a contiguous range of Keycodes
+    ImGuiKey KeyToImGuiShortcut(Scancode keyToConvert, Scancode firstKey, ImGuiKey firstImGuiKey) {
+      int offset = (int)keyToConvert - (int)firstKey;
+      return (ImGuiKey)((int)firstImGuiKey + offset);
+    }
+
+    keyResult = key switch {
+      // Function keys
+      // >= Keycode.F1 and <= Keycode.F24 => KeyToImGuiShortcut(key, Keycode.F1, ImGuiKey.F1),
+
+      // Letter keys
+      >= Scancode.A and <= Scancode.Z => KeyToImGuiShortcut(key, Scancode.A, ImGuiKey.A),
+
+      // Number keys (top row)
+      // >= Scancode._0 and <= Scancode._9 => KeyToImGuiShortcut(key, Scancode._0, ImGuiKey._0),
+
+      // Modifiers
+      Scancode.LeftShift or Scancode.RightShift => ImGuiKey.ModShift,
+      Scancode.LeftControl or Scancode.RightControl => ImGuiKey.ModCtrl,
+      Scancode.LeftAlt or Scancode.RightAlt => ImGuiKey.ModAlt,
+      // Keycode.LeftSuper  or Keycode.RightSuper  => ImGuiKey.ModSuper,
+
+      // Miscellaneous
+      Scancode.Menu => ImGuiKey.Menu,
+      Scancode.Up => ImGuiKey.UpArrow,
+      Scancode.Down => ImGuiKey.DownArrow,
+      Scancode.Left => ImGuiKey.LeftArrow,
+      Scancode.Right => ImGuiKey.RightArrow,
+      Scancode.Return => ImGuiKey.Enter,
+      Scancode.Escape => ImGuiKey.Escape,
+      Scancode.Space => ImGuiKey.Space,
+      Scancode.Tab => ImGuiKey.Tab,
+      Scancode.Backspace => ImGuiKey.Backspace,
+      Scancode.Insert => ImGuiKey.Insert,
+      Scancode.Delete => ImGuiKey.Delete,
+      Scancode.PageUp => ImGuiKey.PageUp,
+      Scancode.PageDown => ImGuiKey.PageDown,
+      Scancode.Home => ImGuiKey.Home,
+      Scancode.End => ImGuiKey.End,
+      Scancode.Capslock => ImGuiKey.CapsLock,
+      Scancode.ScrollLock => ImGuiKey.ScrollLock,
+      Scancode.PrintScreen => ImGuiKey.PrintScreen,
+      Scancode.Pause => ImGuiKey.Pause,
+      Scancode.NumLockClear => ImGuiKey.NumLock,
+
+      // Punctuation / symbol keys
+      Scancode.Grave => ImGuiKey.GraveAccent,
+      Scancode.Minus => ImGuiKey.Minus,
+      Scancode.KpEquals => ImGuiKey.Equal,
+      Scancode.LeftBracket => ImGuiKey.LeftBracket,
+      Scancode.RightBracket => ImGuiKey.RightBracket,
+      Scancode.Semicolon => ImGuiKey.Semicolon,
+      Scancode.Apostrophe => ImGuiKey.Apostrophe,
+      Scancode.Comma => ImGuiKey.Comma,
+      Scancode.Period => ImGuiKey.Period,
+      Scancode.Slash => ImGuiKey.Slash,
+      Scancode.Backslash => ImGuiKey.Backslash,
+
+      // Anything else
+      _ => ImGuiKey.None,
+    };
+
+    return keyResult != ImGuiKey.None;
+  }
+
+  private bool TryMapKey_Old(Keys key, out ImGuiKey keyResult) {
     ImGuiKey KeyToImGuiKeyShortcut(Keys keyToConvert, Keys startKey1, ImGuiKey startKey2) {
       int changeFromStart1 = (int)keyToConvert - (int)startKey1;
       return startKey2 + changeFromStart1;
@@ -408,31 +477,7 @@ public partial class ImGuiController : IDisposable {
       io.MousePos = new System.Numerics.Vector2(screenPoint.X, screenPoint.Y);
     }
 
-    // _pressedChars.Clear();
-
-    for (int key = 45; key < 90; key++) {
-      // foreach (int key in Enum.GetValues(typeof(Keys))) {
-      if (key == (int)Keys.GLFW_KEY_UNKNOWN) {
-        continue;
-      }
-
-      // io.InputQueueCharacters.
-
-      if (Input.KeyStates.TryGetValue(key, out var state)) {
-        if (Input.GetKeyDown((Keycode)key)) {
-          io.AddInputCharacter((char)key);
-        }
-      }
-
-
-      // io.AddInputCharacter((char)key);
-      // io.KeysData[key].Down = Convert.ToByte(Input.GetKeyDown((Keys)key));
-
-      if (TryMapKey((Keys)key, out var imKey)) {
-        // io.AddKeyEvent(imKey, true);
-        io.AddKeyEvent(imKey, Input.GetKey((Scancode)key));
-      }
-    }
+    InputFocused = io.WantTextInput;
   }
 
   public unsafe void UpdateBuffers(ImDrawDataPtr drawData) {

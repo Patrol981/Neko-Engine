@@ -1,4 +1,5 @@
 namespace Dwarf.AbstractionLayer;
+
 public abstract class CommandList {
   public abstract void BindVertex(
     IntPtr commandBuffer,
@@ -34,6 +35,14 @@ public abstract class CommandList {
     uint firstInstance
   );
 
+  public abstract void DrawIndirect(
+    nint commandBuffer,
+    ulong indirectBuffer,
+    ulong offset,
+    uint drawCount,
+    uint stride
+  );
+
   public abstract void DrawIndexed(
     nint commandBuffer,
     uint meshIndex,
@@ -51,6 +60,14 @@ public abstract class CommandList {
     uint firstIndex,
     int vertexOffset,
     uint firstInstance
+  );
+
+  public abstract void DrawIndexedIndirect(
+    nint commandBuffer,
+    ulong indirectBuffer,
+    ulong offset,
+    uint drawCount,
+    uint stride
   );
 
   public abstract void SetViewport(

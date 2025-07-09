@@ -48,6 +48,7 @@ public class SystemCreator {
     nint allocator,
     IDevice device,
     IRenderer renderer,
+    TextureManager textureManager,
     Dictionary<string, IDescriptorSetLayout> layouts,
     IPipelineConfigInfo configInfo = null!
   ) {
@@ -67,26 +68,26 @@ public class SystemCreator {
     if (hasRendererUI) {
       Logger.Info("[SYSTEM CREATOR] Creating UI Renderer");
       systemCollection.RenderUISystem =
-        new(allocator, device, renderer, layouts["Global"], configInfo);
+        new(allocator, device, renderer, textureManager, layouts["Global"], configInfo);
     }
 
     if (hasRenderer3D) {
       Logger.Info("[SYSTEM CREATOR] Creating 3D Renderer");
       systemCollection.Render3DSystem =
-        new(allocator, device, renderer, layouts, new ModelPipelineConfig());
+        new(allocator, device, renderer, textureManager, layouts, new ModelPipelineConfig());
     }
 
     if (hasDebugRenderer) {
       Logger.Info("[SYSTEM CREATOR] Creating Debug Renderer");
       var debugConfig = new VertexDebugPipeline();
       systemCollection.RenderDebugSystem =
-        new(allocator, device, renderer, layouts["Global"], debugConfig);
+        new(allocator, device, renderer, textureManager, layouts["Global"], debugConfig);
     }
 
     if (hasRenderer2D) {
       Logger.Info("[SYSTEM CREATOR] Creating 2D Renderer");
       systemCollection.Render2DSystem =
-        new(allocator, device, renderer, layouts["Global"], configInfo);
+        new(allocator, device, renderer, textureManager, layouts, configInfo);
     }
 
     if (usePhysics3D) {
@@ -102,19 +103,19 @@ public class SystemCreator {
     if (hasDirectionalLight) {
       Logger.Info("[SYSTEM CREATOR] Creating Directional Light System");
       systemCollection.DirectionalLightSystem =
-        new(allocator, device, renderer, layouts["Global"]);
+        new(allocator, device, renderer, textureManager, layouts["Global"]);
     }
 
     if (hasPointLights) {
       Logger.Info("[SYSTEM CREATOR] Creating Point Light System");
       systemCollection.PointLightSystem =
-        new(allocator, device, renderer, layouts["Global"]);
+        new(allocator, device, renderer, textureManager, layouts["Global"]);
     }
 
     if (hasGuizmos) {
       Logger.Info("[SYSTEM CREATOR] Creating Guizmos Rendering System");
       systemCollection.GuizmoRenderSystem =
-        new(allocator, device, renderer, layouts["Global"]);
+        new(allocator, device, renderer, textureManager, layouts["Global"]);
     }
 
     if (hasWebApi) {
@@ -125,13 +126,13 @@ public class SystemCreator {
     if (hasParticles) {
       Logger.Info("[SYSTEM CREATOR] Creating Particle System");
       systemCollection.ParticleSystem =
-        new(allocator, device, renderer, layouts["Global"], new ParticlePipelineConfigInfo());
+        new(allocator, device, renderer, textureManager, layouts["Global"], new ParticlePipelineConfigInfo());
     }
 
     if (hasShadows) {
       Logger.Info("[SYSTEM CREATOR] Creating Shadows System");
       systemCollection.ShadowRenderSystem =
-        new(allocator, device, renderer, systemConfig, layouts, new ModelPipelineConfig());
+        new(allocator, device, renderer, textureManager, systemConfig, layouts, new ModelPipelineConfig());
     }
   }
 }

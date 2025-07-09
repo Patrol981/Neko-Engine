@@ -20,14 +20,15 @@ public class Tilemap : Component, IDrawable2D {
   public List<TilemapLayer> Layers { get; init; } = [];
   public List<Sprite> Backgrounds { get; init; } = [];
   public Mesh CollisionMesh => Layers.Where(x => x.IsCollision).First().LayerMesh;
+  public Mesh Mesh => throw new NotImplementedException();
+  public ITexture[] SpriteSheet => [];
+  public IDrawable2D[] Children => [.. Layers];
 
   private VkPipelineLayout _pipelineLayout;
 
   public Entity Entity => Owner;
   public bool Active => Owner.Active;
-  public bool NeedPipelineCache => true;
-  public bool DescriptorBuilt => Texture != null && Texture.TextureDescriptor != 0;
-  public ITexture Texture => null!;
+  public ITexture Texture => throw new NotImplementedException();
 
   public Tilemap() {
     _application = Application.Instance;
@@ -84,13 +85,6 @@ public class Tilemap : Component, IDrawable2D {
       Backgrounds[i].Bind(commandBuffer, 0);
       Backgrounds[i].Draw(commandBuffer);
     }
-  }
-
-  public void BuildDescriptors(IDescriptorSetLayout descriptorSetLayout, IDescriptorPool descriptorPool) {
-    foreach (var layer in Layers) {
-      layer.LayerTexture.BuildDescriptor(descriptorSetLayout, descriptorPool);
-    }
-    // _tilemapAtlas?.BuildDescriptor(descriptorSetLayout, descriptorPool);
   }
 
   public void CreateTilemap(string[] imageSource) {

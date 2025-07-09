@@ -107,6 +107,7 @@ public class Rigidbody2D : Component, IDisposable, ICloneable {
   private Mesh GetFromOwner() {
     var mesh = ((IDrawable2D)Owner.GetDrawable<IDrawable2D>()).CollisionMesh.Clone() as Mesh;
     var scale = Owner.GetComponent<Transform>().Scale;
+    Logger.Info($"Scale to apply {scale}");
     for (int i = 0; i < mesh!.Vertices.Length; i++) {
       mesh.Vertices[i].Position.X *= scale.X;
       mesh.Vertices[i].Position.Y *= scale.Y;

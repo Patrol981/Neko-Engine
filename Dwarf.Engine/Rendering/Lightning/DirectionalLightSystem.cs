@@ -14,9 +14,10 @@ public class DirectionalLightSystem : SystemBase {
     nint allocator,
     IDevice device,
     IRenderer renderer,
+    TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
     IPipelineConfigInfo configInfo = null!
-  ) : base(allocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, textureManager, configInfo) {
     IDescriptorSetLayout[] descriptorSetLayouts = [
       globalSetLayout,
     ];

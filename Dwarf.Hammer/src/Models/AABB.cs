@@ -24,7 +24,7 @@ internal class AABB {
   }
 
   internal static AABB ComputeAABB(HammerObject hammerObject) {
-    var verts = hammerObject.Mesh.Vertices;
+    var verts = hammerObject.Mesh?.Vertices ?? [];
     float minX = float.MaxValue, minY = float.MaxValue;
     float maxX = float.MinValue, maxY = float.MinValue;
 
@@ -88,14 +88,14 @@ internal class AABB {
     }
 
     float aMinX = a.Position.X;
-    float aMaxX = aMinX + a.AABB.Width;
+    float aMaxX = aMinX + a.AABB?.Width ?? 0;
     float aMinY = a.Position.Y;
-    float aMaxY = aMinY + a.AABB.Height;
+    float aMaxY = aMinY + a.AABB?.Height ?? 0;
 
     float bMinX = b.Position.X;
-    float bMaxX = bMinX + b.AABB.Width;
+    float bMaxX = bMinX + b.AABB?.Width ?? 0;
     float bMinY = b.Position.Y;
-    float bMaxY = bMinY + b.AABB.Height;
+    float bMaxY = bMinY + b.AABB?.Height ?? 0;
 
     bool overlapX = aMaxX > bMinX && bMaxX > aMinX;
     bool overlapY = aMaxY > bMinY && bMaxY > aMinY;
@@ -134,25 +134,25 @@ internal class AABB {
   }
 
   internal static bool CheckCollisionWithTilemapMTV(
-    AABB spriteAABB,
+    AABB? spriteAABB,
     Vector2 spritePos,
-    AABB tileAABB,
+    AABB? tileAABB,
     Vector2 tilePos,
     out Vector2 mtv) {
     float aMinX = spritePos.X;
-    float aMaxX = aMinX + spriteAABB.Width;
+    float aMaxX = aMinX + spriteAABB?.Width ?? 0;
     float aMinY = spritePos.Y;
-    float aMaxY = aMinY + spriteAABB.Height;
+    float aMaxY = aMinY + spriteAABB?.Height ?? 0;
 
     // float bMinX = tilePos.X;
     // float bMaxX = bMinX + tileAABB.Width;
     // float bMinY = tilePos.Y;
     // float bMaxY = bMinY + tileAABB.Height;
 
-    float bMinX = tileAABB.Min.X;
-    float bMaxX = tileAABB.Max.X;
-    float bMinY = tileAABB.Min.Y;
-    float bMaxY = tileAABB.Max.Y;
+    float bMinX = tileAABB?.Min.X ?? 0;
+    float bMaxX = tileAABB?.Max.X ?? 0;
+    float bMinY = tileAABB?.Min.Y ?? 0;
+    float bMaxY = tileAABB?.Max.Y ?? 0;
 
     bool overlapX = aMaxX > bMinX && bMaxX > aMinX;
     bool overlapY = aMaxY > bMinY && bMaxY > aMinY;
@@ -177,7 +177,7 @@ internal class AABB {
   }
 
   internal static bool CollideAndResolve(HammerObject hammerObject, ReadOnlySpan<Edge> candidates) {
-    Vector2[] worldVerts = [.. hammerObject.Mesh.Vertices.Select(v => new Vector2(v.X, v.Y))];
+    Vector2[] worldVerts = [.. hammerObject.Mesh?.Vertices.Select(v => new Vector2(v.X, v.Y)) ?? []];
 
     float minPen = float.MaxValue;
     Vector2 minAxis = Vector2.Zero;

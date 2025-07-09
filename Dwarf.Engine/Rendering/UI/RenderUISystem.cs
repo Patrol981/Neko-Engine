@@ -20,9 +20,10 @@ public class RenderUISystem : SystemBase {
     nint allocator,
     IDevice device,
     IRenderer renderer,
+    TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
     IPipelineConfigInfo configInfo = null!
-  ) : base(allocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, textureManager, configInfo) {
     _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
       .Build();

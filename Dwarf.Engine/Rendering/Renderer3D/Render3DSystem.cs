@@ -24,28 +24,19 @@ public class Render3DSystem : SystemBase, IRenderSystem {
   public const string HatchTextureName = "./Resources/T_crossHatching13_D.png";
   public static float HatchScale = 1;
 
-  public bool GlobalVertexBuffer { get; private set; } = false;
+  public int LastElemRenderedCount => _notSkinnedNodesCache.Length + _skinnedNodesCache.Length;
+  public int LastKnownElemCount { get; private set; } = 0;
+  public ulong LastKnownElemSize { get; private set; } = 0;
+  public ulong LastKnownSkinnedElemCount { get; private set; }
+  public ulong LastKnownSkinnedElemJointsCount { get; private set; }
 
-  private DwarfBuffer _modelBuffer = null!;
-  private DwarfBuffer _complexVertexBuffer = null!;
-  private DwarfBuffer _complexIndexBuffer = null!;
-
-  private VkDescriptorSet _dynamicSet = VkDescriptorSet.Null;
-  private VulkanDescriptorWriter _dynamicWriter = null!;
+  private DwarfBuffer? _globalIndexBuffer;
+  private DwarfBuffer? _globalVertexBuffer;
+  private DwarfBuffer? _indirectBuffer;
 
   private readonly IDescriptorSetLayout _jointDescriptorLayout = null!;
 
-  // private readonly List<VkDrawIndexedIndirectCommand> _indirectCommands = [];
-  // private readonly DwarfBuffer _indirectCommandBuffer = null!;
-
-  // private ModelUniformBufferObject _modelUbo = new();
-  private readonly unsafe ModelUniformBufferObject* _modelUbo =
-    (ModelUniformBufferObject*)Marshal.AllocHGlobal(Unsafe.SizeOf<ModelUniformBufferObject>());
-  private readonly unsafe SimpleModelPushConstant* _pushConstantData =
-    (SimpleModelPushConstant*)Marshal.AllocHGlobal(Unsafe.SizeOf<SimpleModelPushConstant>());
-
-  private readonly IRender3DElement[] _notSkinnedEntitiesCache = [];
-  private readonly IRender3DElement[] _skinnedEntitiesCache = [];
+  private List<VkDrawIndexedIndirectCommand> _indirectDrawCommands = [];
 
   private Node[] _notSkinnedNodesCache = [];
   private Node[] _skinnedNodesCache = [];
@@ -60,317 +51,80 @@ public class Render3DSystem : SystemBase, IRenderSystem {
     nint allocator,
     IDevice device,
     IRenderer renderer,
+    TextureManager textureManager,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     IPipelineConfigInfo configInfo = null!
-  ) : base(allocator, device, renderer, configInfo) {
-    _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
-      .AddBinding(0, DescriptorType.UniformBufferDynamic, ShaderStageFlags.AllGraphics)
-      .Build();
-
+  ) : base(allocator, device, renderer, textureManager, configInfo) {
     _jointDescriptorLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
       .Build();
 
-    _textureSetLayout = new VulkanDescriptorSetLayout.Builder(_device)
-      .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.Fragment)
-      .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)
-
-      // .AddBinding(2, VkDescriptorType.SampledImage, VkShaderStageFlags.Fragment)
-      // .AddBinding(3, VkDescriptorType.Sampler, VkShaderStageFlags.Fragment)
-      .Build();
-
-    _previousTexturesLayout = new VulkanDescriptorSetLayout.Builder(_device)
-      .AddBinding(0, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
-      .AddBinding(1, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
-      .Build();
-
     IDescriptorSetLayout[] basicLayouts = [
-      _textureSetLayout,
-      _textureSetLayout,
+      _textureManager.AllTexturesSetLayout,
       externalLayouts["Global"],
       externalLayouts["ObjectData"],
-      _setLayout,
       externalLayouts["PointLight"],
     ];
 
     IDescriptorSetLayout[] complexLayouts = [
       .. basicLayouts,
       externalLayouts["JointsBuffer"],
-      // _jointDescriptorLayout.GetDescriptorSetLayout(),
-      // _previousTexturesLayout.GetDescriptorSetLayout()
     ];
 
     AddPipelineData(new() {
       RenderPass = renderer.GetSwapchainRenderPass(),
-      VertexName = "vertex",
-      FragmentName = "fragment",
+      VertexName = "model_vertex",
+      FragmentName = "model_fragment",
       PipelineProvider = new PipelineModelProvider(),
-      DescriptorSetLayouts = [.. basicLayouts, _previousTexturesLayout],
+      DescriptorSetLayouts = [.. basicLayouts],
       PipelineName = Simple3D
     });
 
     AddPipelineData(new() {
       RenderPass = renderer.GetSwapchainRenderPass(),
-      VertexName = "vertex_skinned",
-      FragmentName = "fragment_skinned",
+      VertexName = "model_skinned_vertex",
+      FragmentName = "model_skinned_fragment",
       PipelineProvider = new PipelineModelProvider(),
-      DescriptorSetLayouts = [.. complexLayouts, _previousTexturesLayout],
+      DescriptorSetLayouts = [.. complexLayouts],
       PipelineName = Skinned3D
     });
-  }
 
-  private static int CalculateLengthOfPool(ReadOnlySpan<Entity> entities) {
-    int count = 0;
-    for (int i = 0; i < entities.Length; i++) {
-      var targetItems = entities[i].GetDrawables<IRender3DElement>();
-      for (int j = 0; j < targetItems.Length; j++) {
-        var t = targetItems[j] as IRender3DElement;
-        count += t!.MeshedNodesCount;
-      }
+    _descriptorPool = new VulkanDescriptorPool.Builder(_device)
+      .SetMaxSets(CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.UniformBuffer, CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.SampledImage, CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.Sampler, CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.InputAttachment, CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.StorageBuffer, CommonConstants.MAX_SETS)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
+      .Build();
 
-    }
-    return count;
-  }
-
-  private void BuildTargetDescriptorTexture(Entity entity, ref TextureManager textures, int modelPart = 0) {
-    var target = entity.GetDrawable<IRender3DElement>() as IRender3DElement;
-    var id = target!.GetTextureIdReference(modelPart);
-    var texture = textures.GetTextureLocal(id);
-    if (texture == null) {
-      var nid = textures.GetTextureIdLocal("./Resources/Textures/base/no_texture.png");
-      texture = textures.GetTextureLocal(nid);
-    }
-
-    texture.BuildDescriptor(_textureSetLayout, _descriptorPool);
-  }
-
-  private void BuildTargetDescriptorTexture(IRender3DElement target, ref TextureManager textureManager) {
-    for (int i = 0; i < target.MeshedNodesCount; i++) {
-      var textureId = target.GetTextureIdReference(i);
-      var texture = textureManager.GetTextureLocal(textureId);
-
-      if (texture == null) {
-        var nid = textureManager.GetTextureIdLocal("./Resources/Textures/base/no_texture.png");
-        texture = textureManager.GetTextureLocal(nid);
-      }
-
-      if (texture == null) return;
-
-      texture.BuildDescriptor(_textureSetLayout, _descriptorPool);
-    }
-  }
-  private static int CalculateNodesLength(ReadOnlySpan<Entity> entities) {
-    int len = 0;
-    foreach (var entity in entities) {
-      var i3d = entity.GetDrawable<IRender3DElement>() as IRender3DElement;
-      len += i3d!.MeshedNodesCount;
-    }
-    return len;
-  }
-
-  private static (ulong vtxCount, Vertex[] vertices) CalculateVertexCount(ReadOnlySpan<Entity> entities, bool hasSkinFlag) {
-    ulong vtxCount = 0;
-    List<Vertex> vertices = [];
-    foreach (var entity in entities) {
-      var i3d = entity.GetDrawable<IRender3DElement>() as IRender3DElement;
-      var result = i3d?.MeshedNodes.ToArray();
-      for (int i = 0; i < result?.Length; i++) {
-        if (result[i].HasSkin == hasSkinFlag) {
-          vtxCount += result[i]!.Mesh!.VertexCount;
-          vertices.AddRange(result[i]!.Mesh!.Vertices);
-        }
-      }
-    }
-    return (vtxCount, [.. vertices]);
-  }
-
-  public static (ulong idxCount, uint[] indices) CalculateIndexOffsets(ReadOnlySpan<Entity> entities, bool hasSkinFlag) {
-    ulong idxCount = 0;
-    List<uint> indices = [];
-    foreach (var entity in entities) {
-      var i3d = entity.GetDrawable<IRender3DElement>() as IRender3DElement;
-      var result = i3d?.MeshedNodes.ToArray();
-      for (int i = 0; i < result?.Length; i++) {
-        if (result[i].HasSkin == hasSkinFlag) {
-          idxCount += result[i]!.Mesh!.IndexCount;
-          indices.AddRange(result[i]!.Mesh!.Indices);
-        }
-      }
-    }
-    return (idxCount, [.. indices]);
-  }
-
-  private static (int len, int joints) CalculateNodesLengthWithSkin(ReadOnlySpan<Entity> entities) {
-    int len = 0;
-    int joints = 0;
-    foreach (var entity in entities) {
-      var i3d = entity.GetDrawable<IRender3DElement>() as IRender3DElement;
-      foreach (var mNode in i3d!.MeshedNodes) {
-        if (mNode.HasSkin) {
-          len += 1;
-          joints += mNode.Skin!.OutputNodeMatrices.Length;
-        }
-      }
-    }
-    return (len, joints);
   }
 
   public void Setup(ReadOnlySpan<Entity> entities, ref TextureManager textures) {
-    _device.WaitQueue();
-    var startTime = DateTime.Now;
-
     if (entities.Length < 1) {
       Logger.Warn("Entities that are capable of using 3D renderer are less than 1, thus 3D Render System won't be recreated");
       return;
     }
 
-    Logger.Info("Recreating Renderer 3D");
-
-    _descriptorPool = new VulkanDescriptorPool.Builder((VulkanDevice)_device)
-      .SetMaxSets(MAX_SETS)
-      .AddPoolSize(DescriptorType.SampledImage, MAX_SETS)
-      .AddPoolSize(DescriptorType.Sampler, MAX_SETS)
-      .AddPoolSize(DescriptorType.UniformBufferDynamic, MAX_SETS)
-      .AddPoolSize(DescriptorType.InputAttachment, MAX_SETS)
-      .AddPoolSize(DescriptorType.UniformBuffer, MAX_SETS)
-      .AddPoolSize(DescriptorType.StorageBuffer, MAX_SETS)
-      .SetPoolFlags(DescriptorPoolCreateFlags.None)
-      // .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
-      .Build();
-
-    _texturesCount = CalculateLengthOfPool(entities);
-
-    // entities.length before, param no.3
-    _modelBuffer = new(
-      _allocator,
-      _device,
-      (ulong)Unsafe.SizeOf<ModelUniformBufferObject>(),
-      MAX_SETS,
-      BufferUsage.UniformBuffer,
-      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      _device.MinUniformBufferOffsetAlignment
-    );
-
-    // LastKnownElemCount = entities.Length;
     LastKnownElemCount = CalculateNodesLength(entities);
     LastKnownElemSize = 0;
     var (len, joints) = CalculateNodesLengthWithSkin(entities);
     LastKnownSkinnedElemCount = (ulong)len;
     LastKnownSkinnedElemJointsCount = (ulong)joints;
 
+    Logger.Info($"Recreating Renderer 3D [{LastKnownSkinnedElemCount}]");
+
     for (int i = 0; i < entities.Length; i++) {
       var targetModel = entities[i].GetDrawable<IRender3DElement>() as IRender3DElement;
-      BuildTargetDescriptorTexture(targetModel!, ref textures);
-      // BuildTargetDescriptorJointBuffer(targetModel!);
-
       LastKnownElemSize += targetModel!.CalculateBufferSize();
     }
 
-    var range = _modelBuffer.GetDescriptorBufferInfo(_modelBuffer.GetAlignmentSize());
-    range.range = _modelBuffer.GetAlignmentSize();
-    unsafe {
-      _dynamicWriter = new VulkanDescriptorWriter((VulkanDescriptorSetLayout)_setLayout, (VulkanDescriptorPool)_descriptorPool);
-      _dynamicWriter.WriteBuffer(0, &range);
-      _dynamicWriter.Build(out _dynamicSet);
-    }
+    // CreateVertexBuffer(entities);
+    // CreateIndexBuffer(entities);
 
-    if (_hatchTexture == null) {
-      textures.AddTextureGlobal(HatchTextureName).Wait();
-      var id = textures.GetTextureIdGlobal(HatchTextureName);
-      _hatchTexture = textures.GetTextureGlobal(id);
-      _hatchTexture.BuildDescriptor(_textureSetLayout, _descriptorPool);
-    }
-
-    // CreateGlobalBuffers(entities);
-
-    var endTime = DateTime.Now;
-    Logger.Warn($"[RENDER 3D RELOAD TIME]: {(endTime - startTime).TotalMilliseconds}");
-  }
-
-  private unsafe void CreateGlobalBuffers(ReadOnlySpan<Entity> entities) {
-    if (!GlobalVertexBuffer) return;
-
-    var (vtxCount, vertices) = CalculateVertexCount(entities, hasSkinFlag: true);
-    ulong vtxBufferSize = ((ulong)Unsafe.SizeOf<Vertex>()) * vtxCount;
-
-    Logger.Info($"START VTX: {vtxCount}");
-
-    var stagingBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      (ulong)Unsafe.SizeOf<Vertex>(),
-      vtxCount,
-      BufferUsage.TransferSrc,
-      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      default,
-      true
-    );
-
-    stagingBuffer.Map(vtxBufferSize);
-    fixed (Vertex* verticesPtr = vertices) {
-      stagingBuffer.WriteToBuffer((nint)verticesPtr, vtxBufferSize);
-    }
-
-    _complexVertexBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      (ulong)Unsafe.SizeOf<Vertex>(),
-      vtxCount,
-      BufferUsage.VertexBuffer | BufferUsage.TransferDst,
-      MemoryProperty.DeviceLocal
-    );
-
-    _device.CopyBuffer(stagingBuffer.GetBuffer(), _complexVertexBuffer.GetBuffer(), vtxBufferSize);
-    stagingBuffer.Dispose();
-
-    var (idxCount, indices) = CalculateIndexOffsets(entities, hasSkinFlag: true);
-
-    stagingBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      sizeof(uint),
-      idxCount,
-      BufferUsage.TransferSrc,
-      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      default,
-      true
-    );
-
-    stagingBuffer.Map(sizeof(uint) * idxCount);
-    fixed (uint* indicesPtr = indices) {
-      stagingBuffer.WriteToBuffer((nint)indicesPtr, sizeof(uint) * idxCount);
-    }
-
-    _complexIndexBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      sizeof(uint),
-      idxCount,
-      BufferUsage.IndexBuffer | BufferUsage.TransferDst,
-      MemoryProperty.DeviceLocal
-    );
-
-    _device.CopyBuffer(stagingBuffer.GetBuffer(), _complexIndexBuffer.GetBuffer(), sizeof(uint) * idxCount);
-    stagingBuffer.Dispose();
-  }
-
-  public bool CheckSizes(ReadOnlySpan<Entity> entities) {
-    if (_modelBuffer == null) {
-      var textureManager = Application.Instance.TextureManager;
-      Setup(entities, ref textureManager);
-    }
-    if (entities.Length > (int)_modelBuffer!.GetInstanceCount()) {
-      return false;
-    } else if (entities.Length < (int)_modelBuffer.GetInstanceCount()) {
-      return true;
-    }
-
-    return true;
-  }
-
-  public bool CheckTextures(ReadOnlySpan<Entity> entities) {
-    var len = CalculateLengthOfPool(entities);
-    return len == _texturesCount;
+    CreateIndirectCommands(entities);
+    CreateIndirectBuffer();
   }
 
   public void Update(
@@ -401,6 +155,10 @@ public class Render3DSystem : SystemBase, IRenderSystem {
 
     foreach (var node in frustumNodes) {
       var transform = node.ParentRenderer.GetOwner().GetComponent<Transform>();
+      var material = node.ParentRenderer.GetOwner().GetComponent<MaterialComponent>();
+      var targetTexture = _textureManager.GetTextureLocal(node.Mesh!.TextureIdReference);
+      float texId = (float)GetIndexOfMyTexture(targetTexture.TextureName)!;
+
       if (node.HasSkin) {
         nodeObjectsSkinned.Add(
           new(
@@ -410,7 +168,10 @@ public class Render3DSystem : SystemBase, IRenderSystem {
               NormalMatrix = transform.NormalMatrix,
               NodeMatrix = node.Mesh!.Matrix,
               JointsBufferOffset = new Vector4(offset, 0, 0, 0),
-              FilterFlag = node.FilterMeInShader == true ? 1 : 0
+              ColorAndFilterFlag = new Vector4(material.Color, node.FilterMeInShader == true ? 1 : 0),
+              AmbientAndTexId0 = new Vector4(material.Ambient, texId),
+              DiffuseAndTexId1 = new Vector4(material.Diffuse, texId),
+              SpecularAndShininess = new Vector4(material.Specular, material.Shininess)
             }
           )
         );
@@ -425,7 +186,10 @@ public class Render3DSystem : SystemBase, IRenderSystem {
               NormalMatrix = transform.NormalMatrix,
               NodeMatrix = node.Mesh!.Matrix,
               JointsBufferOffset = Vector4.Zero,
-              FilterFlag = node.FilterMeInShader == true ? 1 : 0
+              ColorAndFilterFlag = new Vector4(material.Color, node.FilterMeInShader == true ? 1 : 0),
+              AmbientAndTexId0 = new Vector4(material.Ambient, texId),
+              DiffuseAndTexId1 = new Vector4(material.Diffuse, texId),
+              SpecularAndShininess = new Vector4(material.Specular, material.Shininess)
             }
           )
         );
@@ -451,37 +215,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
 
     PerfMonitor.Render3DComputeTime = PerfMonitor.ComunnalStopwatch.ElapsedMilliseconds;
   }
-  private List<Indirect3DBatch> CreateBatch(List<KeyValuePair<Node, ObjectData>> nodeObjects) {
-    List<Indirect3DBatch> batches = [];
 
-    if (nodeObjects.Count == 0) return batches;
-
-    Indirect3DBatch? currentBatch = null;
-
-    foreach (var nodeObject in nodeObjects) {
-      var nodeName = nodeObject.Key.Name;
-
-      if (currentBatch == null || currentBatch.Name != nodeName) {
-        if (currentBatch != null) {
-          currentBatch.Count = (uint)currentBatch.NodeObjects.Count;
-          batches.Add(currentBatch);
-        }
-        currentBatch = new Indirect3DBatch {
-          Name = nodeName,
-          NodeObjects = []
-        };
-      }
-
-      currentBatch.NodeObjects.Add(nodeObject);
-    }
-
-    if (currentBatch != null) {
-      currentBatch.Count = (uint)currentBatch.NodeObjects.Count;
-      batches.Add(currentBatch);
-    }
-
-    return batches;
-  }
   public void Render(FrameInfo frameInfo) {
     PerfMonitor.Clear3DRendererInfo();
     PerfMonitor.NumberOfObjectsRenderedIn3DRenderer = (uint)LastElemRenderedCount;
@@ -493,283 +227,292 @@ public class Render3DSystem : SystemBase, IRenderSystem {
     }
   }
 
-  public void RenderTargets() {
-    throw new NotImplementedException();
-  }
-
-  private void RenderSimple(FrameInfo frameInfo, Span<Node> nodes) {
+  public unsafe void RenderSimple(FrameInfo frameInfo, Span<Node> nodes) {
     BindPipeline(frameInfo.CommandBuffer, Simple3D);
-    unsafe {
-      vkCmdBindDescriptorSets(
-        frameInfo.CommandBuffer,
-        VkPipelineBindPoint.Graphics,
-        _pipelines[Simple3D].PipelineLayout,
-        2,
-        1,
-        &frameInfo.GlobalDescriptorSet,
-        0,
-        null
-      );
 
-      vkCmdBindDescriptorSets(
-        frameInfo.CommandBuffer,
-        VkPipelineBindPoint.Graphics,
-        _pipelines[Simple3D].PipelineLayout,
-        5,
-        1,
-        &frameInfo.PointLightsDescriptorSet,
-        0,
-        null
-      );
+    Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, _pipelines[Simple3D].PipelineLayout, 0, 1);
+    Descriptor.BindDescriptorSet(frameInfo.GlobalDescriptorSet, frameInfo, _pipelines[Simple3D].PipelineLayout, 1, 1);
+    Descriptor.BindDescriptorSet(frameInfo.ObjectDataDescriptorSet, frameInfo, _pipelines[Simple3D].PipelineLayout, 2, 1);
+    Descriptor.BindDescriptorSet(frameInfo.PointLightsDescriptorSet, frameInfo, _pipelines[Simple3D].PipelineLayout, 3, 1);
 
-      vkCmdBindDescriptorSets(
-        frameInfo.CommandBuffer,
-        VkPipelineBindPoint.Graphics,
-        _pipelines[Simple3D].PipelineLayout,
-        3,
-        1,
-        &frameInfo.ObjectDataDescriptorSet,
-        0,
-        null
-      );
-
-      if (_renderer.Swapchain.PreviousFrame != -1) {
-        vkCmdBindDescriptorSets(
-          frameInfo.CommandBuffer,
-          VkPipelineBindPoint.Graphics,
-          _pipelines[Simple3D].PipelineLayout,
-          6,
-          _renderer.PreviousPostProcessDescriptor
-        );
-      }
-    }
-
-    _modelBuffer.Map(_modelBuffer.GetAlignmentSize());
-    _modelBuffer.Flush();
-
-    Guid prevTextureId = Guid.Empty;
-    Node prevNode = null!;
+    ulong lastVtxCount = 0;
 
     for (int i = 0; i < nodes.Length; i++) {
       if (nodes[i].ParentRenderer.GetOwner().CanBeDisposed || !nodes[i].ParentRenderer.GetOwner().Active) continue;
       if (!nodes[i].ParentRenderer.FinishedInitialization) continue;
 
-      var materialData = nodes[i].ParentRenderer.GetOwner().GetComponent<MaterialComponent>().Data;
-      unsafe {
-        _modelUbo->Color = materialData.Color;
-        _modelUbo->Specular = materialData.Specular;
-        _modelUbo->Shininess = materialData.Shininess;
-        _modelUbo->Diffuse = materialData.Diffuse;
-        _modelUbo->Ambient = materialData.Ambient;
+      if (lastVtxCount != nodes[i].Mesh!.VertexCount) {
+        nodes[i].BindNode(frameInfo.CommandBuffer);
+        lastVtxCount = nodes[i].Mesh!.VertexCount;
       }
-
-      uint dynamicOffset = (uint)_modelBuffer.GetAlignmentSize() * (uint)i;
-
-      unsafe {
-        _modelBuffer.WriteToBuffer((IntPtr)_modelUbo, _modelBuffer.GetInstanceSize(), dynamicOffset >> 1);
-      }
-
-      unsafe {
-        fixed (VkDescriptorSet* descPtr = &_dynamicSet) {
-          vkCmdBindDescriptorSets(
-            frameInfo.CommandBuffer,
-            VkPipelineBindPoint.Graphics,
-            _pipelines[Simple3D].PipelineLayout,
-            4,
-            1,
-            descPtr,
-            1,
-            &dynamicOffset
-          );
-        }
-      }
-
-      if (!nodes[i].ParentRenderer.GetOwner().CanBeDisposed && nodes[i].ParentRenderer.GetOwner().Active) {
-        if (i == _texturesCount) continue;
-        if (prevTextureId != nodes[i].Mesh!.TextureIdReference) {
-          var targetTexture = frameInfo.TextureManager.GetTextureLocal(nodes[i].Mesh!.TextureIdReference);
-          VkDescriptorSet[] textureDescriptors = [targetTexture.TextureDescriptor, _hatchTexture.TextureDescriptor];
-          Descriptor.BindDescriptorSets(textureDescriptors, frameInfo, PipelineLayout, 0);
-          // Descriptor.BindDescriptorSet(
-          //   targetTexture.TextureDescriptor,
-          //   frameInfo,
-          //   _pipelines[Simple3D].PipelineLayout,
-          //   0,
-          //   1
-          // );
-          prevTextureId = nodes[i].Mesh!.TextureIdReference;
-          PerfMonitor.TextureBindingsIn3DRenderer += 1;
-        }
-
-        if (prevNode?.Name != nodes[i].Name || prevNode?.Mesh?.VertexCount != nodes[i]?.Mesh?.VertexCount) {
-          nodes[i].BindNode(frameInfo.CommandBuffer);
-          PerfMonitor.VertexBindingsIn3DRenderer += 1;
-          prevNode = nodes[i];
-        }
-        nodes[i].DrawNode(frameInfo.CommandBuffer, (uint)i);
-      }
+      nodes[i].DrawNode(frameInfo.CommandBuffer, (uint)i);
     }
-
-    _modelBuffer.Unmap();
   }
 
-  private void RenderComplex(FrameInfo frameInfo, Span<Node> nodes, int prevIdx) {
+  public unsafe void RenderComplex(FrameInfo frameInfo, Span<Node> nodes, int offset) {
     BindPipeline(frameInfo.CommandBuffer, Skinned3D);
-    unsafe {
-      vkCmdBindDescriptorSets(
-        frameInfo.CommandBuffer,
-        VkPipelineBindPoint.Graphics,
-        _pipelines[Skinned3D].PipelineLayout,
-        2,
-        1,
-        &frameInfo.GlobalDescriptorSet,
-        0,
-        null
-      );
 
-      vkCmdBindDescriptorSets(
-        frameInfo.CommandBuffer,
-        VkPipelineBindPoint.Graphics,
-        _pipelines[Skinned3D].PipelineLayout,
-        5,
-        1,
-        &frameInfo.PointLightsDescriptorSet,
-        0,
-        null
-      );
+    Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, _pipelines[Skinned3D].PipelineLayout, 0, 1);
+    Descriptor.BindDescriptorSet(frameInfo.GlobalDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 1, 1);
+    Descriptor.BindDescriptorSet(frameInfo.ObjectDataDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 2, 1);
+    Descriptor.BindDescriptorSet(frameInfo.PointLightsDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 3, 1);
+    Descriptor.BindDescriptorSet(frameInfo.JointsBufferDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 4, 1);
 
-      vkCmdBindDescriptorSets(
-        frameInfo.CommandBuffer,
-        VkPipelineBindPoint.Graphics,
-        _pipelines[Skinned3D].PipelineLayout,
-        3,
-        1,
-        &frameInfo.ObjectDataDescriptorSet,
-        0,
-        null
-      );
-
-      vkCmdBindDescriptorSets(
-        frameInfo.CommandBuffer,
-        VkPipelineBindPoint.Graphics,
-        _pipelines[Skinned3D].PipelineLayout,
-        6,
-        1,
-        &frameInfo.JointsBufferDescriptorSet,
-        0,
-        null
-      );
-
-      if (_renderer.Swapchain.PreviousFrame != -1) {
-        vkCmdBindDescriptorSets(
-          frameInfo.CommandBuffer,
-          VkPipelineBindPoint.Graphics,
-          _pipelines[Skinned3D].PipelineLayout,
-          7,
-          _renderer.PreviousPostProcessDescriptor
-        );
-      }
-    }
-
-    _modelBuffer.Map(_modelBuffer.GetAlignmentSize());
-    _modelBuffer.Flush();
-
-    ulong vtxOffset = 0;
-    ulong idxOffset = 0;
-
-    Guid prevTextureId = Guid.Empty;
-    Node? prevNode = null;
+    ulong lastVtxCount = 0;
 
     for (int i = 0; i < nodes.Length; i++) {
       if (nodes[i].ParentRenderer.GetOwner().CanBeDisposed || !nodes[i].ParentRenderer.GetOwner().Active) continue;
       if (!nodes[i].ParentRenderer.FinishedInitialization) continue;
-
-      var materialData = nodes[i].ParentRenderer.GetOwner().GetComponent<MaterialComponent>().Data;
-      unsafe {
-        _modelUbo->Color = materialData.Color;
-        _modelUbo->Specular = materialData.Specular;
-        _modelUbo->Shininess = materialData.Shininess;
-        _modelUbo->Diffuse = materialData.Diffuse;
-        _modelUbo->Ambient = materialData.Ambient;
-      }
-
-      uint dynamicOffset = (uint)_modelBuffer.GetAlignmentSize() * ((uint)i + (uint)prevIdx);
-
-      unsafe {
-        _modelBuffer.WriteToBuffer((IntPtr)(_modelUbo), _modelBuffer.GetInstanceSize(), dynamicOffset >> 1);
-      }
-
-      unsafe {
-        fixed (VkDescriptorSet* descPtr = &_dynamicSet) {
-          vkCmdBindDescriptorSets(
-            frameInfo.CommandBuffer,
-            VkPipelineBindPoint.Graphics,
-            _pipelines[Skinned3D].PipelineLayout,
-            4,
-            1,
-            descPtr,
-            1,
-            &dynamicOffset
-          );
-        }
-      }
 
       if (i <= nodes.Length && nodes[i].ParentRenderer.Animations.Count > 0) {
         nodes[i].ParentRenderer.GetOwner().TryGetComponent<AnimationController>()?.Update(nodes[i]);
       }
 
-      if (prevTextureId != nodes[i].Mesh!.TextureIdReference) {
-        var targetTexture = frameInfo.TextureManager.GetTextureLocal(nodes[i].Mesh!.TextureIdReference);
-        VkDescriptorSet[] textureDescriptors = [targetTexture.TextureDescriptor, _hatchTexture.TextureDescriptor];
-        // Descriptor.BindDescriptorSet(targetTexture.TextureDescriptor, frameInfo, PipelineLayout, 0, 1);
-        Descriptor.BindDescriptorSets(textureDescriptors, frameInfo, PipelineLayout, 0);
-        prevTextureId = nodes[i].Mesh!.TextureIdReference;
-        PerfMonitor.TextureBindingsIn3DRenderer += 1;
+      if (lastVtxCount != nodes[i].Mesh!.VertexCount) {
+        nodes[i].BindNode(frameInfo.CommandBuffer);
+        lastVtxCount = nodes[i].Mesh!.VertexCount;
       }
 
-      if (GlobalVertexBuffer) {
-        nodes[i].BindNode(frameInfo.CommandBuffer, _complexVertexBuffer, _complexIndexBuffer, vtxOffset, idxOffset);
-        nodes[i].DrawNode(frameInfo.CommandBuffer, (int)vtxOffset, (uint)i + (uint)prevIdx);
+      nodes[i].DrawNode(frameInfo.CommandBuffer, (uint)i + (uint)offset);
+    }
+  }
 
-        vtxOffset += nodes[i].Mesh!.VertexCount * (ulong)Unsafe.SizeOf<Vertex>();
-        idxOffset += nodes[i].Mesh!.IndexCount * sizeof(uint);
-      } else {
-        if (prevNode?.Name != nodes[i].Name || prevNode?.Mesh?.VertexCount != nodes[i]?.Mesh?.VertexCount) {
-          nodes[i].BindNode(frameInfo.CommandBuffer);
-          PerfMonitor.VertexBindingsIn3DRenderer += 1;
-          prevNode = nodes[i];
+  public unsafe void Render_(FrameInfo frameInfo) {
+    BindPipeline(frameInfo.CommandBuffer, Skinned3D);
+
+    Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, _pipelines[Skinned3D].PipelineLayout, 0, 1);
+    Descriptor.BindDescriptorSet(frameInfo.GlobalDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 1, 1);
+    Descriptor.BindDescriptorSet(frameInfo.ObjectDataDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 2, 1);
+    Descriptor.BindDescriptorSet(frameInfo.PointLightsDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 3, 1);
+    Descriptor.BindDescriptorSet(frameInfo.JointsBufferDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 4, 1);
+
+    // _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _globalVertexBuffer, 0);
+    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
+    _renderer.CommandList.DrawIndexedIndirect(
+      frameInfo.CommandBuffer,
+      _indirectBuffer!.GetBuffer(),
+      0,
+      (uint)_indirectDrawCommands.Count,
+      (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
+    );
+
+    // Logger.Info("render");
+  }
+
+  public bool CheckTextures(ReadOnlySpan<Entity> entities) {
+    var len = CalculateLengthOfPool(entities);
+    // return len == _texturesCount;
+
+    return true;
+  }
+
+  public bool CheckSizes(ReadOnlySpan<Entity> entities) {
+    var newCount = CalculateNodesLength(entities);
+
+    if (newCount > LastKnownElemCount) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private static int CalculateLengthOfPool(ReadOnlySpan<Entity> entities) {
+    int count = 0;
+    for (int i = 0; i < entities.Length; i++) {
+      var targetItems = entities[i].GetDrawables<IRender3DElement>();
+      for (int j = 0; j < targetItems.Length; j++) {
+        var t = targetItems[j] as IRender3DElement;
+        count += t!.MeshedNodesCount;
+      }
+
+    }
+    return count;
+  }
+
+  private static int CalculateNodesLength(ReadOnlySpan<Entity> entities) {
+    int len = 0;
+    foreach (var entity in entities) {
+      var i3d = entity.GetDrawable<IRender3DElement>() as IRender3DElement;
+      len += i3d!.MeshedNodesCount;
+    }
+    return len;
+  }
+  private static int? GetIndexOfMyTexture(string texName) {
+    return Application.Instance.TextureManager.PerSceneLoadedTextures.Where(x => x.Value.TextureName == texName).FirstOrDefault().Value.TextureManagerIndex;
+  }
+
+  private static (int len, int joints) CalculateNodesLengthWithSkin(ReadOnlySpan<Entity> entities) {
+    int len = 0;
+    int joints = 0;
+    foreach (var entity in entities) {
+      var i3d = entity.GetDrawable<IRender3DElement>() as IRender3DElement;
+      foreach (var mNode in i3d!.MeshedNodes) {
+        if (mNode.HasSkin) {
+          len += 1;
+          joints += mNode.Skin!.OutputNodeMatrices.Length;
         }
-        nodes[i].DrawNode(frameInfo.CommandBuffer, (uint)i + (uint)prevIdx);
+      }
+    }
+    return (len, joints);
+  }
+
+  private void CreateIndirectCommands(ReadOnlySpan<Entity> drawables) {
+    _indirectDrawCommands.Clear();
+    uint indexOffset = 0;
+
+    for (int i = 0; i < drawables.Length; i++) {
+      foreach (var node in drawables[i].GetComponent<MeshRenderer>().MeshedNodes) {
+        var mesh = node.Mesh;
+        if (mesh?.IndexBuffer == null)
+          continue;
+
+        var cmd = new VkDrawIndexedIndirectCommand {
+          indexCount = (uint)mesh.Indices.Length,
+          instanceCount = 1,
+          firstIndex = indexOffset,
+          vertexOffset = 0,
+          firstInstance = (uint)i
+        };
+
+        _indirectDrawCommands.Add(cmd);
+        indexOffset += (uint)mesh.Indices.Length;
+      }
+    }
+  }
+
+  private unsafe void CreateIndirectBuffer() {
+    _indirectBuffer?.Dispose();
+
+    var size = _indirectDrawCommands.Count * Unsafe.SizeOf<VkDrawIndexedIndirectCommand>();
+
+    var stagingBuffer = new DwarfBuffer(
+      _allocator,
+      _device,
+      (ulong)size,
+      BufferUsage.TransferSrc,
+      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
+      stagingBuffer: true,
+      cpuAccessible: true
+    );
+
+    stagingBuffer.Map((ulong)size);
+    fixed (VkDrawIndexedIndirectCommand* pIndirectCommands = _indirectDrawCommands.ToArray()) {
+      stagingBuffer.WriteToBuffer((nint)pIndirectCommands, (ulong)size);
+    }
+
+    _indirectBuffer = new DwarfBuffer(
+      _allocator,
+      _device,
+      (ulong)size,
+      BufferUsage.TransferDst | BufferUsage.IndirectBuffer,
+      MemoryProperty.DeviceLocal
+    );
+
+    _device.CopyBuffer(stagingBuffer.GetBuffer(), _indirectBuffer.GetBuffer(), (ulong)size);
+    stagingBuffer.Dispose();
+  }
+
+  private unsafe void CreateIndexBuffer(ReadOnlySpan<Entity> drawables) {
+    _globalIndexBuffer?.Dispose();
+
+    var adjustedIndices = new List<uint>();
+    uint vertexOffset = 0;
+
+    for (int i = 0; i < drawables.Length; i++) {
+      foreach (var node in drawables[i].GetComponent<MeshRenderer>().MeshedNodes) {
+        var mesh = node.Mesh;
+        if (mesh?.IndexBuffer == null) continue;
+
+        foreach (var idx in mesh.Indices) {
+          adjustedIndices.Add(idx + vertexOffset);
+        }
+
+        vertexOffset += (uint)mesh.Vertices.Length;
       }
     }
 
-    _modelBuffer.Unmap();
+    var indexByteSize = (ulong)adjustedIndices.Count * sizeof(uint);
+
+    var stagingBuffer = new DwarfBuffer(
+      _allocator,
+      _device,
+      indexByteSize,
+      BufferUsage.TransferSrc,
+      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
+      stagingBuffer: true,
+      cpuAccessible: true
+    );
+
+    stagingBuffer.Map(indexByteSize);
+    fixed (uint* pSrc = adjustedIndices.ToArray()) {
+      stagingBuffer.WriteToBuffer((nint)pSrc, indexByteSize);
+    }
+
+    _globalIndexBuffer = new DwarfBuffer(
+      _allocator,
+      _device,
+      (ulong)Unsafe.SizeOf<uint>(),
+      (uint)adjustedIndices.Count,
+      BufferUsage.IndexBuffer | BufferUsage.TransferDst,
+      MemoryProperty.DeviceLocal
+    );
+
+    _device.CopyBuffer(
+      stagingBuffer.GetBuffer(),
+      _globalIndexBuffer.GetBuffer(),
+      indexByteSize
+    );
+    stagingBuffer.Dispose();
   }
 
+  private unsafe void CreateVertexBuffer(ReadOnlySpan<Entity> drawables) {
+    _globalVertexBuffer?.Dispose();
+    List<Vertex> vertices = [];
+
+    for (int i = 0; i < drawables.Length; i++) {
+      foreach (var node in drawables[i].GetComponent<MeshRenderer>().MeshedNodes) {
+        var buffer = node.Mesh?.VertexBuffer;
+        if (buffer != null) {
+          vertices.AddRange(node.Mesh!.Vertices);
+        }
+      }
+    }
+
+    var vtxSize = (ulong)vertices.Count * (ulong)Unsafe.SizeOf<Vertex>();
+
+    var stagingBuffer = new DwarfBuffer(
+      _allocator,
+      _device,
+      vtxSize,
+      BufferUsage.TransferSrc,
+      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
+      stagingBuffer: true,
+      cpuAccessible: true
+    );
+
+    stagingBuffer.Map(vtxSize);
+    fixed (Vertex* pVertices = vertices.ToArray()) {
+      stagingBuffer.WriteToBuffer((nint)pVertices, vtxSize);
+    }
+
+    _globalVertexBuffer = new DwarfBuffer(
+      _allocator,
+      _device,
+      vtxSize,
+      (ulong)vertices.Count,
+      BufferUsage.StorageBuffer | BufferUsage.TransferDst,
+      MemoryProperty.DeviceLocal
+    );
+
+    _device.CopyBuffer(stagingBuffer.GetBuffer(), _globalVertexBuffer.GetBuffer(), vtxSize);
+    stagingBuffer.Dispose();
+  }
 
   public override unsafe void Dispose() {
     _device.WaitQueue();
-    _device.WaitDevice();
-
-    MemoryUtils.FreeIntPtr<SimpleModelPushConstant>((nint)_pushConstantData);
-    MemoryUtils.FreeIntPtr<ModelUniformBufferObject>((nint)_modelUbo);
-
-    _complexVertexBuffer?.Dispose();
-    _complexIndexBuffer?.Dispose();
-
-    _modelBuffer?.Dispose();
-    // _descriptorPool?.FreeDescriptors([_dynamicSet]);
-
-    _jointDescriptorLayout?.Dispose();
-    _previousTexturesLayout?.Dispose();
-
+    _globalVertexBuffer?.Dispose();
+    _globalIndexBuffer?.Dispose();
+    _indirectBuffer?.Dispose();
     base.Dispose();
   }
-
-  public IRender3DElement[] CachedRenderables => [.. _notSkinnedEntitiesCache, .. _skinnedEntitiesCache];
-  public int LastKnownElemCount { get; private set; }
-  public int LastElemRenderedCount => _notSkinnedNodesCache.Length + _skinnedNodesCache.Length;
-  public ulong LastKnownElemSize { get; private set; }
-  public ulong LastKnownSkinnedElemCount { get; private set; }
-  public ulong LastKnownSkinnedElemJointsCount { get; private set; }
 }

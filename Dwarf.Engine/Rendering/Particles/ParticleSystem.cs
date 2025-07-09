@@ -27,9 +27,10 @@ public class ParticleSystem : SystemBase {
     nint allocator,
     IDevice device,
     IRenderer renderer,
+    TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
     IPipelineConfigInfo configInfo = null!
-  ) : base(allocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, textureManager, configInfo) {
     _textureLayout = new VulkanDescriptorSetLayout.Builder(device)
       .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.Fragment)
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)
@@ -85,7 +86,7 @@ public class ParticleSystem : SystemBase {
     _descriptorPool = new VulkanDescriptorPool.Builder((VulkanDevice)_device)
       .SetMaxSets((uint)s_particles.Count)
       .AddPoolSize(DescriptorType.UniformBuffer, (uint)s_particles.Count)
-      .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
     _requiredCapacity = requiredCapacity;
@@ -96,7 +97,7 @@ public class ParticleSystem : SystemBase {
       .SetMaxSets((uint)_texturesCount)
       .AddPoolSize(DescriptorType.SampledImage, (uint)_texturesCount)
       .AddPoolSize(DescriptorType.Sampler, (uint)_texturesCount)
-      .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
       foreach (var textureId in s_textures) {

@@ -73,10 +73,11 @@ public class PostProcessingSystem : SystemBase {
     nint allocator,
     IDevice device,
     IRenderer renderer,
+    TextureManager textureManager,
     SystemConfiguration systemConfiguration,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     IPipelineConfigInfo configInfo = null!
-  ) : base(allocator, device, renderer, configInfo) {
+  ) : base(allocator, device, renderer, textureManager, configInfo) {
     _textureManager = Application.Instance.TextureManager;
 
     _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
@@ -125,7 +126,7 @@ public class PostProcessingSystem : SystemBase {
       .AddPoolSize(DescriptorType.SampledImage, 10)
       .AddPoolSize(DescriptorType.Sampler, 10)
       .AddPoolSize(DescriptorType.CombinedImageSampler, 20)
-      .SetPoolFlags(DescriptorPoolCreateFlags.FreeDescriptorSet)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
     var texLen = systemConfiguration.PostProcessInputTextures?.Length;

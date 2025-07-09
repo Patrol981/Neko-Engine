@@ -18,18 +18,18 @@ public class SpriteRenderer : Component, IDrawable2D {
   public Vector2 Size => GetSize();
   public Bounds2D Bounds => GetBounds();
   public Mesh CollisionMesh => Sprites[CurrentSprite].SpriteMesh;
-
+  public Mesh Mesh => Sprites[CurrentSprite].SpriteMesh;
+  public IDrawable2D[] Children => [];
 
   public Entity Entity => Owner;
   public bool Active => Owner.Active;
   public int SpriteIndex => Sprites[CurrentSprite].SpriteIndex;
   public int SpriteCount => Sprites.Length;
   public ITexture Texture => Sprites[CurrentSprite].Texture;
+  public ITexture[] SpriteSheet => [.. Sprites.Select(x => x.Texture)];
   public Vector2I SpriteSheetSize => Sprites[CurrentSprite].SpriteSheetSize;
   public bool FlipX { get; set; }
   public bool FlipY { get; set; }
-  public bool NeedPipelineCache => false;
-  public bool DescriptorBuilt => Sprites.Any(x => x.Texture.TextureDescriptor != 0);
 
   public float DirectionX => FlipX ? -1 : 1;
 

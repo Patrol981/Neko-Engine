@@ -1,35 +1,49 @@
-vec3 calc_point_light(PointLight light, vec3 normal, vec3 viewDir) {
+vec3 calc_point_light(
+  PointLight light,
+  vec3 normal,
+  vec3 viewDir,
+  float pShininess,
+  vec3 pAmbient,
+  vec3 pSpecular
+) {
   vec3 lightDirection = normalize(light.lightPosition.xyz - fragPositionWorld);
   // diffuse shading
   float diff = max(dot(normal, lightDirection), 0.0);
   // specular shading
   vec3 reflectDir = reflect(-lightDirection, normal);
-  float spec = pow(max(dot(viewDir, reflectDir), 0.0), modelUBO.shininess);
+  float spec = pow(max(dot(viewDir, reflectDir), 0.0), pShininess);
   // attenuation
   float distance = length(light.lightPosition.xyz - fragPositionWorld);
   float attenuation = 1.0 / (distance +
     (distance * distance));
 
   // combine results
-  vec3 ambient  = modelUBO.ambient;
+  vec3 ambient  = pAmbient;
   vec3 diffuse  = light.lightColor.xyz * (diff);
-  vec3 specular = modelUBO.specular * spec;
+  vec3 specular = pSpecular * spec;
   // diffuse *= attenuation;
   diffuse *= light.lightColor.w;
   return (diffuse);
 }
 
-vec3 calc_dir_light(DirectionalLight directionalLight, vec3 normal, vec3 viewDir) {
+vec3 calc_dir_light(
+  DirectionalLight directionalLight,
+  vec3 normal, 
+  vec3 viewDir,
+  float pShininess,
+  vec3 pDiffuse,
+  vec3 pSpecular
+) {
   vec3 lightDirection = normalize(-directionalLight.lightPosition);
   // diffuse shading
   float diff = max(dot(normal, lightDirection), 0.0);
   // specular shading
   vec3 reflectDir = reflect(-lightDirection, normal);
-  float spec = pow(max(dot(viewDir, reflectDir), 0.0), modelUBO.shininess);
+  float spec = pow(max(dot(viewDir, reflectDir), 0.0), pShininess);
   // combine results
   vec3 ambient  = directionalLight.ambientLightColor.xyz;
-  vec3 diffuse  = directionalLight.lightColor.xyz * (diff * modelUBO.diffuse);
-  vec3 specular = directionalLight.lightColor.xyz * (spec * modelUBO.specular) * directionalLight.lightIntensity;
+  vec3 diffuse  = directionalLight.lightColor.xyz * (diff * pDiffuse);
+  vec3 specular = directionalLight.lightColor.xyz * (spec * pSpecular) * directionalLight.lightIntensity;
   // vec3 specular = directionalLight.lightIntensity * spec;
   return (ambient + diffuse + specular);
 }

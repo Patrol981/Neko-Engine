@@ -2,6 +2,9 @@ struct ObjectData {
   mat4 transformMatrix;
   mat4 normalMatrix;
   mat4 nodeMatrix;
-  int filterFlag;
   vec4 jointsBufferOffset;
+  vec4 colorAndFilterFlag;
+  vec4 ambientAndTexId0;
+  vec4 diffuseAndTexId1;
+  vec4 specularAndShininess;
 };

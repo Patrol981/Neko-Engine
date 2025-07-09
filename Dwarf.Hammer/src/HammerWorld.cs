@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Numerics;
 using Dwarf.Hammer.Enums;
 using Dwarf.Hammer.Models;
@@ -6,12 +6,12 @@ using Dwarf.Hammer.Models;
 namespace Dwarf.Hammer;
 
 public class HammerWorld {
-  internal Dictionary<BodyId, HammerObject> Bodies = [];
+  internal ConcurrentDictionary<BodyId, HammerObject> Bodies = [];
   internal float Gravity = 9.80665f;
   const float THRESHOLD = 0.5f;
 
-  private Dictionary<BodyId, HammerObject> _sprites = [];
-  private Dictionary<(BodyId, BodyId), bool> _contactMap = [];
+  private readonly ConcurrentDictionary<BodyId, HammerObject> _sprites = [];
+  private readonly ConcurrentDictionary<(BodyId, BodyId), bool> _contactMap = [];
   private float _dt;
 
   private readonly HammerInstance _hammerInstance;
@@ -24,11 +24,12 @@ public class HammerWorld {
   }
 
   public Task Simulate(float dt) {
-    _dt = dt;
+    // _dt = dt;
+    _dt = 1 / (float)60;
 
     Dictionary<BodyId, HammerObject> snapshot;
     lock (_bodiesLock) {
-      snapshot = new Dictionary<BodyId, HammerObject>(Bodies);
+      snapshot = new Dictionary<BodyId, HammerObject>([.. Bodies]);
     }
 
     _sprites.Clear();
@@ -41,15 +42,13 @@ public class HammerWorld {
       }
     }
 
-    // _ = ThreadPool.QueueUserWorkItem(new WaitCallback(HandleSprites!));
-    Task.Run(() => HandleSprites());
-    Task.Run(() => HandleGravity());
-    // _ = ThreadPool.QueueUserWorkItem(HandleGravity!);
+    _ = ThreadPool.QueueUserWorkItem(HandleSprites!);
+    _ = ThreadPool.QueueUserWorkItem(HandleGravity!);
 
     return Task.CompletedTask;
   }
 
-  internal void HandleGravity() {
+  internal void HandleGravity(object state) {
     HammerObject[] values;
 
     lock (_bodiesLock) {
@@ -95,7 +94,7 @@ public class HammerWorld {
     }
   }
 
-  internal void HandleSprites() {
+  internal void HandleSprites(object state) {
     var sprites = Bodies.Values.ToArray();
     var indices = Bodies.Keys.ToArray();
     var tilemapList = new List<HammerObject>();
@@ -152,17 +151,19 @@ public class HammerWorld {
       GetStillThereBodies(out var stillThere);
       for (int i = 0; i < removedContacts.Count; i++) {
         _hammerInstance?.OnContactExit?.Invoke(removedContacts[i].Item1, removedContacts[i].Item2);
-        _contactMap.Remove(removedContacts[i]);
+        _contactMap.Remove(removedContacts[i], out _);
       }
       for (int i = 0; i < oldContacts.Count; i++) {
         var g1 = Bodies.TryGetValue(oldContacts[i].Item1, out var t1);
         var g2 = Bodies.TryGetValue(oldContacts[i].Item2, out var t2);
         if (!g2 || g1) continue;
-        var threshold = t1?.AABB.Width + t1?.AABB.Width;
-        var dist = Vector2.Distance(Bodies[oldContacts[i].Item1].Position, Bodies[oldContacts[i].Item2].Position);
+        var threshold = t1?.AABB?.Width + t1?.AABB?.Width;
+        Bodies.TryGetValue(oldContacts[i].Item1, out var hammerObject1);
+        Bodies.TryGetValue(oldContacts[i].Item2, out var hammerObject2);
+        var dist = Vector2.Distance(hammerObject1?.Position ?? Vector2.Zero, hammerObject2?.Position ?? Vector2.Zero);
         if (dist > threshold) {
           _hammerInstance?.OnContactExit?.Invoke(oldContacts[i].Item1, oldContacts[i].Item2);
-          _contactMap.Remove(oldContacts[i]);
+          _contactMap.Remove(oldContacts[i], out _);
         }
       }
     }
@@ -180,7 +181,7 @@ public class HammerWorld {
 
   private static void GetRemovedContacts(
     in List<(BodyId, BodyId)> oldContacts,
-    in Dictionary<BodyId, HammerObject> inBodies,
+    in ConcurrentDictionary<BodyId, HammerObject> inBodies,
     out List<(BodyId, BodyId)> removedContacts
   ) {
     removedContacts = [];
@@ -276,17 +277,17 @@ public class HammerWorld {
       stillThere = [.. _contactMap.Keys];
       foreach (var pair in removedContacts) {
         _hammerInstance?.OnContactExit?.Invoke(pair.Item1, pair.Item2);
-        _contactMap.Remove(pair);
+        _contactMap.Remove(pair, out _);
       }
       foreach (var pair in oldContacts) {
         var g1 = Bodies.TryGetValue(pair.Item1, out var t1);
         var g2 = Bodies.TryGetValue(pair.Item2, out var t2);
         if (!g2 || g1) continue;
-        var threshold = t1?.AABB.Width + t1?.AABB.Width;
+        var threshold = t1?.AABB?.Width + t1?.AABB?.Width;
         var dist = Vector2.Distance(Bodies[pair.Item1].Position, Bodies[pair.Item2].Position);
         if (dist > threshold) {
           _hammerInstance?.OnContactExit?.Invoke(pair.Item1, pair.Item2);
-          _contactMap.Remove(pair);
+          _contactMap.Remove(pair, out _);
         }
       }
     }
@@ -344,11 +345,20 @@ public class HammerWorld {
     var hammerObject = new HammerObject {
       Position = position
     };
-    Bodies.Add(bodyId, hammerObject);
+    Bodies.TryAdd(bodyId, hammerObject);
     return bodyId;
   }
 
   internal void RemoveBody(in BodyId bodyId) {
-    Bodies.Remove(bodyId);
+    Bodies.Remove(bodyId, out _);
+  }
+
+  internal HammerObject? GetBody(in BodyId bodyId) {
+    try {
+      var body = Bodies[bodyId];
+      return body;
+    } catch {
+      return null;
+    }
   }
 }

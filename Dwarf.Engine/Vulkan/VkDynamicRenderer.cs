@@ -131,6 +131,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
       .SetMaxSets(100)
       .AddPoolSize(DescriptorType.InputAttachment, 10)
       .AddPoolSize(DescriptorType.CombinedImageSampler, 20)
+      .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
     ImageDescriptors = new VkDescriptorSet[Swapchain.ImageViews.Length];

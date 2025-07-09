@@ -162,8 +162,8 @@ public class Mesh : IDisposable, ICloneable {
 
   public object Clone() {
     var clone = new Mesh(_allocator, _device) {
-      Vertices = Vertices,
-      Indices = Indices,
+      Vertices = (Vertex[])Vertices.Clone(),
+      Indices = (uint[])Indices.Clone(),
 
       VertexCount = VertexCount,
       IndexCount = IndexCount,
