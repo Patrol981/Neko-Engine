@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -15,6 +16,7 @@ using Dwarf.Rendering.UI.DirectRPG;
 using Dwarf.Utils;
 using Dwarf.Vulkan;
 using Dwarf.Windowing;
+using Microsoft.OpenApi.Extensions;
 
 namespace Dwarf;
 
@@ -105,6 +107,7 @@ public class Application {
   public bool VSync { get; init; } = false;
   public bool Fullscreen { get; init; } = false;
   public bool Debug { get; init; } = false;
+  public static ApplicationType ApplicationMode { get; private set; } = ApplicationType.Default;
   public readonly Lock ApplicationLock = new();
 
   public const int ThreadTimeoutTimeMS = 1000;
@@ -128,34 +131,41 @@ public class Application {
     Fullscreen = fullscreen;
     Debug = debugMode;
 
-    VulkanDevice.s_EnableValidationLayers = debugMode;
-
-    windowSize ??= new(1200, 900);
-
-    Window = new Window();
-    Window.Init(appName, Fullscreen, windowSize.X, windowSize.Y, debugMode);
-
-    Device = new VulkanDevice(Window);
-
-    ResourceInitializer.InitAllocator(Device, out var allocator);
-    Allocator = allocator;
-
-    Renderer = RendererFactory.CreateAPIRenderer(this);
-    Systems = new SystemCollection();
-    StorageCollection = ApplicationFactory.CreateStorageCollection(Allocator, Device);
-
-    _textureManager = new(Allocator, Device);
-    _systemCreationFlags = systemCreationFlags;
-
     systemConfiguration ??= SystemConfiguration.Default;
     _systemConfiguration = systemConfiguration;
 
-    _onAppLoading = () => {
-      DirectRPG.BeginCanvas();
-      DirectRPG.CanvasText("Loading...");
-      DirectRPG.EndCanvas();
-    };
+    ApplicationMode = _systemConfiguration.ApplicationType;
+    Logger.Info($"[APP MODE] {ApplicationMode}");
 
+    switch (ApplicationMode) {
+      case ApplicationType.Default:
+        VulkanDevice.s_EnableValidationLayers = debugMode;
+
+        windowSize ??= new(1200, 900);
+        Window = new Window();
+        Window.Init(appName, Fullscreen, windowSize.X, windowSize.Y, debugMode);
+
+        Device = new VulkanDevice(Window);
+        ResourceInitializer.InitAllocator(Device, out var allocator);
+        Allocator = allocator;
+
+        Renderer = RendererFactory.CreateAPIRenderer(this);
+        StorageCollection = ApplicationFactory.CreateStorageCollection(Allocator, Device);
+        _textureManager = new(Allocator, Device);
+
+        _onAppLoading = () => {
+          DirectRPG.BeginCanvas();
+          DirectRPG.CanvasText("Loading...");
+          DirectRPG.EndCanvas();
+        };
+
+        break;
+      case ApplicationType.Headless:
+        break;
+    }
+
+    Systems = new SystemCollection();
+    _systemCreationFlags = systemCreationFlags;
     Time.Init();
   }
 
@@ -257,7 +267,6 @@ public class Application {
   private async Task<Task> SetupScene() {
     if (CurrentScene == null) return Task.CompletedTask;
 
-    await LoadTextures();
     await LoadEntities();
 
     Logger.Info($"Loaded entities: {_entities.Count}");
@@ -348,6 +357,58 @@ public class Application {
     Cleanup();
   }
 
+  public void RunHeadless() {
+    Logger.Info("[APPLICATION] Application started in headless mode");
+
+    Systems.SetupHeadless(this, _systemCreationFlags, _systemConfiguration);
+    var closeRequest = false;
+
+    Logger.NoLabel(HeadlessUI.DwarfWelcome, ConsoleColor.Green);
+
+    while (!closeRequest) {
+      if (Console.KeyAvailable) {
+        var keyInfo = Console.ReadKey(true);
+        switch (keyInfo.Key) {
+          case ConsoleKey.Q:
+            closeRequest = true;
+            break;
+          case ConsoleKey.L:
+            foreach (var ent in _entities) {
+              Logger.Info(ent.Name);
+            }
+            break;
+          case ConsoleKey.F1:
+            Logger.NoLabel(HeadlessUI.CommandList);
+            break;
+          case ConsoleKey.S:
+            break;
+          case ConsoleKey.T:
+            var threads = Process.GetCurrentProcess().Threads;
+            foreach (ProcessThread thread in threads) {
+              Logger.NoLabel($"[{thread.Id}] {thread.ThreadState.GetDisplayName()} | {thread.CurrentPriority}");
+            }
+            break;
+          default:
+            break;
+        }
+      }
+
+      Time.Tick();
+      PerformCalculations();
+
+      var updatable = _entities.AsArray();
+      if (updatable.Length > 0) {
+        MasterFixedUpdate(updatable.GetScriptsAsSpan());
+        _onUpdate?.Invoke();
+        MasterUpdate(updatable.GetScriptsAsArray());
+      }
+    }
+
+    Logger.Info("[APPLICATION] Closing App");
+
+    Cleanup();
+  }
+
   public void SetCamera(Entity camera) {
     _camera = camera;
   }
@@ -389,6 +450,7 @@ public class Application {
     return Task.CompletedTask;
   }
 
+  [Obsolete]
   private async Task<Task> LoadTextures() {
     if (CurrentScene == null) return Task.CompletedTask;
     CurrentScene.LoadTextures();
@@ -822,7 +884,7 @@ public class Application {
     foreach (var layout in _descriptorSetLayouts) {
       layout.Value.Dispose();
     }
-    _globalPool.Dispose();
+    _globalPool?.Dispose();
     unsafe {
       MemoryUtils.FreeIntPtr<GlobalUniformBufferObject>((nint)_ubo);
     }

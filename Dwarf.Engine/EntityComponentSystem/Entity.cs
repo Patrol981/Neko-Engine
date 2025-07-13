@@ -25,6 +25,7 @@ public class Entity {
   }
 
   public void AddComponent(Component component) {
+    if (!VerifyAdd(component)) return;
     Application.Mutex.WaitOne();
     if (CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
     component.Owner = this;
@@ -233,6 +234,22 @@ public class Entity {
     }
 
     return clone;
+  }
+
+  private static bool VerifyAdd(Component component) {
+    var headless = Application.ApplicationMode == ApplicationType.Headless;
+    var isClientSideComponent = typeof(IDrawable).IsAssignableFrom(component.GetType());
+
+    if (headless && isClientSideComponent) {
+      var isDisposable = typeof(IDisposable).IsAssignableFrom(component.GetType());
+      if (isDisposable) {
+        var disposable = component as IDisposable;
+        disposable?.Dispose();
+      }
+      return false;
+    }
+
+    return true;
   }
 
   public bool Active { get; set; } = true;

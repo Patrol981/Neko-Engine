@@ -24,21 +24,15 @@ public class HammerWorld {
   }
 
   public Task Simulate(float dt) {
-    // _dt = dt;
-    _dt = 1 / (float)60;
-
-    Dictionary<BodyId, HammerObject> snapshot;
-    lock (_bodiesLock) {
-      snapshot = new Dictionary<BodyId, HammerObject>([.. Bodies]);
-    }
+    _dt = dt;
+    // _dt = 1 / (float)60;
 
     _sprites.Clear();
-    var keys = new List<BodyId>(snapshot.Keys);
-    for (int i = 0; i < keys.Count; i++) {
-      var key = keys[i];
-      var value = snapshot[key];
+    foreach (var body in Bodies) {
+      Bodies.TryGetValue(body.Key, out var value);
+      if (value == null) continue;
       if (value.ObjectType == ObjectType.Sprite) {
-        _sprites[key] = value;
+        _sprites.TryAdd(body.Key, value);
       }
     }
 
@@ -49,16 +43,7 @@ public class HammerWorld {
   }
 
   internal void HandleGravity(object state) {
-    HammerObject[] values;
-
-    lock (_bodiesLock) {
-      values = new HammerObject[Bodies.Count];
-      Bodies.Values.CopyTo(values, 0);
-    }
-
-    for (int i = 0; i < values.Length; i++) {
-      var body = values[i];
-
+    foreach (var body in Bodies.Values) {
       if (body.MotionType == MotionType.Dynamic) {
         HandleGrounded(body, _dt);
       }

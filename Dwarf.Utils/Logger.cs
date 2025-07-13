@@ -16,6 +16,11 @@ public static class Logger {
     Console.WriteLine(" " + message);
   }
 
+  public static void NoLabel(object message, ConsoleColor consoleColor = ConsoleColor.White) {
+    WriteColored(consoleColor, message);
+    Console.WriteLine();
+  }
+
   private static void WriteColored(ConsoleColor color, object message) {
     Console.ForegroundColor = color;
     Console.Write(message);

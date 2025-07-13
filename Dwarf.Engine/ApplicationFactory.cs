@@ -4,6 +4,11 @@ using Dwarf.Vulkan;
 
 namespace Dwarf;
 
+public enum ApplicationType {
+  Default,
+  Headless
+}
+
 internal static class ApplicationFactory {
   internal static void CreateDevice(in Application app) {
     switch (app.CurrentAPI) {

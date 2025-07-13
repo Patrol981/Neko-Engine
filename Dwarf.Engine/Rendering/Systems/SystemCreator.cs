@@ -21,22 +21,26 @@ public enum SystemCreationFlags {
   Particles = 1 << 8,
   Shadows = 1 << 9,
   Physics2D = 1 << 10,
-  DebugRenderer = 1 << 11
+  DebugRenderer = 1 << 11,
+  Networking = 1 << 12
 }
 
 public record SystemConfiguration {
   public Dwarf.Physics.Backends.BackendKind PhysiscsBackend { get; init; }
   public PostProcessingConfigurationFlag PostProcessingFlag { get; init; }
   public string[]? PostProcessInputTextures { get; init; }
+  public ApplicationType ApplicationType { get; init; } = ApplicationType.Default;
 
   public static SystemConfiguration Default => new() {
     PhysiscsBackend = Physics.Backends.BackendKind.Default,
     PostProcessingFlag = PostProcessingConfigurationFlag.Custom,
+    ApplicationType = ApplicationType.Default
   };
 
   public static SystemConfiguration GetDefault() => new() {
     PhysiscsBackend = Physics.Backends.BackendKind.Default,
     PostProcessingFlag = PostProcessingConfigurationFlag.Custom,
+    ApplicationType = ApplicationType.Default
   };
 }
 
@@ -64,6 +68,7 @@ public class SystemCreator {
     var hasParticles = flags.HasFlag(SystemCreationFlags.Particles);
     var hasShadows = flags.HasFlag(SystemCreationFlags.Shadows);
     var hasDebugRenderer = flags.HasFlag(SystemCreationFlags.DebugRenderer);
+    var hasNetworking = flags.HasFlag(SystemCreationFlags.Networking);
 
     if (hasRendererUI) {
       Logger.Info("[SYSTEM CREATOR] Creating UI Renderer");
@@ -75,6 +80,9 @@ public class SystemCreator {
       Logger.Info("[SYSTEM CREATOR] Creating 3D Renderer");
       systemCollection.Render3DSystem =
         new(allocator, device, renderer, textureManager, layouts, new ModelPipelineConfig());
+
+      systemCollection.PostProcessingSystem =
+        new(allocator, device, renderer, textureManager, systemConfig, layouts, new PostProcessingPipeline());
     }
 
     if (hasDebugRenderer) {
@@ -121,6 +129,17 @@ public class SystemCreator {
     if (hasWebApi) {
       Logger.Info("[SYSTEM CREATOR] Creating WebApi");
       systemCollection.WebApi = new(app: Application.Instance);
+    }
+
+    if (hasNetworking) {
+      Logger.Info("[SYSTEM CREATOr] Creating Networking");
+
+      if (Application.ApplicationMode == ApplicationType.Headless) {
+        systemCollection.NetSystem = new(Application.Instance);
+      } else {
+        systemCollection.NetClientSystem = new();
+      }
+
     }
 
     if (hasParticles) {

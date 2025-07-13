@@ -4,8 +4,10 @@ namespace Dwarf;
 
 public abstract class Scene {
   protected readonly Application _app;
-  private readonly List<Entity> _entities = new();
-  private List<List<string>> _texturePaths = new();
+  private readonly List<Entity> _entities = [];
+
+  [Obsolete("Setting textures from scene's texture paths are deprecated. Please use TextureManager")]
+  private List<List<string>> _texturePaths = [];
 
   public Scene(Application app) {
     _app = app;
@@ -42,13 +44,15 @@ public abstract class Scene {
   }
 
   public void RemoveEntityRange(int index, int count) {
-    _entities.RemoveRange(index, count);
+    _entities.RemoveRange(index, count); ;
   }
 
+  [Obsolete("Setting textures from scene's texture paths are deprecated. Please use TextureManager")]
   public void SetTexturePaths(List<List<string>> paths) {
     _texturePaths = paths;
   }
 
+  [Obsolete("Setting textures from scene's texture paths are deprecated. Please use TextureManager")]
   public List<List<string>> GetTexturePaths() {
     return _texturePaths;
   }
