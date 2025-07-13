@@ -11,6 +11,7 @@
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <AnalysisLevel>latest</AnalysisLevel>
     <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
+    <Version>0.2.5</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -69,12 +70,14 @@
     <PackageReference Include="OpenTK" Version="4.7.7" />
     <PackageReference Include="StbImageSharp" Version="2.30.15" />
 	  <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.7" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Dwarf.Utils\Dwarf.Utils.csproj" />
     <ProjectReference Include="..\Dwarf.AbstractionLayer\Dwarf.AbstractionLayer.csproj" />
     <ProjectReference Include="..\Dwarf.WebApi\Dwarf.WebApi.csproj" />
+    <ProjectReference Include="..\Dwarf.SignalR\Dwarf.SignalR.csproj" />
     <ProjectReference Include="..\Dwarf.Hammer\Dwarf.Hammer.csproj" />
     <Reference Include="glTFLoader">
       <HintPath>..\Dependencies\glTFLoader.dll</HintPath>

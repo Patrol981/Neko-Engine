@@ -35,6 +35,8 @@ public class SystemCollection : IDisposable {
   private PhysicsSystem? _physicsSystem;
   private PhysicsSystem2D? _physicsSystem2D;
   private WebApiSystem? _webApi;
+  private SignalRSystem? _netSystem;
+  private SignalRClientSystem? _netClientSystem;
 
   public bool Reload3DRenderSystem = false;
   public bool Reload2DRenderSystem = false;
@@ -138,7 +140,7 @@ public class SystemCollection : IDisposable {
       configInfo
     );
     // _subpassConnectorSystem = new(allocator, device, renderer, layouts, new SecondSubpassPipeline());
-    _postProcessingSystem = new(allocator, device, renderer, textureManager, systemConfiguration, layouts, new PostProcessingPipeline());
+    // _postProcessingSystem = new(allocator, device, renderer, textureManager, systemConfiguration, layouts, new PostProcessingPipeline());
 
     var entities = app.GetEntities();
     var objs3D = entities.DistinctInterface<IRender3DElement>();
@@ -150,6 +152,24 @@ public class SystemCollection : IDisposable {
     _particleSystem?.Setup(ref textureManager);
     _physicsSystem?.Init(entities.ToArray());
     _physicsSystem2D?.Init(entities.ToArray());
+  }
+
+  public void SetupHeadless(
+    Application app,
+    SystemCreationFlags creationFlags,
+    SystemConfiguration systemConfiguration
+  ) {
+    SystemCreator.CreateSystems(
+      app.Systems,
+      creationFlags,
+      systemConfiguration,
+      IntPtr.Zero,
+      null!,
+      null!,
+      null!,
+      null!,
+      null!
+    );
   }
 
   public void SetupRenderDatas(ReadOnlySpan<Entity> entities, ref TextureManager textureManager, Renderer renderer) {
@@ -261,6 +281,11 @@ public class SystemCollection : IDisposable {
     }
   }
 
+  public PostProcessingSystem PostProcessingSystem {
+    get => _postProcessingSystem ?? null!;
+    set => _postProcessingSystem = value;
+  }
+
   public PhysicsSystem2D PhysicsSystem2D {
     get { return _physicsSystem2D ?? null!; }
     set {
@@ -303,7 +328,15 @@ public class SystemCollection : IDisposable {
     set { _webApi = value; }
   }
 
-  public PostProcessingSystem? PostProcessingSystem => _postProcessingSystem;
+  public SignalRSystem NetSystem {
+    get => _netSystem ?? null!;
+    set => _netSystem = value;
+  }
+
+  public SignalRClientSystem NetClientSystem {
+    get => _netClientSystem ?? null!;
+    set => _netClientSystem = value;
+  }
 
   public void Dispose() {
     _postProcessingSystem?.Dispose();
@@ -317,6 +350,8 @@ public class SystemCollection : IDisposable {
     _directionaLightSystem?.Dispose();
     _pointLightSystem?.Dispose();
     _webApi?.Dispose();
+    _netSystem?.Dispose();
+    _netClientSystem?.Dispose();
     _particleSystem?.Dispose();
     _shadowRenderSystem?.Dispose();
     GC.SuppressFinalize(this);
