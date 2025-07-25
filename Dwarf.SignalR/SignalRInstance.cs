@@ -1,18 +1,26 @@
 using Dwarf.SignalR.Hubs;
+using Dwarf.SignalR.Interfaces;
+using Dwarf.SignalR.Services;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Dwarf.SignalR;
 
 public class SignalRInstance : IAsyncDisposable {
+  public const string HTTP_URL = "http://*:4222";
+  public const string HTTPS_URL = "https://*:4223";
+
   private readonly WebApplicationBuilder? _builder;
   private WebApplication? _app;
 
   public SignalRInstance() {
     _builder = WebApplication.CreateSlimBuilder();
     _builder.Services.Configure<JsonHubProtocolOptions>(options => {
-      options.PayloadSerializerOptions.TypeInfoResolverChain.Insert(0, DwarfSignalRJsonSerializerContext.Default);
+      options.PayloadSerializerOptions.TypeInfoResolverChain.Insert(0, DwarfHubJsonSerializerContext.Default);
+      options.PayloadSerializerOptions.TypeInfoResolverChain.Insert(1, ChatHubJsonSerializerContext.Default);
     });
+    _builder.Services.AddTransient<IDwarfClientService<string>, DwarfClientService<string>>();
     _builder.Services.AddSignalR();
+    _builder.WebHost.UseUrls(HTTP_URL);
   }
 
   public void Run() {
@@ -21,7 +29,8 @@ public class SignalRInstance : IAsyncDisposable {
     }
     _app = _builder.Build();
     _app.UseRouting();
-    _app.MapHub<ChatHub>("/chathub");
+    _app.MapHub<DwarfHub>($"/{HubNames.DEFAULT}");
+    _app.MapHub<ChatHub>($"/{HubNames.CHAT_HUB}");
     _app.Run();
   }
 

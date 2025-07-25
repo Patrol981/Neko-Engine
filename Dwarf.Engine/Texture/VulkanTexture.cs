@@ -604,8 +604,8 @@ public class VulkanTexture : ITexture {
   }
 
   private static unsafe void CreateSampler(VulkanDevice device, out VkSampler imageSampler) {
-    VkPhysicalDeviceProperties properties = new();
-    vkGetPhysicalDeviceProperties(device.PhysicalDevice, &properties);
+    VkPhysicalDeviceProperties2 properties = new();
+    vkGetPhysicalDeviceProperties2(device.PhysicalDevice, &properties);
 
     VkSamplerCreateInfo samplerInfo = new() {
       magFilter = VkFilter.Nearest,
@@ -614,7 +614,7 @@ public class VulkanTexture : ITexture {
       addressModeV = VkSamplerAddressMode.Repeat,
       addressModeW = VkSamplerAddressMode.Repeat,
       anisotropyEnable = true,
-      maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+      maxAnisotropy = properties.properties.limits.maxSamplerAnisotropy,
       borderColor = VkBorderColor.IntOpaqueBlack,
       unnormalizedCoordinates = false,
       compareEnable = false,

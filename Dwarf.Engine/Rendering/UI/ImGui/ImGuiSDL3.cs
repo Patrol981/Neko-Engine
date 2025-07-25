@@ -22,6 +22,8 @@ public partial class ImGuiController {
   }
 
   public unsafe static bool ImGuiSdl3ProcessEvent(SDL_Event sdlEvent) {
+    if (!Application.Instance.UseImGui) return false;
+
     var io = ImGui.GetIO();
 
     switch (sdlEvent.type) {

@@ -52,8 +52,8 @@ public class PostProcessingSystem : SystemBase {
     Float_7_2 = 0.0f,
   };
 
-  private readonly unsafe PostProcessInfo* _postProcessInfoPushConstant =
-    (PostProcessInfo*)Marshal.AllocHGlobal(Unsafe.SizeOf<PostProcessInfo>());
+  // private readonly unsafe PostProcessInfo* _postProcessInfoPushConstant =
+  //   (PostProcessInfo*)Marshal.AllocHGlobal(Unsafe.SizeOf<PostProcessInfo>());
   private readonly TextureManager _textureManager;
 
   // private ITexture _inputTexture1 = null!;
@@ -122,10 +122,10 @@ public class PostProcessingSystem : SystemBase {
     _device.WaitQueue();
 
     _descriptorPool = new VulkanDescriptorPool.Builder((VulkanDevice)_device)
-      .SetMaxSets(4)
-      .AddPoolSize(DescriptorType.SampledImage, 10)
-      .AddPoolSize(DescriptorType.Sampler, 10)
-      .AddPoolSize(DescriptorType.CombinedImageSampler, 20)
+      .SetMaxSets(CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.SampledImage, CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.Sampler, CommonConstants.MAX_SETS)
+      .AddPoolSize(DescriptorType.CombinedImageSampler, CommonConstants.MAX_SETS)
       .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
@@ -143,7 +143,7 @@ public class PostProcessingSystem : SystemBase {
 
   private void UpdateDescriptors(int currentFrame) {
     // _renderer.Swapchain.UpdateDescriptors(currentFrame);
-    // _ renderer.Swapchain.UpdatePostProcessDescriptors(currentFrame);
+    // _renderer.Swapchain.UpdatePostProcessDescriptors(currentFrame);
     _renderer.UpdateDescriptors();
   }
 
@@ -153,45 +153,46 @@ public class PostProcessingSystem : SystemBase {
 
     var window = Application.Instance.Window;
     unsafe {
-      _postProcessInfoPushConstant->Float_1_1 = PostProcessInfo.Float_1_1;
-      _postProcessInfoPushConstant->Float_1_2 = PostProcessInfo.Float_1_2;
-      _postProcessInfoPushConstant->Float_1_3 = PostProcessInfo.Float_1_3;
-      _postProcessInfoPushConstant->Float_1_4 = PostProcessInfo.Float_1_4;
+      var postProcessInfoPushConstant = new PostProcessInfo();
+      postProcessInfoPushConstant.Float_1_1 = PostProcessInfo.Float_1_1;
+      postProcessInfoPushConstant.Float_1_2 = PostProcessInfo.Float_1_2;
+      postProcessInfoPushConstant.Float_1_3 = PostProcessInfo.Float_1_3;
+      postProcessInfoPushConstant.Float_1_4 = PostProcessInfo.Float_1_4;
 
-      _postProcessInfoPushConstant->Float_2_1 = PostProcessInfo.Float_2_1;
-      _postProcessInfoPushConstant->Float_2_2 = PostProcessInfo.Float_2_2;
-      _postProcessInfoPushConstant->Float_2_3 = PostProcessInfo.Float_2_3;
-      _postProcessInfoPushConstant->Float_2_4 = PostProcessInfo.Float_2_4;
+      postProcessInfoPushConstant.Float_2_1 = PostProcessInfo.Float_2_1;
+      postProcessInfoPushConstant.Float_2_2 = PostProcessInfo.Float_2_2;
+      postProcessInfoPushConstant.Float_2_3 = PostProcessInfo.Float_2_3;
+      postProcessInfoPushConstant.Float_2_4 = PostProcessInfo.Float_2_4;
 
-      _postProcessInfoPushConstant->Float_3_1 = PostProcessInfo.Float_3_1;
-      _postProcessInfoPushConstant->Float_3_2 = PostProcessInfo.Float_3_2;
-      _postProcessInfoPushConstant->Float_3_3 = PostProcessInfo.Float_3_3;
-      _postProcessInfoPushConstant->Float_3_4 = PostProcessInfo.Float_3_4;
+      postProcessInfoPushConstant.Float_3_1 = PostProcessInfo.Float_3_1;
+      postProcessInfoPushConstant.Float_3_2 = PostProcessInfo.Float_3_2;
+      postProcessInfoPushConstant.Float_3_3 = PostProcessInfo.Float_3_3;
+      postProcessInfoPushConstant.Float_3_4 = PostProcessInfo.Float_3_4;
 
-      _postProcessInfoPushConstant->Float_4_1 = PostProcessInfo.Float_4_1;
-      _postProcessInfoPushConstant->Float_4_2 = PostProcessInfo.Float_4_2;
-      _postProcessInfoPushConstant->Float_4_3 = PostProcessInfo.Float_4_3;
-      _postProcessInfoPushConstant->Float_4_4 = PostProcessInfo.Float_4_4;
+      postProcessInfoPushConstant.Float_4_1 = PostProcessInfo.Float_4_1;
+      postProcessInfoPushConstant.Float_4_2 = PostProcessInfo.Float_4_2;
+      postProcessInfoPushConstant.Float_4_3 = PostProcessInfo.Float_4_3;
+      postProcessInfoPushConstant.Float_4_4 = PostProcessInfo.Float_4_4;
 
-      _postProcessInfoPushConstant->Float_5_1 = PostProcessInfo.Float_5_1;
-      _postProcessInfoPushConstant->Float_5_2 = PostProcessInfo.Float_5_2;
-      _postProcessInfoPushConstant->Float_5_3 = PostProcessInfo.Float_5_3;
-      _postProcessInfoPushConstant->Float_5_4 = PostProcessInfo.Float_5_4;
+      postProcessInfoPushConstant.Float_5_1 = PostProcessInfo.Float_5_1;
+      postProcessInfoPushConstant.Float_5_2 = PostProcessInfo.Float_5_2;
+      postProcessInfoPushConstant.Float_5_3 = PostProcessInfo.Float_5_3;
+      postProcessInfoPushConstant.Float_5_4 = PostProcessInfo.Float_5_4;
 
-      _postProcessInfoPushConstant->Float_6_1 = PostProcessInfo.Float_6_1;
-      _postProcessInfoPushConstant->Float_6_2 = PostProcessInfo.Float_6_2;
-      _postProcessInfoPushConstant->Float_6_3 = PostProcessInfo.Float_6_3;
-      _postProcessInfoPushConstant->Float_6_4 = PostProcessInfo.Float_6_4;
+      postProcessInfoPushConstant.Float_6_1 = PostProcessInfo.Float_6_1;
+      postProcessInfoPushConstant.Float_6_2 = PostProcessInfo.Float_6_2;
+      postProcessInfoPushConstant.Float_6_3 = PostProcessInfo.Float_6_3;
+      postProcessInfoPushConstant.Float_6_4 = PostProcessInfo.Float_6_4;
 
-      _postProcessInfoPushConstant->Float_7_1 = PostProcessInfo.Float_7_1;
-      _postProcessInfoPushConstant->Float_7_2 = PostProcessInfo.Float_7_2;
-      _postProcessInfoPushConstant->Float_7_3 = PostProcessInfo.Float_7_3;
-      _postProcessInfoPushConstant->Float_7_4 = PostProcessInfo.Float_7_4;
+      postProcessInfoPushConstant.Float_7_1 = PostProcessInfo.Float_7_1;
+      postProcessInfoPushConstant.Float_7_2 = PostProcessInfo.Float_7_2;
+      postProcessInfoPushConstant.Float_7_3 = PostProcessInfo.Float_7_3;
+      postProcessInfoPushConstant.Float_7_4 = PostProcessInfo.Float_7_4;
 
-      _postProcessInfoPushConstant->Float_8_1 = PostProcessInfo.Float_8_1;
-      _postProcessInfoPushConstant->Float_8_2 = PostProcessInfo.Float_8_2;
-      _postProcessInfoPushConstant->Float_8_3 = PostProcessInfo.Float_8_3;
-      _postProcessInfoPushConstant->Float_8_4 = PostProcessInfo.Float_8_4;
+      postProcessInfoPushConstant.Float_8_1 = PostProcessInfo.Float_8_1;
+      postProcessInfoPushConstant.Float_8_2 = PostProcessInfo.Float_8_2;
+      postProcessInfoPushConstant.Float_8_3 = PostProcessInfo.Float_8_3;
+      postProcessInfoPushConstant.Float_8_4 = PostProcessInfo.Float_8_4;
 
       vkCmdPushConstants(
         frameInfo.CommandBuffer,
@@ -199,7 +200,7 @@ public class PostProcessingSystem : SystemBase {
         VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
         0,
         (uint)Unsafe.SizeOf<PostProcessInfo>(),
-        _postProcessInfoPushConstant
+        &postProcessInfoPushConstant
       );
     }
 
@@ -278,7 +279,7 @@ public class PostProcessingSystem : SystemBase {
   }
 
   public unsafe override void Dispose() {
-    MemoryUtils.FreeIntPtr<PostProcessInfo>((nint)_postProcessInfoPushConstant);
+    // MemoryUtils.FreeIntPtr<PostProcessInfo>((nint)_postProcessInfoPushConstant);
     base.Dispose();
   }
 }

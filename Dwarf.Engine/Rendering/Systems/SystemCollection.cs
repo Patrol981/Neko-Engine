@@ -49,7 +49,7 @@ public class SystemCollection : IDisposable {
     _shadowRenderSystem?.Render(frameInfo);
     _directionaLightSystem?.Render(frameInfo);
     _pointLightSystem?.Render(frameInfo);
-    _postProcessingSystem?.Render(frameInfo);
+    // _postProcessingSystem?.Render(frameInfo);
   }
 
   public void UpdateSystems2(Entity[] entities, FrameInfo frameInfo) {

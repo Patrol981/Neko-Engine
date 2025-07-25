@@ -217,7 +217,7 @@ public class CubeMapTexture : VulkanTexture {
     samplerInfo.borderColor = VkBorderColor.FloatOpaqueWhite;
     samplerInfo.maxAnisotropy = 1;
     if (_device.Features.samplerAnisotropy) {
-      samplerInfo.maxAnisotropy = _device.Properties.limits.maxSamplerAnisotropy;
+      samplerInfo.maxAnisotropy = _device.Properties.properties.limits.maxSamplerAnisotropy;
       samplerInfo.anisotropyEnable = true;
     }
     vkCreateSampler(_device.LogicalDevice, &samplerInfo, null, out _textureSampler.ImageSampler).CheckResult();
