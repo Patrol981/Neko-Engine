@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Dwarf.Extensions.Logging;
 using Dwarf.SignalR.Hubs;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -5,46 +6,117 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Dwarf.Networking;
 
+public delegate void NetworkSenderEvent(object? sender, object? msg);
+public delegate void NetworkEvent(object? msg);
+
 public class SignalRClientSystem : IDisposable {
-  public HubConnection? Connection { get; private set; }
+  private readonly ConcurrentDictionary<string, HubConnection> _connections = [];
 
-  public SignalRClientSystem() {
-    // _connection = Application.Instance.
-  }
+  public async Task<bool> Connect(string url, string hubName = HubNames.DEFAULT) {
+    if (_connections.ContainsKey(hubName)) {
+      Logger.Error($"{hubName} alredy exists in the pool. Skipping");
+      return false;
+    }
 
-  public async Task<Task> Connect(string url) {
     try {
-      Connection = new HubConnectionBuilder()
-        .WithUrl($"{url}/chathub")
-        .WithAutomaticReconnect()
-        .AddJsonProtocol(options => {
-          options.PayloadSerializerOptions
-            .TypeInfoResolverChain
-            .Add(DwarfSignalRJsonSerializerContext.Default);
-        })
-        .Build();
-      await Connection.StartAsync();
-      Logger.Info($"Connected to {url}/chathub");
+      var result = _connections.TryAdd(hubName, new HubConnectionBuilder()
+       .WithUrl($"{url}/{hubName}")
+       .WithAutomaticReconnect()
+       .AddJsonProtocol(options => {
+         options.PayloadSerializerOptions
+           .TypeInfoResolverChain
+           .Add(DwarfHubJsonSerializerContext.Default);
+         options.PayloadSerializerOptions
+           .TypeInfoResolverChain
+           .Add(ChatHubJsonSerializerContext.Default);
+       })
+       .Build()
+      );
+      if (result) {
+        _connections.TryGetValue(hubName, out var connection);
+        await connection!.StartAsync();
+        Logger.Info($"Connected to {url}/{hubName}");
+        return true;
+      }
     } catch (Exception ex) {
       Logger.Error(ex.Message);
       throw;
     }
 
-    return Task.CompletedTask;
+    return false;
   }
 
-  public async Task<Task> Send(string sender, string message) {
-    if (Connection == null || Connection.State == HubConnectionState.Disconnected) {
+  public async Task<Task> Send(
+    string eventName,
+    string args,
+    string hubName = HubNames.DEFAULT
+  ) {
+    var result = _connections.TryGetValue(hubName, out var connection);
+    if (!result) {
+      throw new KeyNotFoundException("Could not find given hub name");
+    }
+
+    if (connection == null || connection.State == HubConnectionState.Disconnected) {
       return Task.CompletedTask;
     }
 
-    await Connection.InvokeAsync("SendMessage", sender, message);
+    await connection.InvokeAsync(eventName, args);
 
     return Task.CompletedTask;
   }
 
+  public async Task<Task> Send<T>(
+    string eventName,
+    string sender,
+    T data,
+    string hubName = HubNames.DEFAULT
+  ) {
+    var result = _connections.TryGetValue(hubName, out var connection);
+    if (!result) {
+      throw new KeyNotFoundException("Could not find given hub name");
+    }
+
+    if (connection == null || connection.State == HubConnectionState.Disconnected) {
+      return Task.CompletedTask;
+    }
+
+    await connection.InvokeAsync(eventName, sender, data);
+
+    return Task.CompletedTask;
+  }
+
+  public void RegisterEvent<T1, T2>(
+    string eventName,
+    NetworkSenderEvent networkEvent,
+    string hubName = HubNames.DEFAULT
+  ) {
+    var result = _connections.TryGetValue(hubName, out var connection);
+    if (!result) {
+      throw new KeyNotFoundException("Could not find given hub name");
+    }
+    connection?.On<T1, T2>(eventName, (sender, msg) => {
+      networkEvent.Invoke(sender, msg);
+    });
+  }
+
+  public void RegisterEvent<T>(
+    string eventName,
+    NetworkEvent networkEvent,
+    string hubName = HubNames.DEFAULT
+  ) {
+    var result = _connections.TryGetValue(hubName, out var connection);
+    if (!result) {
+      throw new KeyNotFoundException("Could not find given hub name");
+    }
+    connection?.On<T>(eventName, (msg) => {
+      networkEvent.Invoke(msg);
+    });
+  }
+
   public void Dispose() {
-    Connection?.DisposeAsync().AsTask().Wait();
+    foreach (var conn in _connections.Values) {
+      conn.DisposeAsync().AsTask().Wait();
+    }
 
     GC.SuppressFinalize(this);
   }

@@ -4,9 +4,11 @@ using Microsoft.AspNetCore.SignalR;
 namespace Dwarf.SignalR.Hubs;
 
 [JsonSerializable(typeof(string))]
-public partial class DwarfSignalRJsonSerializerContext : JsonSerializerContext { }
+public partial class ChatHubJsonSerializerContext : JsonSerializerContext { }
+
 public class ChatHub : Hub {
-  public async Task SendMessage(string user, string message) {
-    await Clients.All.SendAsync("ReceiveMessage", user, message);
+  [HubMethodName(EventConstants.SEND_MSG)]
+  public async Task SendMsg(string user, string message) {
+    await Clients.All.SendAsync(EventConstants.GET_MSG, user, message);
   }
 }

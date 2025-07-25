@@ -29,6 +29,8 @@ public class VulkanDynamicSwapchain : ISwapchain {
   public int CurrentFrame { get; set; }
   public int PreviousFrame { get; set; } = -1;
 
+  private ulong _presentId = 0;
+
   public VulkanDynamicSwapchain(VulkanDevice device, VkExtent2D extent2D, bool vsync) {
     _device = device;
     _extent2D = extent2D;
@@ -112,6 +114,8 @@ public class VulkanDynamicSwapchain : ISwapchain {
       // R8G8B8A8Srgb
       if (availableFormat.format == VkFormat.R8G8B8A8Unorm) {
         return availableFormat;
+      } else if (availableFormat.format == VkFormat.B8G8R8A8Unorm) {
+        return availableFormat;
       }
     }
 
@@ -194,10 +198,10 @@ public class VulkanDynamicSwapchain : ISwapchain {
       }
     }
 
-    VkSwapchainPresentScalingCreateInfoEXT scalingCreateInfoEXT = new() {
-      scalingBehavior = VkPresentScalingFlagsEXT.None,
-      presentGravityX = VkPresentGravityFlagsEXT.Centered,
-      presentGravityY = VkPresentGravityFlagsEXT.Centered,
+    VkSwapchainPresentScalingCreateInfoKHR scalingCreateInfoEXT = new() {
+      scalingBehavior = VkPresentScalingFlagsKHR.AspectRatioStretch,
+      presentGravityX = VkPresentGravityFlagsKHR.Centered,
+      presentGravityY = VkPresentGravityFlagsKHR.Centered,
     };
 
     VkSwapchainCreateInfoKHR swapchainCI = new() {
@@ -213,6 +217,7 @@ public class VulkanDynamicSwapchain : ISwapchain {
       queueFamilyIndexCount = 0,
       presentMode = swapchainPresentMode,
       clipped = true,
+      // flags = VkSwapchainCreateFlagsKHR.PresentId2 | VkSwapchainCreateFlagsKHR.PresentWait2,
       compositeAlpha = compositeAlpha,
       oldSwapchain = VkSwapchainKHR.Null,
       pNext = &scalingCreateInfoEXT
@@ -265,8 +270,17 @@ public class VulkanDynamicSwapchain : ISwapchain {
     );
   }
 
-  public unsafe VkResult QueuePresent(VkQueue queue, uint imageIndex, VkSemaphore waitSemaphore) {
+  public unsafe VkResult QueuePresent(VkQueue queue, uint imageIndex, VkSemaphore waitSemaphore, VkFence[] waitFences) {
     fixed (VkSwapchainKHR* pSwapchain = &_handle) {
+      // ulong presentId = ++_presentId;
+
+      // VkPresentIdKHR presentIdKHR = new() {
+      //   sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR,
+      //   pNext = null,
+      //   pPresentIds = &presentId,
+      //   swapchainCount = 1
+      // };
+
       VkPresentInfoKHR presentInfo = new() {
         sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         pNext = null,
@@ -279,6 +293,20 @@ public class VulkanDynamicSwapchain : ISwapchain {
         presentInfo.waitSemaphoreCount = 1;
       }
       var result = vkQueuePresentKHR(queue, &presentInfo);
+
+      // vkWaitForPresentKHR(
+      //   _device.LogicalDevice,
+      //   _handle,
+      //   presentId,      // Wait for the specific present ID to complete
+      //   ulong.MaxValue  // Wait indefinitely
+      // ).CheckResult();
+
+      fixed (VkFence* fencePtr = waitFences) {
+        vkWaitForFences(_device.LogicalDevice, 1, fencePtr, true, ulong.MaxValue);
+      }
+
+
+      // vkDestroyFence(_device.LogicalDevice, waitFence, null);
       PreviousFrame = CurrentFrame;
       CurrentFrame = (CurrentFrame + 1) % Images.Length;
       return result;

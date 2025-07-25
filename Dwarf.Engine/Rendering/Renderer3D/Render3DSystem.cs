@@ -46,6 +46,8 @@ public class Render3DSystem : SystemBase, IRenderSystem {
   private ITexture _hatchTexture = null!;
   private IDescriptorSetLayout _previousTexturesLayout = null!;
 
+  private BufferPool _bufferPool = null!;
+
   public Render3DSystem(
     nint allocator,
     IDevice device,
@@ -98,6 +100,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
+    _bufferPool = new(_device, _allocator);
   }
 
   public void Setup(ReadOnlySpan<Entity> entities, ref TextureManager textures) {
@@ -119,8 +122,8 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       LastKnownElemSize += targetModel!.CalculateBufferSize();
     }
 
-    // CreateVertexBuffer(entities);
-    // CreateIndexBuffer(entities);
+    CreateVertexBuffer(entities);
+    CreateIndexBuffer(entities);
 
     CreateIndirectCommands(entities);
     CreateIndirectBuffer();
@@ -465,6 +468,12 @@ public class Render3DSystem : SystemBase, IRenderSystem {
   }
 
   private unsafe void CreateVertexBuffer(ReadOnlySpan<Entity> drawables) {
+    for (int i = 0; i < drawables.Length; i++) {
+
+    }
+  }
+
+  private unsafe void CreateVertexBuffer_(ReadOnlySpan<Entity> drawables) {
     _globalVertexBuffer?.Dispose();
     List<Vertex> vertices = [];
 
@@ -499,7 +508,7 @@ public class Render3DSystem : SystemBase, IRenderSystem {
       _device,
       vtxSize,
       (ulong)vertices.Count,
-      BufferUsage.StorageBuffer | BufferUsage.TransferDst,
+      BufferUsage.VertexBuffer | BufferUsage.TransferDst,
       MemoryProperty.DeviceLocal
     );
 

@@ -247,6 +247,10 @@ public unsafe class DwarfBuffer : IDisposable {
     WriteToBuffer(data, _instanceSize, (ulong)index * _alignmentSize);
   }
 
+  public void WrtieToIndex(nint data, ulong index) {
+    WriteToBuffer(data, _instanceSize, index * _alignmentSize);
+  }
+
   public VkResult FlushIndex(int index) {
     return Flush(_alignmentSize, (ulong)index * _alignmentSize);
   }

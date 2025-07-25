@@ -101,22 +101,22 @@ public unsafe class VkDynamicRenderer : IRenderer {
   }
 
   private void CreateSampler(out VkSampler sampler) {
-    VkPhysicalDeviceProperties properties = new();
-    vkGetPhysicalDeviceProperties(_device.PhysicalDevice, &properties);
+    VkPhysicalDeviceProperties2 properties = new();
+    vkGetPhysicalDeviceProperties2(_device.PhysicalDevice, &properties);
 
     VkSamplerCreateInfo samplerInfo = new();
-    samplerInfo.magFilter = VkFilter.Nearest;
-    samplerInfo.minFilter = VkFilter.Nearest;
+    samplerInfo.magFilter = VkFilter.Linear;
+    samplerInfo.minFilter = VkFilter.Linear;
     samplerInfo.addressModeU = VkSamplerAddressMode.Repeat;
     samplerInfo.addressModeV = VkSamplerAddressMode.Repeat;
     samplerInfo.addressModeW = VkSamplerAddressMode.Repeat;
     samplerInfo.anisotropyEnable = true;
-    samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-    samplerInfo.borderColor = VkBorderColor.IntOpaqueBlack;
+    samplerInfo.maxAnisotropy = properties.properties.limits.maxSamplerAnisotropy;
+    samplerInfo.borderColor = VkBorderColor.FloatTransparentBlack;
     samplerInfo.unnormalizedCoordinates = false;
     samplerInfo.compareEnable = false;
-    samplerInfo.compareOp = VkCompareOp.Always;
-    samplerInfo.mipmapMode = VkSamplerMipmapMode.Nearest;
+    samplerInfo.compareOp = VkCompareOp.LessOrEqual;
+    samplerInfo.mipmapMode = VkSamplerMipmapMode.Linear;
 
     vkCreateSampler(_device.LogicalDevice, &samplerInfo, null, out sampler).CheckResult();
   }
@@ -153,12 +153,12 @@ public unsafe class VkDynamicRenderer : IRenderer {
 
     VkDescriptorImageInfo* descriptorImageInfo = stackalloc VkDescriptorImageInfo[2];
     descriptorImageInfo[0] = new() {
-      imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
       imageView = Swapchain.ImageViews[index],
       sampler = ImageSampler
     };
     descriptorImageInfo[1] = new() {
-      imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
       imageView = _depthStencil[index].ImageView,
       sampler = DepthSampler
     };
@@ -199,7 +199,12 @@ public unsafe class VkDynamicRenderer : IRenderer {
   }
 
   private void SubmitFrame() {
-    var result = _swapchain.QueuePresent(_device.GraphicsQueue, _imageIndex, _semaphores[Swapchain.CurrentFrame].RenderComplete);
+    var result = _swapchain.QueuePresent(
+      _device.GraphicsQueue,
+      _imageIndex,
+      _semaphores[Swapchain.CurrentFrame].RenderComplete,
+      _waitFences
+    );
 
     if (result == VkResult.ErrorOutOfDateKHR || result == VkResult.SuboptimalKHR || _window.WasWindowResized()) {
       _window.ResetWindowResizedFlag();
@@ -373,6 +378,12 @@ public unsafe class VkDynamicRenderer : IRenderer {
       Application.Mutex.ReleaseMutex();
       SubmitFrame();
 
+
+      // VkPresentWait2InfoKHR vkPresentWait2Info = new();
+      // vkPresentWait2Info.presentId = _imageIndex;
+      // vkPresentWait2Info.
+      // vkWaitForPresent2KHR(_device.LogicalDevice, Swapchain, )
+
       IsFrameInProgress = false;
     }
   }
@@ -472,6 +483,18 @@ public unsafe class VkDynamicRenderer : IRenderer {
       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
       new VkImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1)
     );
+
+    // VkUtils.InsertMemoryBarrier(
+    //   commandBuffer,
+    //   _depthStencil[_imageIndex].Image,
+    //   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+    //   0,
+    //   VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+    //   VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    //   VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+    //   VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+    //   new VkImageSubresourceRange(VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1)
+    // );
   }
 
   public void CreateCommandBuffers(ulong commandPool, CommandBufferLevel level = CommandBufferLevel.Primary) {

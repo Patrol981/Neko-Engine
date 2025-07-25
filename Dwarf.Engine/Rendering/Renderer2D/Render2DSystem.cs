@@ -67,7 +67,7 @@ public class Render2DSystem : SystemBase {
     Logger.Info($"Recreating Renderer 2D [{_texturesCount}]");
 
     _texturesCount = CalculateTextureCount(drawables);
-    LastKnownElemCount = CalculateLastKnownElemCount(drawables);
+    LastKnownElemCount = CalculateTextureCount(drawables);
 
     CreateVertexBuffer(drawables);
     CreateIndexBuffer(drawables);
@@ -81,14 +81,9 @@ public class Render2DSystem : SystemBase {
     //   var textureManager = Application.Instance.TextureManager;
     //   // Setup(drawables, ref textureManager);
     // }
-    var newCount = CalculateLastKnownElemCount(drawables);
+    var newCount = CalculateTextureCount(drawables);
     if (newCount != LastKnownElemCount) {
       LastKnownElemCount = newCount;
-      CreateIndirectCommands(drawables);
-      CreateIndirectBuffer();
-    }
-
-    if (newCount > LastKnownElemCount) {
       return false;
     }
 
@@ -103,16 +98,18 @@ public class Render2DSystem : SystemBase {
   }
 
   private static int CalculateLastKnownElemCount(ReadOnlySpan<IDrawable2D> drawables) {
-    // int count = 0;
-    // for (int i = 0; i < drawables.Length; i++) {
-    //   if (drawables[i].HasMultipleMeshes) {
-    //     count += drawables[i].Meshes.Length;
-    //   } else {
-    //     count++;
-    //   }
-    // }
+    int count = 0;
+    for (int i = 0; i < drawables.Length; i++) {
+      if (drawables[i].Children.Length > 0) {
+        count += drawables[i].Children.Length;
+      } else {
+        count++;
+      }
+    }
 
-    return drawables.Length;
+    return count;
+
+    // return drawables.Length;
   }
 
   public static void Update(ReadOnlySpan<IDrawable2D> drawables, out SpritePushConstant140[] spriteData) {

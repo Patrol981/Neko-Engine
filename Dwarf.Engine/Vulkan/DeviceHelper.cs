@@ -33,12 +33,13 @@ public static unsafe class DeviceHelper {
       if (IsDeviceSuitable(physicalDevice, surface) == false)
         continue;
 
-      vkGetPhysicalDeviceProperties(physicalDevice, out var checkProperties);
-      var deviceName = ByteConverter.BytePointerToStringUTF8(checkProperties.deviceName);
+      VkPhysicalDeviceProperties2 checkProperties = new();
+      vkGetPhysicalDeviceProperties2(physicalDevice, &checkProperties);
+      var deviceName = ByteConverter.BytePointerToStringUTF8(checkProperties.properties.deviceName);
       Logger.Info(deviceName);
-      bool discrete = checkProperties.deviceType == VkPhysicalDeviceType.DiscreteGpu;
+      bool discrete = checkProperties.properties.deviceType == VkPhysicalDeviceType.DiscreteGpu;
       if (discrete || returnDevice.IsNull) {
-        gpuInfo = checkProperties;
+        gpuInfo = checkProperties.properties;
         returnDevice = physicalDevice;
         if (discrete) break;
       }

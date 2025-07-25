@@ -291,8 +291,8 @@ public class TextureManager : IDisposable {
     Array.Clear(_allTexturesInfos);
 
     if (_allTexturesSampler == 0) {
-      VkPhysicalDeviceProperties properties = new();
-      vkGetPhysicalDeviceProperties(_device.PhysicalDevice, &properties);
+      VkPhysicalDeviceProperties2 properties = new();
+      vkGetPhysicalDeviceProperties2(_device.PhysicalDevice, &properties);
 
       var samplerCreateInfo = new VkSamplerCreateInfo() {
         magFilter = VkFilter.Nearest,
@@ -301,7 +301,7 @@ public class TextureManager : IDisposable {
         addressModeV = VkSamplerAddressMode.Repeat,
         addressModeW = VkSamplerAddressMode.Repeat,
         anisotropyEnable = true,
-        maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+        maxAnisotropy = properties.properties.limits.maxSamplerAnisotropy,
         borderColor = VkBorderColor.IntOpaqueBlack,
         unnormalizedCoordinates = false,
         compareEnable = false,

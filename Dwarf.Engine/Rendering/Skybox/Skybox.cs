@@ -411,7 +411,7 @@ public class Skybox : IDisposable {
       1,
       BufferUsage.UniformBuffer,
       MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      _device.Properties.limits.minUniformBufferOffsetAlignment
+      _device.Properties.properties.limits.minUniformBufferOffsetAlignment
     );
   }
 

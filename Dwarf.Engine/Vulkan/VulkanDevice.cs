@@ -41,7 +41,7 @@ public class VulkanDevice : IDevice {
   // private readonly VkSemaphore _semaphore = VkSemaphore.Null;
   // private readonly ulong _timeline = 0;
 
-  public VkPhysicalDeviceProperties Properties;
+  public VkPhysicalDeviceProperties2 Properties;
   public const long FenceTimeout = 100000000000;
 
   public VkPhysicalDeviceFeatures Features { get; private set; }
@@ -427,6 +427,18 @@ public class VulkanDevice : IDevice {
       if (availableExtension == VK_EXT_ROBUSTNESS_2_EXTENSION_NAME) {
         instanceExtensions.Add(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
       }
+
+      if (availableExtension == VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME) {
+        instanceExtensions.Add(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
+      }
+
+      if (availableExtension == VK_KHR_PRESENT_WAIT_2_EXTENSION_NAME) {
+        instanceExtensions.Add(VK_KHR_PRESENT_WAIT_2_EXTENSION_NAME);
+      }
+
+      if (availableExtension == VK_KHR_PRESENT_ID_2_EXTENSION_NAME) {
+        instanceExtensions.Add(VK_KHR_PRESENT_ID_2_EXTENSION_NAME);
+      }
     }
     // instanceExtensions.Add(VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME);
     // instanceExtensions.Add(VK_EXT_dynamic_rendering_unused_attachments);
@@ -519,7 +531,9 @@ public class VulkanDevice : IDevice {
   }
 
   private unsafe void CreateLogicalDevice() {
-    vkGetPhysicalDeviceProperties(_physicalDevice, out Properties);
+    VkPhysicalDeviceProperties2 properties = new();
+    vkGetPhysicalDeviceProperties2(_physicalDevice, &properties);
+    Properties = properties;
     var queueFamilies = DeviceHelper.FindQueueFamilies(_physicalDevice, Surface);
     var availableDeviceExtensions = vkEnumerateDeviceExtensionProperties(_physicalDevice);
 
@@ -574,13 +588,16 @@ public class VulkanDevice : IDevice {
     VkPhysicalDeviceVulkan13Features vk13Features = new() {
       synchronization2 = true,
       dynamicRendering = true,
+      shaderDemoteToHelperInvocation = true,
       inlineUniformBlock = true,
+      maintenance4 = true,
       pNext = &vk12Features,
     };
 
     VkPhysicalDeviceVulkan14Features vk14Features = new() {
-      hostImageCopy = true,
+      // hostImageCopy = true,
       pushDescriptor = true,
+      pipelineRobustness = true,
       // dynamicRenderingLocalRead = true,
       pNext = &vk13Features
     };
@@ -590,14 +607,29 @@ public class VulkanDevice : IDevice {
     //   pNext = &vk14Features
     // };
 
-    VkPhysicalDeviceRobustness2FeaturesEXT physicalDeviceRobustness = new() {
+    VkPhysicalDeviceRobustness2FeaturesKHR physicalDeviceRobustness = new() {
       nullDescriptor = true,
       pNext = &vk14Features
     };
 
+    VkPhysicalDevicePresentWaitFeaturesKHR presentWaitFeatures = new() {
+      presentWait = true,
+      pNext = &physicalDeviceRobustness
+    };
+
+    VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesKHR = new() {
+      presentId = true,
+      pNext = &presentWaitFeatures
+    };
+
+    VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR maintenance1FeaturesKHR = new() {
+      swapchainMaintenance1 = true,
+      pNext = &presentIdFeaturesKHR
+    };
+
     VkPhysicalDeviceFeatures2 deviceFeatures2 = new() {
       features = deviceFeatures,
-      pNext = &physicalDeviceRobustness
+      pNext = &maintenance1FeaturesKHR
     };
 
 
@@ -614,7 +646,9 @@ public class VulkanDevice : IDevice {
     enabledExtensions = [
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
       VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
-      VK_EXT_ROBUSTNESS_2_EXTENSION_NAME
+      VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
+      VK_KHR_PRESENT_WAIT_EXTENSION_NAME,
+      VK_KHR_PRESENT_ID_EXTENSION_NAME
       // VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME,
       // VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME
     ];
@@ -683,8 +717,8 @@ public class VulkanDevice : IDevice {
   public IntPtr LogicalDevice => _logicalDevice;
   public IntPtr PhysicalDevice => _physicalDevice;
   public ulong Surface { get; private set; } = VkSurfaceKHR.Null;
-  public ulong MinStorageBufferOffsetAlignment => Properties.limits.minStorageBufferOffsetAlignment;
-  public ulong MinUniformBufferOffsetAlignment => Properties.limits.minUniformBufferOffsetAlignment;
+  public ulong MinStorageBufferOffsetAlignment => Properties.properties.limits.minStorageBufferOffsetAlignment;
+  public ulong MinUniformBufferOffsetAlignment => Properties.properties.limits.minUniformBufferOffsetAlignment;
 
   public VkUtf8String AppName = "Dwarf App"u8;
   public VkUtf8String EngineName = "Dwarf Engine"u8;
