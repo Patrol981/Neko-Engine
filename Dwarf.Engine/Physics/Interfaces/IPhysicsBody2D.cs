@@ -11,6 +11,7 @@ public interface IPhysicsBody2D : IDisposable {
   float GravityFactor { get; set; }
   MotionQuality MotionQuality { get; set; }
   MotionType MotionType { get; set; }
+  bool Grounded { get; }
   object CreateAndAddBody(object settings);
   object ColldierMeshToPhysicsShape(Entity entity, Mesh colliderMesh);
   object BodyId { get; }

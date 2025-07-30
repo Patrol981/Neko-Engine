@@ -284,6 +284,37 @@ public class HammerWorld {
       foreach (var aabb in aabbss) {
         var isColl = AABB.CheckCollisionWithTilemapMTV(sprite.AABB, sprite.Position, aabb, tilemap.Position, out var mtv);
         if (isColl) {
+          sprite.Position += mtv;
+
+          if (MathF.Abs(mtv.X) > MathF.Abs(mtv.Y)) {
+            sprite.Velocity.X = 0;
+
+
+            if (mtv.Y < 0) {
+              collidesWithAnythingGround = true;
+            }
+          } else {
+            sprite.Velocity.Y = 0;
+
+            if (mtv.Y < 0) {
+              collidesWithAnythingGround = true;
+            }
+          }
+
+          // collidesWithAnythingGround = true;
+        }
+      }
+    }
+  }
+
+
+
+  internal static void HandleTilemaps_(HammerObject sprite, ReadOnlySpan<HammerObject> tilemaps, ref bool collidesWithAnythingGround) {
+    foreach (var tilemap in tilemaps) {
+      var aabbss = SortOutTilemap(sprite, tilemap);
+      foreach (var aabb in aabbss) {
+        var isColl = AABB.CheckCollisionWithTilemapMTV(sprite.AABB, sprite.Position, aabb, tilemap.Position, out var mtv);
+        if (isColl) {
           var dotProductX = Vector2.Dot(sprite.Velocity, sprite.Position);
 
           if (dotProductX > 0) {

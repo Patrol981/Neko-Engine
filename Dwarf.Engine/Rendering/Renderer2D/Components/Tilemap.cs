@@ -18,8 +18,9 @@ public class Tilemap : Component, IDrawable2D {
   public Vector2I TilemapSize { get; private set; }
   public int TileSize { get; private set; }
   public List<TilemapLayer> Layers { get; init; } = [];
+  public TilemapLayer CollisionLayer { get; set; } = default!;
   public List<Sprite> Backgrounds { get; init; } = [];
-  public Mesh CollisionMesh => Layers.Where(x => x.IsCollision).First().LayerMesh;
+  public Mesh CollisionMesh => CollisionLayer.LayerMesh;
   public Mesh Mesh => throw new NotImplementedException();
   public ITexture[] SpriteSheet => [];
   public IDrawable2D[] Children => [.. Layers];
@@ -93,6 +94,8 @@ public class Tilemap : Component, IDrawable2D {
       Layers[i].GenerateMesh();
       // Layers[i].SetupTexture(imageSource[i]);
     }
+
+    CollisionLayer.GenerateMesh();
   }
 
   public void CreateBackgrounds(BackgroundData[] backgrounds) {

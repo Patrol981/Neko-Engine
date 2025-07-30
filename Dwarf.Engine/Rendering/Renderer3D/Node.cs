@@ -48,6 +48,7 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
   public bool FilterMeInShader { get; set; } = false;
 
   public float AnimationTimer = 0.0f;
+  public Guid BatchId { get; init; } = Guid.NewGuid();
 
   public Matrix4x4 GetLocalMatrix() {
     if (!UseCachedMatrix) {

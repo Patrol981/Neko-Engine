@@ -27,6 +27,7 @@ public class Rigidbody2D : Component, IDisposable, ICloneable {
 
   public Vector2 Velocity => Vector2.Zero;
   public bool Kinematic => false;
+  public bool Grounded { get; private set; }
 
   public Rigidbody2D() {
     _app = Application.Instance;
@@ -125,6 +126,8 @@ public class Rigidbody2D : Component, IDisposable, ICloneable {
 
     transform.Position.X = pos.HasValue ? pos.Value.X : 0;
     transform.Position.Y = pos.HasValue ? pos.Value.Y : 0;
+
+    Grounded = PhysicsBody2D?.Grounded ?? false;
   }
 
   public void AddForce(Vector2 vec2) {
