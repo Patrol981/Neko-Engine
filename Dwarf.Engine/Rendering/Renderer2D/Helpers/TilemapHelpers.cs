@@ -48,7 +48,7 @@ public static class TilemapHelpers {
 
   public static List<(Vector2, Vector2)> ExtractAABBs(this Tilemap tilemap) {
     var list = new List<(Vector2, Vector2)>();
-    var targetLayer = tilemap.Layers.Where(l => l.IsCollision).First();
+    var targetLayer = tilemap.CollisionLayer;
     var tilemapTransform = tilemap.Owner.GetComponent<Transform>();
 
     for (int y = 0; y < targetLayer.Tiles.GetLength(1); y++) {
@@ -56,12 +56,12 @@ public static class TilemapHelpers {
         var tile = targetLayer.Tiles[x, y];
         if (!tile.IsNotEmpty) continue;
 
-        float pixelsPerUnit = 320f;
+        float pixelsPerUnit = tilemap.TileSize * 10;
 
         float worldX = tile.X * (tilemap.TileSize / pixelsPerUnit) * tilemapTransform.Scale.X + tilemapTransform.Position.X;
         float worldY = tile.Y * (tilemap.TileSize / pixelsPerUnit) * tilemapTransform.Scale.Y + tilemapTransform.Position.Y;
 
-        float tileSizeWorld = (float)tilemap.TileSize / 320 * tilemapTransform.Scale.X;
+        float tileSizeWorld = (float)tilemap.TileSize / pixelsPerUnit * tilemapTransform.Scale.X;
         float tileMinX = worldX + tileSizeWorld / 3;
         float tileMaxX = worldX + tileSizeWorld + (tileSizeWorld / 3);
         float tileMinY = worldY + tileSizeWorld / 3;

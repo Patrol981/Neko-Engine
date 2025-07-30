@@ -23,7 +23,13 @@ public static class TiledLoader {
       if (!layer.Visible) continue;
 
       if (layer is TileLayer tileLayer) {
-        tilemap.Layers.Add(CreateTilemap(app, tileLayer, map, ref tilemap, ref tileSources));
+        var resultLayer = CreateTilemap(app, tileLayer, map, ref tilemap, ref tileSources);
+        if (!resultLayer.IsCollision) {
+          tilemap.Layers.Add(resultLayer);
+        } else {
+          tilemap.CollisionLayer = resultLayer;
+        }
+
       } else if (layer is ImageLayer imageLayer) {
         CreateImages(app, imageLayer, map, ref tilemap, ref bgSources);
       }

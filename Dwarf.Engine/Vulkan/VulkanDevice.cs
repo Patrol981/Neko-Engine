@@ -46,6 +46,8 @@ public class VulkanDevice : IDevice {
 
   public VkPhysicalDeviceFeatures Features { get; private set; }
   public List<VkUtf8String> DeviceExtensions { get; private set; } = [];
+  public ulong MaxBufferSize { get; private set; }
+  public ulong MaxHeapSize { get; private set; }
 
   public VulkanDevice(IWindow window) {
     _window = window;
@@ -130,6 +132,24 @@ public class VulkanDevice : IDevice {
       VkBufferCopy copyRegion = new() {
         srcOffset = 0,  // Optional
         dstOffset = 0,  // Optional
+        size = size
+      };
+      vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+      // FlushCommandBuffer(commandBuffer, _presentQueue, true);
+      EndSingleTimeCommands(commandBuffer);
+      return Task.CompletedTask;
+    }
+  }
+
+  public unsafe Task CopyBuffer(ulong srcBuffer, ulong dstBuffer, ulong size, ulong srcOffset, ulong dstOffset) {
+    lock (_queueLock) {
+      VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+      // var commandBuffer = CreateCommandBuffer(VkCommandBufferLevel.Primary, true);
+
+      VkBufferCopy copyRegion = new() {
+        srcOffset = srcOffset,  // Optional
+        dstOffset = dstOffset,  // Optional
         size = size
       };
       vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
@@ -531,11 +551,21 @@ public class VulkanDevice : IDevice {
   }
 
   private unsafe void CreateLogicalDevice() {
-    VkPhysicalDeviceProperties2 properties = new();
+    VkPhysicalDeviceMaintenance4Properties maintenance4Properties = new();
+
+    VkPhysicalDeviceProperties2 properties = new() {
+      pNext = &maintenance4Properties
+    };
+
     vkGetPhysicalDeviceProperties2(_physicalDevice, &properties);
     Properties = properties;
     var queueFamilies = DeviceHelper.FindQueueFamilies(_physicalDevice, Surface);
     var availableDeviceExtensions = vkEnumerateDeviceExtensionProperties(_physicalDevice);
+
+    vkGetPhysicalDeviceMemoryProperties(_physicalDevice, out var memoryProperties);
+
+    MaxBufferSize = maintenance4Properties.maxBufferSize;
+    MaxHeapSize = memoryProperties.memoryHeaps.e0.size;
 
     HashSet<uint> uniqueQueueFamilies = [queueFamilies.graphicsFamily];
 

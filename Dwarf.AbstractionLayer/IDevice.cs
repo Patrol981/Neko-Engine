@@ -20,6 +20,7 @@ public interface IDevice : IDisposable {
   );
 
   public Task CopyBuffer(ulong srcBuffer, ulong dstBuffer, ulong size);
+  public unsafe Task CopyBuffer(ulong srcBuffer, ulong dstBuffer, ulong size, ulong srcOffset, ulong dstOffset);
 
   public void WaitQueue();
   public void WaitAllQueues();
@@ -46,6 +47,9 @@ public interface IDevice : IDisposable {
 
   ulong MinStorageBufferOffsetAlignment { get; }
   ulong MinUniformBufferOffsetAlignment { get; }
+
+  ulong MaxBufferSize { get; }
+  ulong MaxHeapSize { get; }
 
   RenderAPI RenderAPI { get; }
 }

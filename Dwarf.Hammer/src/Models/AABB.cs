@@ -139,6 +139,47 @@ internal class AABB {
     AABB? tileAABB,
     Vector2 tilePos,
     out Vector2 mtv) {
+    mtv = Vector2.Zero;
+
+    if (spriteAABB == null || tileAABB == null)
+      return false;
+
+    float aMinX = spritePos.X;
+    float aMaxX = aMinX + spriteAABB.Width;
+    float aMinY = spritePos.Y;
+    float aMaxY = aMinY + spriteAABB.Height;
+
+    float bMinX = tileAABB.Min.X;
+    float bMaxX = tileAABB.Max.X;
+    float bMinY = tileAABB.Min.Y;
+    float bMaxY = tileAABB.Max.Y;
+
+    bool overlapX = aMaxX > bMinX && bMaxX > aMinX;
+    bool overlapY = aMaxY > bMinY && bMaxY > aMinY;
+
+    if (!overlapX || !overlapY)
+      return false;
+
+    float overlapXAmount = MathF.Min(aMaxX, bMaxX) - MathF.Max(aMinX, bMinX);
+    float overlapYAmount = MathF.Min(aMaxY, bMaxY) - MathF.Max(aMinY, bMinY);
+
+    if (overlapXAmount < overlapYAmount) {
+      bool fromLeft = (aMinX + spriteAABB.Width / 2f) < (bMinX + tileAABB.Width / 2f);
+      mtv = new Vector2(fromLeft ? -overlapXAmount : overlapXAmount, 0);
+    } else {
+      bool fromTop = (aMinY + spriteAABB.Height / 2f) < (bMinY + tileAABB.Height / 2f);
+      mtv = new Vector2(0, fromTop ? -overlapYAmount : overlapYAmount);
+    }
+
+    return true;
+  }
+
+  internal static bool CheckCollisionWithTilemapMTV_(
+    AABB? spriteAABB,
+    Vector2 spritePos,
+    AABB? tileAABB,
+    Vector2 tilePos,
+    out Vector2 mtv) {
     float aMinX = spritePos.X;
     float aMaxX = aMinX + spriteAABB?.Width ?? 0;
     float aMinY = spritePos.Y;

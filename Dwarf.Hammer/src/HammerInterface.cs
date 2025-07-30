@@ -12,6 +12,10 @@ public class HammerInterface {
     _hammerWorld = hammerWorld;
   }
 
+  public bool GetGrounded(in BodyId bodyId) {
+    return _hammerWorld.GetBody(bodyId)?.Grounded ?? false;
+  }
+
   public Vector2 GetPosition(in BodyId bodyId) {
     return _hammerWorld.GetBody(bodyId)?.Position ?? Vector2.Zero;
   }

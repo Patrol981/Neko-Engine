@@ -19,6 +19,7 @@ public class HammerBodyWrapper : IPhysicsBody2D {
   }
 
   public object BodyId => _bodyId;
+  public bool Grounded => _hammerInterface.GetGrounded(_bodyId);
 
   public Vector2 Position {
     get => _hammerInterface.GetPosition(_bodyId);

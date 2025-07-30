@@ -136,7 +136,7 @@ public unsafe class DwarfBuffer : IDisposable {
 
   private void CreateVmaBuffer(nint allocator, ulong size, BufferUsage bufferUsageFlags, bool cpuAccessible) {
     VkBufferCreateInfo bufferInfo = new() {
-      size = _bufferSize,
+      size = size,
       usage = (VkBufferUsageFlags)bufferUsageFlags,
       sharingMode = VkSharingMode.Exclusive
     };
