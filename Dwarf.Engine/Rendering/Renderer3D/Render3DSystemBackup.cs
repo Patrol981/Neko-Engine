@@ -73,13 +73,13 @@ public partial class Render3DSystem {
 
     // _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _globalVertexBuffer, 0);
     _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
-    _renderer.CommandList.DrawIndexedIndirect(
-      frameInfo.CommandBuffer,
-      _indirectBuffer!.GetBuffer(),
-      0,
-      (uint)_indirectDrawCommands.Count,
-      (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
-    );
+    // _renderer.CommandList.DrawIndexedIndirect(
+    //   frameInfo.CommandBuffer,
+    //   _indirectBuffer!.GetBuffer(),
+    //   0,
+    //   (uint)_indirectDrawCommands.Count,
+    //   (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
+    // );
 
     // Logger.Info("render");
   }
@@ -120,13 +120,13 @@ public partial class Render3DSystem {
       var firstIndex = drawCommand.firstIndex + vertexOffset;
 
       // Now, perform the draw call using the indirect command
-      _renderer.CommandList.DrawIndexedIndirect(
-          frameInfo.CommandBuffer,
-          _indirectBuffer!.GetBuffer(),
-          (ulong)(i * Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()), // Correct offset in the indirect buffer
-          1,  // Always 1 instance per command (could vary for instancing)
-          (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()  // Size of a single indirect command
-      );
+      // _renderer.CommandList.DrawIndexedIndirect(
+      //     frameInfo.CommandBuffer,
+      //     _indirectBuffer!.GetBuffer(),
+      //     (ulong)(i * Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()), // Correct offset in the indirect buffer
+      //     1,  // Always 1 instance per command (could vary for instancing)
+      //     (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()  // Size of a single indirect command
+      // );
     }
   }
 

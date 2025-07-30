@@ -31,11 +31,18 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
   private DwarfBuffer? _globalIndexBuffer;
   private DwarfBuffer? _globalVertexBuffer;
-  private DwarfBuffer? _indirectBuffer;
+  private DwarfBuffer[] _indirectBuffers = [];
 
   private readonly IDescriptorSetLayout _jointDescriptorLayout = null!;
 
+  internal class IndirectData {
+    internal List<VkDrawIndexedIndirectCommand> Commands = [];
+    internal uint CurrentIndexOffset = 0;
+    internal uint InstanceIndex = 0;
+  }
   private List<VkDrawIndexedIndirectCommand> _indirectDrawCommands = [];
+  private Dictionary<uint, IndirectData> _indirectPairs = [];
+  private uint _instanceIndex = 0;
 
   private Node[] _notSkinnedNodesCache = [];
   private Node[] _skinnedNodesCache = [];
@@ -130,8 +137,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     // CreateVertexBuffer(entities);
     // CreateIndexBuffer(entities);
 
-    CreateIndirectCommands(entities);
-    CreateIndirectBuffer();
+    // CreateIndirectCommands(entities);
+    //. CreateIndirectBuffer();
   }
 
   public void Update(
@@ -223,16 +230,23 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     PerfMonitor.Render3DComputeTime = PerfMonitor.ComunnalStopwatch.ElapsedMilliseconds;
   }
 
-  public void Render(FrameInfo frameInfo) {
+  public void Render(FrameInfo frameInfo, bool indirect = true) {
     PerfMonitor.Clear3DRendererInfo();
     PerfMonitor.NumberOfObjectsRenderedIn3DRenderer = (uint)LastElemRenderedCount;
     CreateOrUpdateBuffers();
-    if (_notSkinnedNodesCache.Length > 0) {
-      RenderSimple(frameInfo, _notSkinnedNodesCache);
+
+    if (indirect) {
+      RenderIndirect(frameInfo);
+    } else {
+      if (_notSkinnedNodesCache.Length > 0) {
+        RenderSimple(frameInfo, _notSkinnedNodesCache);
+      }
+      if (_skinnedNodesCache.Length > 0) {
+        RenderComplex(frameInfo, _skinnedNodesCache, _notSkinnedNodesCache.Length);
+      }
     }
-    if (_skinnedNodesCache.Length > 0) {
-      RenderComplex(frameInfo, _skinnedNodesCache, _notSkinnedNodesCache.Length);
-    }
+
+
   }
 
   public unsafe void RenderSimple(FrameInfo frameInfo, Span<Node> nodes) {
@@ -305,7 +319,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       }
 
       var bindInfo = _vertexBindings[i + offset];
-      var indexInfo = _indexBindings[i + offset];
 
       if (bindInfo.BufferIndex != lastBuffer) {
 
@@ -314,25 +327,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       }
 
       var vertexBuffer = _bufferPool.GetVertexBuffer(bindInfo.BufferIndex);
-      var indexBuffer = _bufferPool.GetIndexBuffer(bindInfo.BufferIndex);
 
       _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, vertexBuffer, 0);
-      // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, indexBuffer, 0);
-
-      // _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, nodes[i].Mesh!.VertexBuffer!, 0);
-      // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, nodes[i].Mesh!.IndexBuffer!);
-
-      // nodes[i].BindNode(frameInfo.CommandBuffer);
-      // nodes[i].DrawNode(frameInfo.CommandBuffer, (uint)i + (uint)offset);
-
-      // _renderer.CommandList.DrawIndexed(
-      //   frameInfo.CommandBuffer,
-      //   indexCount: nodes[i].Mesh!.IndexCount,
-      //   instanceCount: 1,
-      //   firstIndex: 0,
-      //   vertexOffset: 0,
-      //   firstInstance: (uint)i + (uint)offset
-      // );
 
       _renderer.CommandList.DrawIndexed(
         frameInfo.CommandBuffer,
@@ -343,13 +339,11 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
         firstInstance: (uint)i + (uint)offset
       );
 
-      var test = nodes[i];
-
       indexOffset += thisCount;
     }
   }
 
-  public unsafe void RenderComplexx(FrameInfo frameInfo, Span<Node> nodes, int offset) {
+  public unsafe void RenderIndirect(FrameInfo frameInfo) {
     BindPipeline(frameInfo.CommandBuffer, Skinned3D);
 
     Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, _pipelines[Skinned3D].PipelineLayout, 0, 1);
@@ -358,65 +352,23 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     Descriptor.BindDescriptorSet(frameInfo.PointLightsDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 3, 1);
     Descriptor.BindDescriptorSet(frameInfo.JointsBufferDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 4, 1);
 
-    uint lastBuffer = uint.MaxValue;
+    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
 
-    // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
-    for (int i = 0; i < nodes.Length; i++) {
-      if (nodes[i].ParentRenderer.GetOwner().CanBeDisposed || !nodes[i].ParentRenderer.GetOwner().Active) continue;
-      if (!nodes[i].ParentRenderer.FinishedInitialization) continue;
+    foreach (var container in _indirectPairs) {
+      var targetVertex = _bufferPool.GetVertexBuffer(container.Key);
+      _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, targetVertex, 0);
 
-      if (i < nodes.Length && nodes[i].ParentRenderer.Animations.Count > 0) {
-        nodes[i].ParentRenderer.GetOwner().TryGetComponent<AnimationController>()?.Update(nodes[i]);
-      }
-
-      var bindInfo = _vertexBindings[i + offset];
-      var firstIdx = _indexBindings[i + offset];
-
-      // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
-
-      if (bindInfo.BufferIndex != lastBuffer) {
-        var buffer = _bufferPool.GetVertexBuffer(bindInfo.BufferIndex);
-        _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, buffer, 0);
-        lastBuffer = bindInfo.BufferIndex;
-      }
-
-      // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
-
-      // nodes[i].BindNode(frameInfo.CommandBuffer);
-
-      // _renderer.CommandList.DrawIndexed(
-      //   frameInfo.CommandBuffer,
-      //   nodes[i].Mesh!.IndexCount,
-      //   1,
-      //   0,
-      //   (int)bindInfo.FirstVertexOffset,
-      //   (uint)i + (uint)offset
-      // );
-
-      // nodes[i].DrawNode(
-      //   frameInfo.CommandBuffer,
-      //   (int)bindInfo.FirstVertexOffset,
-      //   (uint)i + (uint)offset
-      // );
-
-      // ParentRenderer.Renderer.CommandList.DrawIndexed(commandBuffer, Mesh!.IndexCount, 1, 0, vertexOffset, firstInstance);
-
-      _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
-
-      var indices = nodes[i].Mesh;
-
-      _renderer.CommandList.DrawIndexed(
+      _renderer.CommandList.DrawIndexedIndirect(
         frameInfo.CommandBuffer,
-        indexCount: nodes[i].Mesh!.IndexCount,
-        instanceCount: 1,
-        firstIndex: firstIdx.FirstIndexOffset,
-        vertexOffset: (int)bindInfo.FirstVertexOffset,
-        firstInstance: (uint)i + (uint)offset
+        _indirectBuffers[container.Key]!.GetBuffer(),
+        0,
+        (uint)container.Value.Commands.Count,
+        (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
       );
     }
   }
 
-  public unsafe void Render_Indirect(FrameInfo frameInfo) {
+  public unsafe void Render_Indirect_BC(FrameInfo frameInfo) {
     BindPipeline(frameInfo.CommandBuffer, Skinned3D);
 
     Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, _pipelines[Skinned3D].PipelineLayout, 0, 1);
@@ -426,14 +378,14 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     Descriptor.BindDescriptorSet(frameInfo.JointsBufferDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 4, 1);
 
     // _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _globalVertexBuffer, 0);
-    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
-    _renderer.CommandList.DrawIndexedIndirect(
-      frameInfo.CommandBuffer,
-      _indirectBuffer!.GetBuffer(),
-      0,
-      (uint)_indirectDrawCommands.Count,
-      (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
-    );
+    // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
+    // _renderer.CommandList.DrawIndexedIndirect(
+    //   frameInfo.CommandBuffer,
+    //   _indirectBuffer!.GetBuffer(),
+    //   0,
+    //   (uint)_indirectDrawCommands.Count,
+    //   (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
+    // );
 
     // Logger.Info("render");
   }
@@ -519,10 +471,66 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   private void CreateOrUpdateBuffers() {
     if (_cacheMatch && _bufferPool != null) return;
 
-    CreateVertexBuffer([.. _notSkinnedNodesCache, .. _skinnedNodesCache]);
-    CreateIndexBuffer([.. _notSkinnedNodesCache, .. _skinnedNodesCache]);
+    Node[] items = [.. _notSkinnedNodesCache, .. _skinnedNodesCache];
+
+    _instanceIndex = 0;
+
+    CreateVertexBuffer(items);
+    CreateIndexBuffer(items);
+
+    // CreateIndirectCommands(items);
+    CreateIndirectBuffer();
 
     _cacheMatch = true;
+  }
+
+  private void AddIndirectCommand(uint index, Node node, VertexBinding vertexBinding) {
+    if (!_indirectPairs.ContainsKey(index)) {
+      var id = _indirectPairs.Keys.Count;
+      _indirectPairs.Add((uint)id, new());
+    }
+
+    var data = _indirectPairs[index];
+
+    var mesh = node.Mesh;
+    if (mesh?.IndexBuffer == null) throw new ArgumentNullException("mesh does not have index buffer", nameof(mesh));
+
+    var cmd = new VkDrawIndexedIndirectCommand {
+      indexCount = (uint)mesh.Indices.Length,
+      instanceCount = 1,
+      firstIndex = vertexBinding.FirstIndexOffset,
+      vertexOffset = (int)vertexBinding.FirstVertexOffset,
+      firstInstance = _instanceIndex
+    };
+
+    _indirectPairs[index].Commands.Add(cmd);
+
+    _instanceIndex++;
+    data.CurrentIndexOffset += vertexBinding.FirstIndexOffset;
+  }
+
+  private void CreateIndirectCommands(ReadOnlySpan<Node> nodes) {
+    _indirectDrawCommands.Clear();
+    uint indexOffset = 0;
+    uint i = 0;
+
+    foreach (var node in nodes) {
+      var mesh = node.Mesh;
+      if (mesh?.IndexBuffer == null)
+        continue;
+
+      var cmd = new VkDrawIndexedIndirectCommand {
+        indexCount = (uint)mesh.Indices.Length,
+        instanceCount = 1,
+        firstIndex = indexOffset,
+        vertexOffset = 0,
+        firstInstance = (uint)i
+      };
+
+      _indirectDrawCommands.Add(cmd);
+      indexOffset += (uint)mesh.Indices.Length;
+      i++;
+    }
   }
 
   private void CreateIndirectCommands(ReadOnlySpan<Entity> drawables) {
@@ -550,35 +558,45 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   }
 
   private unsafe void CreateIndirectBuffer() {
-    _indirectBuffer?.Dispose();
-
-    var size = _indirectDrawCommands.Count * Unsafe.SizeOf<VkDrawIndexedIndirectCommand>();
-
-    var stagingBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      (ulong)size,
-      BufferUsage.TransferSrc,
-      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      stagingBuffer: true,
-      cpuAccessible: true
-    );
-
-    stagingBuffer.Map((ulong)size);
-    fixed (VkDrawIndexedIndirectCommand* pIndirectCommands = _indirectDrawCommands.ToArray()) {
-      stagingBuffer.WriteToBuffer((nint)pIndirectCommands, (ulong)size);
+    foreach (var buff in _indirectBuffers) {
+      buff?.Dispose();
     }
+    Array.Clear(_indirectBuffers);
+    _indirectBuffers = new DwarfBuffer[_indirectPairs.Keys.Count];
+    int i = 0;
 
-    _indirectBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      (ulong)size,
-      BufferUsage.TransferDst | BufferUsage.IndirectBuffer,
-      MemoryProperty.DeviceLocal
-    );
+    foreach (var commands in _indirectPairs) {
+      var size = commands.Value.Commands.Count * Unsafe.SizeOf<VkDrawIndexedIndirectCommand>();
 
-    _device.CopyBuffer(stagingBuffer.GetBuffer(), _indirectBuffer.GetBuffer(), (ulong)size);
-    stagingBuffer.Dispose();
+      var stagingBuffer = new DwarfBuffer(
+        _allocator,
+        _device,
+        (ulong)size,
+        BufferUsage.TransferSrc,
+        MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
+        stagingBuffer: true,
+        cpuAccessible: true
+      );
+
+      stagingBuffer.Map((ulong)size);
+      fixed (VkDrawIndexedIndirectCommand* pIndirectCommands = commands.Value.Commands.ToArray()) {
+        stagingBuffer.WriteToBuffer((nint)pIndirectCommands, (ulong)size);
+      }
+
+      var inBuff = new DwarfBuffer(
+        _allocator,
+        _device,
+        (ulong)size,
+        BufferUsage.TransferDst | BufferUsage.IndirectBuffer,
+        MemoryProperty.DeviceLocal
+      );
+
+      _device.CopyBuffer(stagingBuffer.GetBuffer(), inBuff.GetBuffer(), (ulong)size);
+      stagingBuffer.Dispose();
+
+      _indirectBuffers[i] = inBuff;
+      i++;
+    }
   }
 
   private unsafe void CreateIndexBuffer(ReadOnlySpan<Node> nodes) {
@@ -737,7 +755,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
         }
         previousSize += byteSize;
 
-
         _vertexBindings.Add(new VertexBinding {
           BufferIndex = currentPool,
           // FirstVertexOffset = (uint)(byteSize / (ulong)Unsafe.SizeOf<Vertex>()),
@@ -746,7 +763,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
           FirstIndexOffset = indexOffset
         });
 
-
+        AddIndirectCommand(currentPool, node, _vertexBindings.Last());
 
         Logger.Warn($"Setting VTX offset to {_vertexBindings.Last().FirstVertexOffset} from {byteOffset}");
         Logger.Warn($"[D] Setting VTX offset to {vertexOffset} {byteSize / (ulong)Unsafe.SizeOf<Vertex>()}");
@@ -808,7 +825,9 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     _device.WaitQueue();
     _globalVertexBuffer?.Dispose();
     _globalIndexBuffer?.Dispose();
-    _indirectBuffer?.Dispose();
+    foreach (var buff in _indirectBuffers) {
+      buff.Dispose();
+    }
     _bufferPool?.Dispose(); _jointDescriptorLayout?.Dispose();
     base.Dispose();
   }
