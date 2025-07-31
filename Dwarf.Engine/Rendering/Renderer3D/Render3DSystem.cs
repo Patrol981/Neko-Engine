@@ -229,10 +229,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       skinned.Key.ParentRenderer.GetOwner().TryGetComponent<AnimationController>()?.Update(skinned.Key);
     }
 
-    //     if (i <= nodes.Length && nodes[i].ParentRenderer.Animations.Count > 0) {
-    //   nodes[i].ParentRenderer.GetOwner().TryGetComponent<AnimationController>()?.Update(nodes[i]);
-    // }
-
     _skinnedGroups = [.. nodeObjectsSkinned
       .GroupBy(x => x.Key.Name)
       .Select(group => (Key: group.Key, Count: group.Count()))];
