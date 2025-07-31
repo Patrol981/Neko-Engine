@@ -17,10 +17,10 @@ public partial class Render3DSystem {
     uint lastBuffer = uint.MaxValue;
     for (int i = 0; i < nodes.Length; i++) {
       // grab this node’s assignment
-      var bindInfo = _vertexBindings[i];
+      var bindInfo = _vertexComplexBindings[i];
       if (bindInfo.BufferIndex != lastBuffer) {
         // bind the correct buffer
-        var vkb = _bufferPool.GetVertexBuffer(bindInfo.BufferIndex);
+        var vkb = _complexBufferPool.GetVertexBuffer(bindInfo.BufferIndex);
         _renderer.CommandList.BindVertex(
           frameInfo.CommandBuffer,
           vkb,
@@ -72,7 +72,7 @@ public partial class Render3DSystem {
     Descriptor.BindDescriptorSet(frameInfo.JointsBufferDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 4, 1);
 
     // _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _globalVertexBuffer, 0);
-    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
+    // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
     // _renderer.CommandList.DrawIndexedIndirect(
     //   frameInfo.CommandBuffer,
     //   _indirectBuffer!.GetBuffer(),
@@ -96,14 +96,14 @@ public partial class Render3DSystem {
     Descriptor.BindDescriptorSet(frameInfo.JointsBufferDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 4, 1);
 
     // Bind the index buffer
-    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
+    // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
 
     // Loop through the indirect draw commands and bind vertex buffers accordingly
     uint lastBufferIndex = uint.MaxValue;  // We use this to check when to rebind the vertex buffer
 
     for (int i = 0; i < _indirectDrawCommands.Count; i++) {
       var drawCommand = _indirectDrawCommands[i];
-      var bindInfo = _vertexBindings[i]; // Get the binding info for this command
+      var bindInfo = _vertexComplexBindings[i]; // Get the binding info for this command
 
       // Ensure correct offset within the buffer before issuing the draw call
       var vertexOffset = bindInfo.FirstVertexOffset;
@@ -111,7 +111,7 @@ public partial class Render3DSystem {
       // If the buffer index changes, bind the new vertex buffer
       if (bindInfo.BufferIndex != lastBufferIndex) {
         // Get the appropriate vertex buffer from the pool
-        var vertexBuffer = _bufferPool.GetVertexBuffer(bindInfo.BufferIndex);
+        var vertexBuffer = _complexBufferPool.GetVertexBuffer(bindInfo.BufferIndex);
         _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, vertexBuffer, 0);
         lastBufferIndex = bindInfo.BufferIndex;
       }
