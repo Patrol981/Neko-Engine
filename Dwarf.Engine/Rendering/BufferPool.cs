@@ -189,8 +189,8 @@ public class BufferPool : IDisposable {
   public void Dispose() {
     Logger.Info($"[Buffer Pool] Disposing {_buffers.Count} pools");
     foreach (var buff in _buffers.Values) {
-      buff.VertexBuffer.Dispose();
-      buff.IndexBuffer.Dispose();
+      buff?.VertexBuffer?.Dispose();
+      buff?.IndexBuffer?.Dispose();
     }
     _buffers.Clear();
     GC.SuppressFinalize(this);
