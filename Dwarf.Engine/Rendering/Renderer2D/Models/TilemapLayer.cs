@@ -33,13 +33,15 @@ public class TilemapLayer : IDrawable2D {
   public Mesh[] Meshes => [LayerMesh];
   public bool HasMultipleMeshes => false;
   public IDrawable2D[] Children => [];
+  public float LocalZDepth { get; set; }
 
-  public TilemapLayer(Application app, Tilemap parent, TileInfo[,] tiles, string path, bool isCollision) {
+  public TilemapLayer(Application app, Tilemap parent, TileInfo[,] tiles, string path, bool isCollision, float zDepth) {
     _app = app;
     _parent = parent;
     Tiles = tiles;
     IsCollision = isCollision;
     SetupTexture(path);
+    LocalZDepth = zDepth;
   }
 
   public void SetTile(int x, int y, TileInfo tileInfo) {

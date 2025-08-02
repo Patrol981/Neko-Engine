@@ -17,9 +17,14 @@ public class Render2DSystem : SystemBase {
 
   private DwarfBuffer? _globalVertexBuffer;
   private DwarfBuffer? _globalIndexBuffer;
-  private DwarfBuffer? _indirectBuffer;
-
+  private DwarfBuffer[] _indirectBuffers = [];
+  private Dictionary<uint, IndirectData> _indirectData = [];
   private List<VkDrawIndexedIndirectCommand> _indirectDrawCommands = [];
+  private IDrawable2D[] _drawableCache = [];
+  private uint _instanceIndex = 0;
+
+  private BufferPool _bufferPool = null!;
+  private List<VertexBinding> _vertexBindings = [];
 
   public int LastKnownElemCount { get; private set; } = 0;
 
@@ -68,12 +73,13 @@ public class Render2DSystem : SystemBase {
 
     _texturesCount = CalculateTextureCount(drawables);
     LastKnownElemCount = CalculateTextureCount(drawables);
+    _instanceIndex = 0;
 
     CreateVertexBuffer(drawables);
     CreateIndexBuffer(drawables);
 
     CreateIndirectCommands(drawables);
-    CreateIndirectBuffer();
+    CreateIndirectBuffer(ref _indirectData, ref _indirectBuffers);
   }
 
   public bool CheckSizes(ReadOnlySpan<IDrawable2D> drawables) {
@@ -112,59 +118,76 @@ public class Render2DSystem : SystemBase {
     // return drawables.Length;
   }
 
-  public static void Update(ReadOnlySpan<IDrawable2D> drawables, out SpritePushConstant140[] spriteData) {
-    spriteData = new SpritePushConstant140[drawables.Length];
+  public void Update(ReadOnlySpan<IDrawable2D> drawables, out SpritePushConstant140[] spriteData) {
+    spriteData = new SpritePushConstant140[_drawableCache.Length];
 
-    for (int i = 0; i < drawables.Length; i++) {
-      var target = drawables[i];
+    for (int i = 0; i < _drawableCache.Length; i++) {
+      var target = _drawableCache[i];
 
       var myTexId = GetIndexOfMyTexture(target.Texture.TextureName);
       if (!myTexId.HasValue) throw new ArgumentException("", paramName: myTexId.ToString());
 
-      spriteData[i] = new() {
-        SpriteMatrix = target.Entity.TryGetComponent<Transform>()?.Matrix4 ?? Matrix4x4.Identity,
-        SpriteSheetData = new(target.SpriteSheetSize.X, target.SpriteSheetSize.Y, target.SpriteIndex, target.FlipX ? 1.0f : 0.0f),
-        SpriteSheetData2 = new(target.FlipY ? 1.0f : 0.0f, myTexId.Value, -1, -1)
-      };
+      if (target.LocalZDepth != 0) {
+        spriteData[i] = new() {
+          SpriteMatrix = target.Entity.TryGetComponent<Transform>()?.Matrix4.OverrideZDepth(target.LocalZDepth) ?? Matrix4x4.Identity,
+          SpriteSheetData = new(target.SpriteSheetSize.X, target.SpriteSheetSize.Y, target.SpriteIndex, target.FlipX ? 1.0f : 0.0f),
+          SpriteSheetData2 = new(target.FlipY ? 1.0f : 0.0f, myTexId.Value, -1, -1)
+        };
+      } else {
+        spriteData[i] = new() {
+          SpriteMatrix = target.Entity.TryGetComponent<Transform>()?.Matrix4 ?? Matrix4x4.Identity,
+          SpriteSheetData = new(target.SpriteSheetSize.X, target.SpriteSheetSize.Y, target.SpriteIndex, target.FlipX ? 1.0f : 0.0f),
+          SpriteSheetData2 = new(target.FlipY ? 1.0f : 0.0f, myTexId.Value, -1, -1)
+        };
+      }
     }
   }
 
   public unsafe void Render(FrameInfo frameInfo, ReadOnlySpan<IDrawable2D> drawables) {
-    if (_globalIndexBuffer is null || _globalVertexBuffer is null || _indirectBuffer is null) return;
     BindPipeline(frameInfo.CommandBuffer);
 
     Descriptor.BindDescriptorSet(frameInfo.GlobalDescriptorSet, frameInfo, PipelineLayout, 0, 1);
     Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, PipelineLayout, 2, 1);
     Descriptor.BindDescriptorSet(frameInfo.SpriteDataDescriptorSet, frameInfo, PipelineLayout, 1, 1);
-    _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _globalVertexBuffer, 0);
-    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer, 0);
-    _renderer.CommandList.DrawIndexedIndirect(
-      frameInfo.CommandBuffer,
-      _indirectBuffer.GetBuffer(),
-      0,
-      (uint)_indirectDrawCommands.Count,
-      (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
-    );
+
+    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
+
+    foreach (var container in _indirectData) {
+      var targetVertex = _bufferPool.GetVertexBuffer(container.Key);
+      _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, targetVertex, 0);
+
+      _renderer.CommandList.DrawIndexedIndirect(
+        frameInfo.CommandBuffer,
+        _indirectBuffers[container.Key].GetBuffer(),
+        0,
+        (uint)container.Value.Commands.Count,
+        (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
+      );
+    }
   }
 
   public unsafe void Render_(FrameInfo frameInfo, ReadOnlySpan<IDrawable2D> drawables) {
-    if (_globalIndexBuffer == null ||
-        _globalVertexBuffer == null ||
-        _textureManager.AllTexturesDescriptor == 0)
-      return;
+    // if (_globalIndexBuffer == null ||
+    //     _globalVertexBuffer == null ||
+    //     _textureManager.AllTexturesDescriptor == 0)
+    //   return;
 
     BindPipeline(frameInfo.CommandBuffer);
     Descriptor.BindDescriptorSet(frameInfo.GlobalDescriptorSet, frameInfo, PipelineLayout, 0, 1);
     Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, PipelineLayout, 2, 1);
     Descriptor.BindDescriptorSet(frameInfo.SpriteDataDescriptorSet, frameInfo, PipelineLayout, 1, 1);
-    _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _globalVertexBuffer, 0);
-    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer, 0);
+    // _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _globalVertexBuffer, 0);
+    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
 
     uint indexOffset = 0;
 
-    for (uint instance = 0; instance < (uint)drawables.Length; instance++) {
-      var d = drawables[(int)instance];
+    for (uint instance = 0; instance < (uint)_drawableCache.Length; instance++) {
+      var d = _drawableCache[(int)instance];
       var mesh = d.Mesh;
+
+      var bindInfo = _vertexBindings[(int)instance];
+      var buffer = _bufferPool.GetVertexBuffer(bindInfo.BufferIndex);
+      _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, buffer, 0);
 
       uint thisCount = (uint)mesh.Indices.Length;
 
@@ -177,8 +200,8 @@ public class Render2DSystem : SystemBase {
         frameInfo.CommandBuffer,
         indexCount: thisCount,
         instanceCount: 1,
-        firstIndex: indexOffset,
-        vertexOffset: 0,
+        firstIndex: bindInfo.FirstIndexOffset,
+        vertexOffset: (int)bindInfo.FirstVertexOffset,
         firstInstance: instance
       );
 
@@ -212,36 +235,78 @@ public class Render2DSystem : SystemBase {
     }
   }
 
-  private unsafe void CreateIndirectBuffer() {
-    _indirectBuffer?.Dispose();
+  private unsafe void CreateIndirectBuffer(ref Dictionary<uint, IndirectData> pair, ref DwarfBuffer[] buffArray) {
+    foreach (var buff in buffArray) {
+      buff?.Dispose();
+    }
+    Array.Clear(buffArray);
+    buffArray = new DwarfBuffer[pair.Keys.Count];
+    int i = 0;
 
-    var size = _indirectDrawCommands.Count * Unsafe.SizeOf<VkDrawIndexedIndirectCommand>();
+    foreach (var commands in pair) {
+      var size = commands.Value.Commands.Count * Unsafe.SizeOf<VkDrawIndexedIndirectCommand>();
 
-    var stagingBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      (ulong)size,
-      BufferUsage.TransferSrc,
-      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      stagingBuffer: true,
-      cpuAccessible: true
-    );
+      var stagingBuffer = new DwarfBuffer(
+        _allocator,
+        _device,
+        (ulong)size,
+        BufferUsage.TransferSrc,
+        MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
+        stagingBuffer: true,
+        cpuAccessible: true
+      );
 
-    stagingBuffer.Map((ulong)size);
-    fixed (VkDrawIndexedIndirectCommand* pIndirectCommands = _indirectDrawCommands.ToArray()) {
-      stagingBuffer.WriteToBuffer((nint)pIndirectCommands, (ulong)size);
+      stagingBuffer.Map((ulong)size);
+      fixed (VkDrawIndexedIndirectCommand* pIndirectCommands = commands.Value.Commands.ToArray()) {
+        stagingBuffer.WriteToBuffer((nint)pIndirectCommands, (ulong)size);
+      }
+
+      var inBuff = new DwarfBuffer(
+        _allocator,
+        _device,
+        (ulong)size,
+        BufferUsage.TransferDst | BufferUsage.IndirectBuffer,
+        MemoryProperty.DeviceLocal
+      );
+
+      _device.CopyBuffer(stagingBuffer.GetBuffer(), inBuff.GetBuffer(), (ulong)size);
+      stagingBuffer.Dispose();
+
+      buffArray[i] = inBuff;
+      i++;
+    }
+  }
+
+  private void AddIndirectCommand(
+    uint index,
+    IDrawable2D drawable,
+    VertexBinding vertexBinding,
+    ref Dictionary<uint, IndirectData> pair,
+    ref uint instanceIndex,
+    in uint additionalIndexOffset = 0
+  ) {
+    if (!pair.ContainsKey(index)) {
+      var id = pair.Keys.Count;
+      pair.Add((uint)id, new());
     }
 
-    _indirectBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      (ulong)size,
-      BufferUsage.TransferDst | BufferUsage.IndirectBuffer,
-      MemoryProperty.DeviceLocal
-    );
+    var data = pair[index];
 
-    _device.CopyBuffer(stagingBuffer.GetBuffer(), _indirectBuffer.GetBuffer(), (ulong)size);
-    stagingBuffer.Dispose();
+    var mesh = drawable.Mesh;
+    if (mesh?.IndexBuffer == null) throw new ArgumentNullException("mesh does not have index buffer", nameof(mesh));
+
+    var cmd = new VkDrawIndexedIndirectCommand {
+      indexCount = (uint)mesh.Indices.Length,
+      instanceCount = 1,
+      firstIndex = vertexBinding.FirstIndexOffset,
+      vertexOffset = (int)vertexBinding.FirstVertexOffset,
+      firstInstance = instanceIndex + additionalIndexOffset
+    };
+
+    pair[index].Commands.Add(cmd);
+
+    instanceIndex++;
+    data.CurrentIndexOffset += vertexBinding.FirstIndexOffset;
   }
 
   private unsafe void CreateIndexBuffer(ReadOnlySpan<IDrawable2D> drawables) {
@@ -336,10 +401,68 @@ public class Render2DSystem : SystemBase {
   }
 
   private unsafe void CreateVertexBuffer(ReadOnlySpan<IDrawable2D> drawables) {
+    _vertexBindings.Clear();
+    _bufferPool?.Dispose();
+    _bufferPool = new BufferPool(_device, _allocator);
+    _indirectData.Clear();
+    _indirectData = [];
+
+    uint currentPool = 0;
+    uint indexOffset = 0;
+    uint vertexOffset = 0;
+
+    var previousSize = 0ul;
+
+    _drawableCache = drawables.ToArray();
+    foreach (var drawable in drawables) {
+      var verts = drawable.Mesh!.Vertices;
+      var byteSize = (ulong)verts.Length * (ulong)Unsafe.SizeOf<Vertex>();
+
+      var indices = drawable.Mesh!.Indices;
+      var byteSizeIndices = (ulong)indices.Length * sizeof(uint);
+
+      var staging = new DwarfBuffer(
+                _allocator, _device, byteSize,
+                BufferUsage.TransferSrc,
+                MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
+                stagingBuffer: true, cpuAccessible: true
+              );
+      staging.Map(byteSize);
+
+      fixed (Vertex* p = verts) {
+        staging.WriteToBuffer((nint)p, byteSize);
+
+        if (!_bufferPool.AddToBuffer(currentPool, (nint)p, byteSize, previousSize, out var byteOffset, out var reason)) {
+          var r = reason;
+          currentPool = (uint)_bufferPool.AddToPool();
+          _bufferPool.AddToBuffer(currentPool, (nint)p, byteSize, previousSize, out byteOffset, out reason);
+        }
+        previousSize += byteSize;
+
+        _vertexBindings.Add(new VertexBinding {
+          BufferIndex = currentPool,
+          // FirstVertexOffset = (uint)(byteSize / (ulong)Unsafe.SizeOf<Vertex>()),
+          // FirstIndexOffset = (uint)(indexByteOffset / (ulong)Unsafe.SizeOf<uint>()),
+          FirstVertexOffset = (uint)(byteOffset / (ulong)Unsafe.SizeOf<Vertex>()),
+          FirstIndexOffset = indexOffset
+        });
+
+        AddIndirectCommand(currentPool, drawable, _vertexBindings.Last(), ref _indirectData, ref _instanceIndex);
+
+        indexOffset += (uint)indices.Length;
+        vertexOffset += (uint)verts.Length;
+
+        staging.Dispose();
+      }
+    }
+  }
+
+  private unsafe void CreateVertexBuffer_(ReadOnlySpan<IDrawable2D> drawables) {
     _globalVertexBuffer?.Dispose();
     ulong size = 0;
     List<Vertex> vertices = [];
 
+    _drawableCache = drawables.ToArray();
     for (int i = 0; i < drawables.Length; i++) {
       var buffer = drawables[i].Mesh.VertexBuffer;
       if (buffer != null) {
@@ -380,7 +503,9 @@ public class Render2DSystem : SystemBase {
     _device.WaitQueue();
     _globalVertexBuffer?.Dispose();
     _globalIndexBuffer?.Dispose();
-    _indirectBuffer?.Dispose();
+    foreach (var buff in _indirectBuffers) {
+      buff.Dispose();
+    }
     base.Dispose();
   }
 }

@@ -37,12 +37,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   private DwarfBuffer[] _indirectComplexBuffers = [];
 
   private readonly IDescriptorSetLayout _jointDescriptorLayout = null!;
-
-  internal class IndirectData {
-    internal List<VkDrawIndexedIndirectCommand> Commands = [];
-    internal uint CurrentIndexOffset = 0;
-    internal uint InstanceIndex = 0;
-  }
   private List<VkDrawIndexedIndirectCommand> _indirectDrawCommands = [];
   private Dictionary<uint, IndirectData> _indirectSimples = [];
   private Dictionary<uint, IndirectData> _indirectComplexes = [];
@@ -791,6 +785,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     _vertexSimpleBindings.Clear();
     _simpleBufferPool.Dispose();
     _simpleBufferPool = new BufferPool(_device, _allocator);
+    _indirectSimples.Clear();
+    _indirectSimples = [];
     uint currentPool = 0;
     uint indexOffset = 0;
     uint vertexOffset = 0;
@@ -834,8 +830,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
           FirstIndexOffset = indexOffset
         });
 
-        var test = nodes.Length;
-
         AddIndirectCommand(currentPool, node, _vertexSimpleBindings.Last(), ref _indirectSimples, ref _instanceIndexSimple);
 
         indexOffset += (uint)indices.Length;
@@ -850,6 +844,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     _vertexComplexBindings.Clear();
     _complexBufferPool.Dispose();
     _complexBufferPool = new BufferPool(_device, _allocator);
+    _indirectComplexes.Clear();
+    _indirectComplexes = [];
     uint currentPool = 0;
     uint indexOffset = 0;
     uint vertexOffset = 0;

@@ -15,6 +15,7 @@ public interface IDrawable2D : IDrawable, ICloneable {
   int SpriteCount { get; }
   bool FlipX { get; set; }
   bool FlipY { get; set; }
+  float LocalZDepth { get; }
   Mesh CollisionMesh { get; }
   Mesh Mesh { get; }
   public IDrawable2D[] Children { get; }
