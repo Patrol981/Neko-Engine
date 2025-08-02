@@ -7,7 +7,7 @@ namespace Dwarf;
 
 public static class TransformExtensions {
   public static Matrix4x4 OverrideZDepth(this Matrix4x4 mat4, float z) {
-    return mat4 * Matrix4x4.CreateTranslation(0, 0, z);
+    return Matrix4x4.CreateTranslation(0, 0, z) * mat4;
   }
 }
 
