@@ -32,7 +32,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   private DwarfBuffer? _globalSimpleIndexBuffer;
   private DwarfBuffer? _globalComplexIndexBuffer;
 
-  private DwarfBuffer? _globalVertexBuffer;
   private DwarfBuffer[] _indirectSimpleBuffers = [];
   private DwarfBuffer[] _indirectComplexBuffers = [];
 
@@ -117,6 +116,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
     _simpleBufferPool = new(_device, _allocator);
     _complexBufferPool = new(_device, _allocator);
+
+    Logger.Info("[RENDER 3D SYSTEM] Constructor");
   }
 
   public void Setup(ReadOnlySpan<Entity> entities, ref TextureManager textures) {
@@ -163,7 +164,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     // entities = Frustum.FilterObjectsByPlanes(in planes, entities).ToArray();
     Frustum.FlattenNodes(entities, out var flattenNodes);
     // Frustum.FilterNodesByPlanes(planes, flattenNodes, out var frustumNodes);
-    Frustum.FilterNodesByFog(flattenNodes, out var frustumNodes);
+    // Frustum.FilterNodesByFog(flattenNodes, out var frustumNodes);
 
     List<KeyValuePair<Node, ObjectData>> nodeObjectsSkinned = [];
     List<KeyValuePair<Node, ObjectData>> nodeObjectsNotSkinned = [];
@@ -175,7 +176,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       var transform = node.ParentRenderer.GetOwner().GetComponent<Transform>();
       var material = node.ParentRenderer.GetOwner().GetComponent<MaterialComponent>();
       var targetTexture = _textureManager.GetTextureLocal(node.Mesh!.TextureIdReference);
-      float texId = (float)GetIndexOfMyTexture(targetTexture.TextureName)!;
+      float texId = GetIndexOfMyTexture(targetTexture.TextureName)!;
 
       if (!node.Enabled) continue;
 
@@ -240,7 +241,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     PerfMonitor.Render3DComputeTime = PerfMonitor.ComunnalStopwatch.ElapsedMilliseconds;
   }
 
-  public void Render(FrameInfo frameInfo, bool indirect = true) {
+  public void Render(FrameInfo frameInfo, bool indirect = false) {
     PerfMonitor.Clear3DRendererInfo();
     PerfMonitor.NumberOfObjectsRenderedIn3DRenderer = (uint)LastElemRenderedCount;
     CreateOrUpdateBuffers();
@@ -484,8 +485,9 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     }
     return len;
   }
-  private static int? GetIndexOfMyTexture(string texName) {
-    return Application.Instance.TextureManager.PerSceneLoadedTextures.Where(x => x.Value.TextureName == texName).FirstOrDefault().Value.TextureManagerIndex;
+  private static int GetIndexOfMyTexture(string texName) {
+    var texturePair = Application.Instance.TextureManager.PerSceneLoadedTextures.Where(x => x.Value.TextureName == texName).Single();
+    return texturePair.Value.TextureManagerIndex;
   }
 
   private static (int len, int joints) CalculateNodesLengthWithSkin(ReadOnlySpan<Entity> entities) {
@@ -816,16 +818,14 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
           var r = reason;
           currentPool = (uint)_simpleBufferPool.AddToPool();
           _simpleBufferPool.AddToBuffer(currentPool, (nint)p, byteSize, previousSize, out byteOffset, out reason);
-          Logger.Info($"[{r}] Creating {currentPool} for {node.Name} offseting by [{byteOffset}] with [{byteSize}] bytes");
+          // Logger.Info($"[{r}] Creating {currentPool} for {node.Name} offseting by [{byteOffset}] with [{byteSize}] bytes");
         } else {
-          Logger.Info($"[{reason}] Adding {node.Name} to buffer {currentPool} offseting by [{byteOffset}] with [{byteSize}] bytes");
+          // Logger.Info($"[{reason}] Adding {node.Name} to buffer {currentPool} offseting by [{byteOffset}] with [{byteSize}] bytes");
         }
         previousSize += byteSize;
 
         _vertexSimpleBindings.Add(new VertexBinding {
           BufferIndex = currentPool,
-          // FirstVertexOffset = (uint)(byteSize / (ulong)Unsafe.SizeOf<Vertex>()),
-          // FirstIndexOffset = (uint)(indexByteOffset / (ulong)Unsafe.SizeOf<uint>()),
           FirstVertexOffset = (uint)(byteOffset / (ulong)Unsafe.SizeOf<Vertex>()),
           FirstIndexOffset = indexOffset
         });
@@ -875,21 +875,17 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
           var r = reason;
           currentPool = (uint)_complexBufferPool.AddToPool();
           _complexBufferPool.AddToBuffer(currentPool, (nint)p, byteSize, previousSize, out byteOffset, out reason);
-          Logger.Info($"[{r}] Creating {currentPool} for {node.Name} offseting by [{byteOffset}] with [{byteSize}] bytes");
+          // Logger.Info($"[{r}] Creating {currentPool} for {node.Name} offseting by [{byteOffset}] with [{byteSize}] bytes");
         } else {
-          Logger.Info($"[{reason}] Adding {node.Name} to buffer {currentPool} offseting by [{byteOffset}] with [{byteSize}] bytes");
+          // Logger.Info($"[{reason}] Adding {node.Name} to buffer {currentPool} offseting by [{byteOffset}] with [{byteSize}] bytes");
         }
         previousSize += byteSize;
 
         _vertexComplexBindings.Add(new VertexBinding {
           BufferIndex = currentPool,
-          // FirstVertexOffset = (uint)(byteSize / (ulong)Unsafe.SizeOf<Vertex>()),
-          // FirstIndexOffset = (uint)(indexByteOffset / (ulong)Unsafe.SizeOf<uint>()),
           FirstVertexOffset = (uint)(byteOffset / (ulong)Unsafe.SizeOf<Vertex>()),
           FirstIndexOffset = indexOffset
         });
-
-        var test = nodes.Length;
 
         AddIndirectCommand(currentPool, node, _vertexComplexBindings.Last(), ref _indirectComplexes, ref _instanceIndexComplex, in _instanceIndexSimple);
 
@@ -903,7 +899,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
   public override unsafe void Dispose() {
     _device.WaitQueue();
-    _globalVertexBuffer?.Dispose();
     _globalComplexIndexBuffer?.Dispose();
     _globalSimpleIndexBuffer?.Dispose();
     foreach (var buff in _indirectSimpleBuffers) {
@@ -912,9 +907,24 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     foreach (var buff in _indirectComplexBuffers) {
       buff.Dispose();
     }
+    _vertexComplexBindings.Clear();
+    _vertexSimpleBindings.Clear();
     _complexBufferPool?.Dispose();
     _simpleBufferPool?.Dispose();
     _jointDescriptorLayout?.Dispose();
+    LastKnownElemCount = 0;
+    LastKnownElemSize = 0;
+    LastKnownSkinnedElemCount = 0;
+    LastKnownSkinnedElemJointsCount = 0;
+    _instanceIndexSimple = 0;
+    _instanceIndexComplex = 0;
+    _skinnedNodesCache = [];
+    _notSkinnedNodesCache = [];
+    _cacheMatch = false;
+    _skinnedGroups = [];
+    _notSkinnedGroups = [];
+    _indirectSimples.Clear();
+    _indirectComplexes.Clear();
     base.Dispose();
   }
 }
