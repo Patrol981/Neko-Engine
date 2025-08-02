@@ -30,6 +30,7 @@ public static class TiledLoader {
           tilemap.Layers.Add(resultLayer);
           idx -= 0.1f;
         } else {
+          resultLayer.LocalZDepth = -100;
           tilemap.CollisionLayer = resultLayer;
         }
 

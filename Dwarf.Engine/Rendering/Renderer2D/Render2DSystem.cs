@@ -167,11 +167,6 @@ public class Render2DSystem : SystemBase {
   }
 
   public unsafe void Render_(FrameInfo frameInfo, ReadOnlySpan<IDrawable2D> drawables) {
-    // if (_globalIndexBuffer == null ||
-    //     _globalVertexBuffer == null ||
-    //     _textureManager.AllTexturesDescriptor == 0)
-    //   return;
-
     BindPipeline(frameInfo.CommandBuffer);
     Descriptor.BindDescriptorSet(frameInfo.GlobalDescriptorSet, frameInfo, PipelineLayout, 0, 1);
     Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, PipelineLayout, 2, 1);
