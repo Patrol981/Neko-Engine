@@ -7,14 +7,14 @@ using Dwarf.Rendering;
 using Dwarf.Rendering.UI.Utils;
 using ImGuiNET;
 
-namespace DwarfNative;
+namespace Dwarf.Native;
 
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 
 /// <summary>
 /// This is an AOT wrapper for DwarfEngine, you don't need to use it if you are not using AOT linking
 /// </summary>
-public static class DwarfNativeInterop {
+public static partial class DwarfNativeInterop {
   #region Application
 
   [UnmanagedCallersOnly(EntryPoint = "Dwarf_CreateApplication")]

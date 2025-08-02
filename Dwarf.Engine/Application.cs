@@ -3,6 +3,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Dwarf.AbstractionLayer;
+using Dwarf.Audio;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
@@ -136,6 +137,8 @@ public partial class Application {
 
     ApplicationMode = _systemConfiguration.ApplicationType;
     Logger.Info($"[APP MODE] {ApplicationMode}");
+
+    _ = new AudioSystem();
 
     switch (ApplicationMode) {
       case ApplicationType.Default:
