@@ -89,7 +89,13 @@ public static class TiledLoader {
 
           if (match == null) continue;
 
-          imgSrc = Path.Combine("./Resources", Path.GetFileName(match.Image.Value.Source));
+          // imgSrc = Path.Combine("./Resources", Path.GetFileName(match.Image.Value.Source));
+          var srcSearch = FileLookup.FindPathOfAFile(match.Image.Value.Source);
+          if (srcSearch != null) {
+            imgSrc = srcSearch;
+          } else {
+            throw new FileNotFoundException("Could not find file for this tileset");
+          }
 
           var localId = tile - match.FirstGID;
 
