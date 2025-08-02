@@ -33,6 +33,8 @@ public class SpriteRenderer : Component, IDrawable2D {
 
   public float DirectionX => FlipX ? -1 : 1;
 
+  public float LocalZDepth => 0;
+
   public SpriteRenderer() { }
 
   public void Next(OnAnimationEnd onAnimationEnd) {

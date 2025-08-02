@@ -19,13 +19,16 @@ public static class TiledLoader {
     List<BackgroundData> bgSources = [];
     var tilemap = new Tilemap(app, new((int)map.Width, (int)map.Height), (int)map.TileHeight);
 
+    var idx = 0f;
+
     foreach (var layer in map.Layers) {
       if (!layer.Visible) continue;
 
       if (layer is TileLayer tileLayer) {
-        var resultLayer = CreateTilemap(app, tileLayer, map, ref tilemap, ref tileSources);
+        var resultLayer = CreateTilemap(app, tileLayer, map, ref tilemap, ref tileSources, idx);
         if (!resultLayer.IsCollision) {
           tilemap.Layers.Add(resultLayer);
+          idx -= 0.1f;
         } else {
           tilemap.CollisionLayer = resultLayer;
         }
@@ -46,7 +49,8 @@ public static class TiledLoader {
     DotTiled.TileLayer tileLayer,
     Map map,
     ref Tilemap parent,
-    ref List<string> imageSources
+    ref List<string> imageSources,
+    in float idx
   ) {
     TileInfo[,] tiles = new TileInfo[parent.TilemapSize.X, parent.TilemapSize.Y];
 
@@ -124,7 +128,7 @@ public static class TiledLoader {
       isCollision = true;
     }
 
-    return new TilemapLayer(app, parent, tiles, imgSrc, isCollision);
+    return new TilemapLayer(app, parent, tiles, imgSrc, isCollision, idx);
   }
 
   private static void CreateImages

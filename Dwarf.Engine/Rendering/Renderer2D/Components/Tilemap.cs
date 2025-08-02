@@ -158,4 +158,5 @@ public class Tilemap : Component, IDrawable2D {
   public bool FlipY { get; set; }
 
   public int SpriteCount => Layers.Count;
+  public float LocalZDepth => 0;
 }

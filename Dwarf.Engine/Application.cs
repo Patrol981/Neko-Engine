@@ -729,7 +729,7 @@ public class Application {
       }
 
       if (Systems.Render2DSystem != null) {
-        Rendering.Renderer2D.Render2DSystem.Update(i2D, out var spriteData);
+        Systems.Render2DSystem.Update(i2D, out var spriteData);
 
         fixed (SpritePushConstant140* pSpriteData = spriteData) {
           StorageCollection.WriteBuffer(

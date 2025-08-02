@@ -5,6 +5,12 @@ using Dwarf.Math;
 
 namespace Dwarf;
 
+public static class TransformExtensions {
+  public static Matrix4x4 OverrideZDepth(this Matrix4x4 mat4, float z) {
+    return mat4 * Matrix4x4.CreateTranslation(0, 0, z);
+  }
+}
+
 public class Transform : Component {
   public Vector3 Position;
   public Vector3 Rotation;
