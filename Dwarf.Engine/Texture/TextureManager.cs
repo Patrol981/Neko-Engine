@@ -384,6 +384,7 @@ public class TextureManager : IDisposable {
     }
     _nextLocalIndex = 0;
     _freeLocalSlots.Clear();
+    PerSceneLoadedTextures.Clear();
   }
 
   public void DisposeGlobal() {
