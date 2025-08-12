@@ -241,7 +241,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     PerfMonitor.Render3DComputeTime = PerfMonitor.ComunnalStopwatch.ElapsedMilliseconds;
   }
 
-  public void Render(FrameInfo frameInfo, bool indirect = false) {
+  public void Render(FrameInfo frameInfo, bool indirect = true) {
     PerfMonitor.Clear3DRendererInfo();
     PerfMonitor.NumberOfObjectsRenderedIn3DRenderer = (uint)LastElemRenderedCount;
     CreateOrUpdateBuffers();

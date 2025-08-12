@@ -46,17 +46,20 @@ public class SystemCollection : IDisposable {
   public void UpdateSystems(Entity[] entities, FrameInfo frameInfo) {
     _render3DSystem?.Render(frameInfo);
     _render2DSystem?.Render(frameInfo, entities.DistinctI2D());
-    _shadowRenderSystem?.Render(frameInfo);
+    // _shadowRenderSystem?.Render(frameInfo);
     _directionaLightSystem?.Render(frameInfo);
     _pointLightSystem?.Render(frameInfo);
-    // _postProcessingSystem?.Render(frameInfo);
+
+    _renderDebugSystem?.Render(frameInfo, entities.DistinctInterface<IDebugRenderObject>());
   }
 
   public void UpdateSystems2(Entity[] entities, FrameInfo frameInfo) {
-    _guizmoRenderSystem?.Render(frameInfo);
-    _renderDebugSystem?.Render(frameInfo, entities.DistinctInterface<IDebugRenderObject>());
-    _particleSystem?.Render(frameInfo);
+    // _guizmoRenderSystem?.Render(frameInfo);
+    // _renderDebugSystem?.Render(frameInfo, entities.DistinctInterface<IDebugRenderObject>());
+    // _particleSystem?.Render(frameInfo);
     // _renderUISystem?.DrawUI(frameInfo, _canvas);
+
+    _postProcessingSystem?.Render(frameInfo);
   }
 
   public Task UpdateCalculationSystems(Entity[] entities) {

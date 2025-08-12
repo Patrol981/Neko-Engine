@@ -204,6 +204,8 @@ public class PostProcessingSystem : SystemBase {
       );
     }
 
+    var rend = (VkDynamicRenderer)_renderer;
+
     vkCmdBindDescriptorSets(
       frameInfo.CommandBuffer,
       VkPipelineBindPoint.Graphics,
@@ -211,6 +213,14 @@ public class PostProcessingSystem : SystemBase {
       0,
       _renderer.PostProcessDecriptor
     );
+
+    // vkCmdBindDescriptorSets(
+    //   frameInfo.CommandBuffer,
+    //   VkPipelineBindPoint.Graphics,
+    //   PipelineLayout,
+    //   1,
+    //   rend.CurrentDepth
+    // );
 
     vkCmdBindDescriptorSets(
       frameInfo.CommandBuffer,
@@ -231,6 +241,14 @@ public class PostProcessingSystem : SystemBase {
     }
 
     vkCmdDraw(frameInfo.CommandBuffer, 3, 1, 0, 0);
+    // vkCmdPipelineBarrier(
+    //   commandBuffer: frameInfo.CommandBuffer,
+    //   srcStageMask: VkPipelineStageFlags.None,
+    //   dstStageMask: VkPipelineStageFlags.EarlyFragmentTests,
+    //   dependencyFlags: VkDependencyFlags.None,
+    //   memoryBarrierCount: 1,
+    // );
+    // vkDeviceWaitIdle(_device.LogicalDevice);
   }
 
   public static PostProcessConfiguration GetConfigurationBasedOnFlag(PostProcessingConfigurationFlag flag) {

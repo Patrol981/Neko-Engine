@@ -612,6 +612,9 @@ public class VulkanDevice : IDevice {
       descriptorBindingUpdateUnusedWhilePending = true,
       descriptorBindingStorageBufferUpdateAfterBind = true,
       descriptorBindingUniformBufferUpdateAfterBind = true,
+      shaderSampledImageArrayNonUniformIndexing = true,
+      shaderInputAttachmentArrayNonUniformIndexing = true,
+      shaderInputAttachmentArrayDynamicIndexing = true,
       pNext = &vk11Features,
     };
 

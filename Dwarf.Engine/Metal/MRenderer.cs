@@ -34,6 +34,10 @@ public class MRenderer : IRenderer {
     throw new NotImplementedException();
   }
 
+  public void BeginPostProcess(nint commandBuffer) {
+    throw new NotImplementedException();
+  }
+
   public void BeginRendering(nint commandBuffer) {
     throw new NotImplementedException();
   }
@@ -47,6 +51,10 @@ public class MRenderer : IRenderer {
   }
 
   public void EndFrame() {
+    throw new NotImplementedException();
+  }
+
+  public void EndPostProcess(nint commandBuffer) {
     throw new NotImplementedException();
   }
 
