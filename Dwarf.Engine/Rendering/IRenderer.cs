@@ -10,6 +10,8 @@ public interface IRenderer : IDisposable {
   void EndFrame();
   void BeginRendering(nint commandBuffer);
   void EndRendering(nint commandBuffer);
+  void BeginPostProcess(nint commandBuffer);
+  void EndPostProcess(nint commandBuffer);
   void RecreateSwapchain();
   void CreateCommandBuffers(ulong commandPool, CommandBufferLevel level = CommandBufferLevel.Primary);
 

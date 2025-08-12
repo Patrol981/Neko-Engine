@@ -662,6 +662,9 @@ public partial class Application {
       Entity[] toUpdate = [.. _entities];
       Systems.UpdateSystems(toUpdate, _currentFrame);
 
+      Renderer.EndRendering(commandBuffer);
+      Renderer.BeginPostProcess(commandBuffer);
+
       if (UseImGui) {
         GuiController.Update(Time.StopwatchDelta);
       }
@@ -672,7 +675,8 @@ public partial class Application {
       if (UseImGui) {
         GuiController.Render(_currentFrame);
       }
-      Renderer.EndRendering(commandBuffer);
+
+      Renderer.EndPostProcess(commandBuffer);
 
       Renderer.EndFrame();
 
