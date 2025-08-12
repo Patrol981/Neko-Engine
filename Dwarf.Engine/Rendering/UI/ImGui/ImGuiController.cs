@@ -90,6 +90,10 @@ public partial class ImGuiController : IDisposable {
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)
       .Build();
 
+    var postProcessLayout = new VulkanDescriptorSetLayout.Builder(_device)
+      .AddBinding(0, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
+      .Build();
+
     _systemDescriptorPool = new VulkanDescriptorPool.Builder(_device)
       .SetMaxSets(10000)
       .AddPoolSize(DescriptorType.SampledImage, 1000)
@@ -99,7 +103,9 @@ public partial class ImGuiController : IDisposable {
 
 
     VkDescriptorSetLayout[] descriptorSetLayouts = [
-      _systemSetLayout.GetDescriptorSetLayout()
+      _systemSetLayout.GetDescriptorSetLayout(),
+      postProcessLayout.GetDescriptorSetLayout()
+
     ];
 
     InitTexture(_device.GraphicsQueue);
@@ -593,6 +599,8 @@ public partial class ImGuiController : IDisposable {
             }
           }
 
+          var rnd = (VkDynamicRenderer)_renderer;
+          Descriptor.BindDescriptorSet(rnd.CurrentColor, frameInfo, _systemPipelineLayout, 1, 1);
 
           SetScissorRect(frameInfo, pcmd, drawData);
           vkCmdDrawIndexed(

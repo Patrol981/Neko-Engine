@@ -20,6 +20,7 @@ public class VulkanDynamicSwapchain : ISwapchain {
   public ulong[] ImageViews { get; private set; } = [];
   private VkFormat _colorFormat;
   public DwarfFormat ColorFormat => _colorFormat.AsDwarfFormat();
+  public VkFormat SurfaceFormat => _colorFormat;
   private VkColorSpaceKHR _colorSpace = VkColorSpaceKHR.SrgbNonLinear;
   public DwarfColorSpace ColorSpace => _colorSpace.AsDwarfColorSpace();
   private VkExtent2D _extent2D;
@@ -98,6 +99,17 @@ public class VulkanDynamicSwapchain : ISwapchain {
 
     _colorFormat = selectedFormat.format;
     _colorSpace = selectedFormat.colorSpace;
+  }
+
+  private static VkSurfaceFormatKHR ChooseSurfaceFormatAndColorSpace(ReadOnlySpan<VkSurfaceFormatKHR> availableFormats) {
+    for (int i = 0; i < availableFormats.Length; i++) {
+      if ((availableFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB) &&
+        (availableFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)) {
+        return availableFormats[i];
+      }
+    }
+
+    return availableFormats[0];
   }
 
   private static VkSurfaceFormatKHR ChooseSwapSurfaceFormat(ReadOnlySpan<VkSurfaceFormatKHR> availableFormats) {
@@ -219,7 +231,7 @@ public class VulkanDynamicSwapchain : ISwapchain {
       clipped = true,
       // flags = VkSwapchainCreateFlagsKHR.PresentId2 | VkSwapchainCreateFlagsKHR.PresentWait2,
       compositeAlpha = compositeAlpha,
-      oldSwapchain = VkSwapchainKHR.Null,
+      oldSwapchain = _handle.Handle,
       pNext = &scalingCreateInfoEXT
     };
 
@@ -255,7 +267,7 @@ public class VulkanDynamicSwapchain : ISwapchain {
       colorAttachmentView.flags = 0;
       colorAttachmentView.image = Images[i];
       vkCreateImageView(_device.LogicalDevice, &colorAttachmentView, null, out var imageView).CheckResult();
-      ImageViews[i] = imageView.Handle;
+      ImageViews[i] = imageView;
     }
   }
 

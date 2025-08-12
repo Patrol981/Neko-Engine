@@ -144,13 +144,15 @@ public class Render2DSystem : SystemBase {
   }
 
   public unsafe void Render(FrameInfo frameInfo, ReadOnlySpan<IDrawable2D> drawables) {
+    if (_globalIndexBuffer == null) return;
+
     BindPipeline(frameInfo.CommandBuffer);
 
     Descriptor.BindDescriptorSet(frameInfo.GlobalDescriptorSet, frameInfo, PipelineLayout, 0, 1);
     Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, PipelineLayout, 2, 1);
     Descriptor.BindDescriptorSet(frameInfo.SpriteDataDescriptorSet, frameInfo, PipelineLayout, 1, 1);
 
-    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
+    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer, 0);
 
     foreach (var container in _indirectData) {
       var targetVertex = _bufferPool.GetVertexBuffer(container.Key);
@@ -288,7 +290,7 @@ public class Render2DSystem : SystemBase {
     var data = pair[index];
 
     var mesh = drawable.Mesh;
-    if (mesh?.IndexBuffer == null) throw new ArgumentNullException("mesh does not have index buffer", nameof(mesh));
+    if (mesh.IndexCount < 1) throw new ArgumentNullException("mesh does not have indices", nameof(mesh));
 
     var cmd = new VkDrawIndexedIndirectCommand {
       indexCount = (uint)mesh.Indices.Length,

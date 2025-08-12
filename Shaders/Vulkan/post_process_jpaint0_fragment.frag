@@ -160,6 +160,13 @@ float getLuminance(vec3 c) {
   return dot(c, vec3(push.luminanceX, push.luminanceY, push.luminanceZ));
 }
 
+void main_() {
+  vec3 screen_color = texture(_colorSampler, uv).rgb;
+  vec3 red = vec3(1.0, 0.0, 0.0);
+
+  outColor = vec4(screen_color, 1.0);
+}
+
 void main() {
   vec3 screen_color = texture(_colorSampler, uv).rgb;
   vec3 screen_normal = texture(_colorSampler, uv).rgb * 2.0 - 1.0;
