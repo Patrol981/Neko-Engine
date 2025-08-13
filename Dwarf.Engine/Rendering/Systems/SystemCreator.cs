@@ -80,9 +80,6 @@ public class SystemCreator {
       Logger.Info("[SYSTEM CREATOR] Creating 3D Renderer");
       systemCollection.Render3DSystem =
         new(allocator, device, renderer, textureManager, layouts, new ModelPipelineConfig());
-
-      systemCollection.PostProcessingSystem =
-        new(allocator, device, renderer, textureManager, systemConfig, layouts, new PostProcessingPipeline());
     }
 
     if (hasDebugRenderer) {
@@ -153,5 +150,8 @@ public class SystemCreator {
       systemCollection.ShadowRenderSystem =
         new(allocator, device, renderer, textureManager, systemConfig, layouts, new ModelPipelineConfig());
     }
+
+    systemCollection.PostProcessingSystem =
+      new(allocator, device, renderer, textureManager, systemConfig, layouts, new PostProcessingPipeline());
   }
 }
