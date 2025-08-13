@@ -599,9 +599,6 @@ public partial class ImGuiController : IDisposable {
             }
           }
 
-          var rnd = (VkDynamicRenderer)_renderer;
-          Descriptor.BindDescriptorSet(rnd.CurrentColor, frameInfo, _systemPipelineLayout, 1, 1);
-
           SetScissorRect(frameInfo, pcmd, drawData);
           vkCmdDrawIndexed(
             frameInfo.CommandBuffer,
