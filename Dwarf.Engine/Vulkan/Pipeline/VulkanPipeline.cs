@@ -12,22 +12,51 @@ public class VulkanPipeline : IPipeline {
   private VkPipeline _graphicsPipeline;
   private VkShaderModule _vertexShaderModule;
   private VkShaderModule _fragmentShaderModule;
+  private VkShaderModule _geometryShaderModule;
   private readonly VkPipelineProvider _pipelineProvider;
 
   private readonly Lock _pipelineLock = new();
 
   public VulkanPipeline(
     IDevice device,
-    string vertexName,
-    string fragmentName,
     IPipelineConfigInfo configInfo,
     VkPipelineProvider pipelineProvider,
     VkFormat depthFormat,
-    VkFormat colorFormat
+    VkFormat colorFormat,
+    string vertexName,
+    string fragmentName
   ) {
     _device = device;
     _pipelineProvider = pipelineProvider;
-    CreateGraphicsPipeline(vertexName, fragmentName, (VkPipelineConfigInfo)configInfo, depthFormat, colorFormat);
+    CreateGraphicsPipeline(
+      (VkPipelineConfigInfo)configInfo,
+      depthFormat,
+      colorFormat,
+      vertexName,
+      fragmentName
+    );
+  }
+
+  public VulkanPipeline(
+    IDevice device,
+    IPipelineConfigInfo configInfo,
+    VkPipelineProvider pipelineProvider,
+    VkFormat depthFormat,
+    VkFormat colorFormat,
+    string vertexName,
+    string fragmentName,
+    string? geometryName = null
+  ) {
+    _device = device;
+    _pipelineProvider = pipelineProvider;
+    CreateGraphicsPipeline(
+      (VkPipelineConfigInfo)configInfo,
+      depthFormat,
+      colorFormat,
+      vertexName,
+      fragmentName,
+      geometryName
+    );
   }
 
   public void Bind(nint commandBuffer) {
@@ -37,11 +66,12 @@ public class VulkanPipeline : IPipeline {
   }
 
   private unsafe void CreateGraphicsPipeline(
-    string vertexName,
-    string fragmentName,
     VkPipelineConfigInfo configInfo,
     VkFormat depthFormat,
-    VkFormat colorFormat
+    VkFormat colorFormat,
+    string vertexName,
+    string fragmentName,
+    string? geometryName = null
   ) {
     configInfo.RenderingCreateInfo = new() {
       colorAttachmentCount = 1,
@@ -57,8 +87,31 @@ public class VulkanPipeline : IPipeline {
     CreateShaderModule(vertexCode, out _vertexShaderModule);
     CreateShaderModule(fragmentCode, out _fragmentShaderModule);
 
+    if (geometryName != null) {
+      var geometryPath = Path.Combine(AppContext.BaseDirectory, "CompiledShaders/Vulkan", $"{geometryName}.spv");
+      var geometryCode = File.ReadAllBytes(geometryPath);
+      CreateShaderModule(geometryCode, out _geometryShaderModule);
+    }
+
     VkUtf8String entryPoint = "main"u8;
     VkPipelineShaderStageCreateInfo[] shaderStages =
+    geometryName == null ?
+    [
+      new() {
+        stage = VkShaderStageFlags.Vertex,
+        module = _vertexShaderModule,
+        pName = entryPoint,
+        flags = 0,
+        pNext = null
+      },
+      new() {
+        stage = VkShaderStageFlags.Fragment,
+        module = _fragmentShaderModule,
+        pName = entryPoint,
+        flags = 0,
+        pNext = null
+      }
+    ] :
     [
       new() {
         stage = VkShaderStageFlags.Vertex,
@@ -74,6 +127,13 @@ public class VulkanPipeline : IPipeline {
         flags = 0,
         pNext = null
       },
+      new() {
+        stage = VkShaderStageFlags.Geometry,
+        module = _geometryShaderModule,
+        pName = entryPoint,
+        flags = 0,
+        pNext = null
+      }
     ];
     var bindingDescriptions = _pipelineProvider.GetBindingDescsFunc();
     var attributeDescriptions = _pipelineProvider.GetAttribDescsFunc();
@@ -86,7 +146,7 @@ public class VulkanPipeline : IPipeline {
     };
 
     var pipelineInfo = new VkGraphicsPipelineCreateInfo();
-    pipelineInfo.stageCount = 2;
+    pipelineInfo.stageCount = geometryName == null ? 2u : 3u;
     fixed (VkPipelineShaderStageCreateInfo* ptr = shaderStages) {
       pipelineInfo.pStages = ptr;
     }

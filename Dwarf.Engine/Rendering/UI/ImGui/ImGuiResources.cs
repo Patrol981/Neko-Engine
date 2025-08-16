@@ -45,12 +45,12 @@ public partial class ImGuiController {
     var depthFormat = _renderer.DepthFormat;
     _systemPipeline = new VulkanPipeline(
       _device,
-      vertexName,
-      fragmentName,
       pipelineConfig,
       pipelineProvider,
       depthFormat.AsVkFormat(),
-      colorFormat.AsVkFormat()
+      colorFormat.AsVkFormat(),
+      vertexName,
+      fragmentName
     );
   }
 

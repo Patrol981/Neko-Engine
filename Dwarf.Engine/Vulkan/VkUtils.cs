@@ -567,6 +567,16 @@ public static class VkUtils {
                      0, 0, null, 0, null, 1, &barrier);
   }
 
+  public static VkImageAspectFlags AspectFor(VkFormat fmt) {
+    return fmt switch {
+      VkFormat.D32Sfloat => VK_IMAGE_ASPECT_DEPTH_BIT,
+      VkFormat.D16Unorm => VK_IMAGE_ASPECT_DEPTH_BIT,
+      VkFormat.D24UnormS8Uint => VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+      VkFormat.D32SfloatS8Uint => VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+      _ => VK_IMAGE_ASPECT_COLOR_BIT,
+    };
+  }
+
   public static unsafe void InsertMemoryBarrier2(
     VkCommandBuffer cmdbuffer,
     VkImage image,
@@ -589,7 +599,7 @@ public static class VkUtils {
       dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       image = image,
       subresourceRange = new() {
-        aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        aspectMask = AspectFor(format),
         levelCount = 1,
         layerCount = 1,
       }

@@ -182,7 +182,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
       pImageInfo = &depthInfo
     };
 
-    vkUpdateDescriptorSets(_device.LogicalDevice, 1, writeDescriptorSets, 0, null);
+    vkUpdateDescriptorSets(_device.LogicalDevice, 2, writeDescriptorSets, 0, null);
     ImageDescriptors[index] = descriptorSet;
   }
 
@@ -206,7 +206,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     var result = _swapchain.QueuePresent(
       _device.GraphicsQueue,
       _imageIndex,
-      _semaphores[Swapchain.CurrentFrame].RenderComplete,
+      _semaphores[_imageIndex].RenderComplete,
       _waitFences
     );
 
@@ -272,7 +272,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     imageViewCI.subresourceRange.levelCount = 1;
     imageViewCI.subresourceRange.baseArrayLayer = 0;
     imageViewCI.subresourceRange.layerCount = 1;
-    imageViewCI.subresourceRange.aspectMask = AspectFor(dp);
+    imageViewCI.subresourceRange.aspectMask = VkUtils.AspectFor(dp);
     // Stencil aspect should only be set on depth + stencil formats (VK_FORMAT_D16_UNORM_S8_UINT..VK_FORMAT_D32_SFLOAT_S8_UINT
     if (dp >= VK_FORMAT_D16_UNORM_S8_UINT) {
       imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
@@ -287,16 +287,6 @@ public unsafe class VkDynamicRenderer : IRenderer {
       VkFormat.D24UnormS8Uint
     };
     return _device.FindSupportedFormat(items, VkImageTiling.Optimal, VkFormatFeatureFlags.DepthStencilAttachment);
-  }
-
-  private static VkImageAspectFlags AspectFor(VkFormat fmt) {
-    return fmt switch {
-      VkFormat.D32Sfloat => VK_IMAGE_ASPECT_DEPTH_BIT,
-      VkFormat.D16Unorm => VK_IMAGE_ASPECT_DEPTH_BIT,
-      VkFormat.D24UnormS8Uint => VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
-      VkFormat.D32SfloatS8Uint => VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
-      _ => VK_IMAGE_ASPECT_COLOR_BIT,
-    };
   }
 
   public void RecreateSwapchain() {
@@ -412,6 +402,18 @@ public unsafe class VkDynamicRenderer : IRenderer {
       VkAccessFlags2.ColorAttachmentWrite
     );
 
+    VkUtils.InsertMemoryBarrier2(
+      CurrentCommandBuffer,
+      _depthStencil[_imageIndex].Image,
+      DepthFormat.AsVkFormat(),
+      VkImageLayout.DepthReadOnlyOptimal,
+      VkImageLayout.DepthReadOnlyOptimal,
+      VkPipelineStageFlags2.FragmentShader,
+      VkPipelineStageFlags2.EarlyFragmentTests | VkPipelineStageFlags2.LateFragmentTests,
+      VkAccessFlags2.ShaderRead,
+      VkAccessFlags2.DepthStencilAttachmentRead
+    );
+
     VkRenderingAttachmentInfo colorAttachment = new();
     colorAttachment.imageView = Swapchain.ImageViews[_imageIndex];
     colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -419,22 +421,22 @@ public unsafe class VkDynamicRenderer : IRenderer {
     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     colorAttachment.clearValue.color = new(0.137f, 0.137f, 0.137f, 1.0f);
 
-    VkRenderingAttachmentInfo depthStencilAttachment = new();
-    depthStencilAttachment.imageView = _depthStencil[_imageIndex].ImageView;
-    depthStencilAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    depthStencilAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthStencilAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    depthStencilAttachment.clearValue.depthStencil = new(1.0f, 0);
-    depthStencilAttachment.resolveMode = VkResolveModeFlags.None;
-    depthStencilAttachment.resolveImageView = VkImageView.Null;
-    depthStencilAttachment.resolveImageLayout = VkImageLayout.Undefined;
+    // VkRenderingAttachmentInfo depthStencilAttachment = new();
+    // depthStencilAttachment.imageView = _depthStencil[_imageIndex].ImageView;
+    // depthStencilAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    // depthStencilAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    // depthStencilAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    // depthStencilAttachment.clearValue.depthStencil = new(1.0f, 0);
+    // depthStencilAttachment.resolveMode = VkResolveModeFlags.None;
+    // depthStencilAttachment.resolveImageView = VkImageView.Null;
+    // depthStencilAttachment.resolveImageLayout = VkImageLayout.Undefined;
 
     VkRenderingInfo renderingInfo = new();
     renderingInfo.renderArea = new(0, 0, Swapchain.Extent2D.Width, Swapchain.Extent2D.Height);
     renderingInfo.layerCount = 1;
     renderingInfo.colorAttachmentCount = 1;
     renderingInfo.pColorAttachments = &colorAttachment;
-    renderingInfo.pDepthAttachment = &depthStencilAttachment;
+    // renderingInfo.pDepthAttachment = &depthStencilAttachment;
     renderingInfo.viewMask = 0;
     // renderingInfo.pStencilAttachment = &depthStencilAttachment;
 
@@ -484,7 +486,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
       CurrentCommandBuffer,
       _sceneColor[_imageIndex].Image,
       Swapchain.SurfaceFormat,
-      VkImageLayout.Undefined,
+      VkImageLayout.ShaderReadOnlyOptimal,
       VkImageLayout.ColorAttachmentOptimal,
       VkPipelineStageFlags2.None,
       VkPipelineStageFlags2.ColorAttachmentOutput,
@@ -497,7 +499,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
       CurrentCommandBuffer,
       _depthStencil[_imageIndex].Image,
       DepthFormat.AsVkFormat(),
-      VkImageLayout.Undefined,
+      VkImageLayout.ShaderReadOnlyOptimal,
       VkImageLayout.DepthAttachmentOptimal,
       VkPipelineStageFlags2.None,
       VkPipelineStageFlags2.EarlyFragmentTests | VkPipelineStageFlags2.LateFragmentTests,
@@ -628,7 +630,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     viewCI.subresourceRange.levelCount = 1;
     viewCI.subresourceRange.baseArrayLayer = 0;
     viewCI.subresourceRange.layerCount = 1;
-    viewCI.subresourceRange.aspectMask = AspectFor(colorFormat);
+    viewCI.subresourceRange.aspectMask = VkUtils.AspectFor(colorFormat);
 
     vkCreateImageView(_device.LogicalDevice, &viewCI, null, out _sceneColor[index].ImageView).CheckResult();
   }

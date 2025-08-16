@@ -30,6 +30,7 @@ public class PipelineInputData<T> where T : struct {
   public IDescriptorSetLayout[] DescriptorSetLayouts = [];
   public string VertexName = string.Empty;
   public string FragmentName = string.Empty;
+  public string? GeometryName = null;
   public IPipelineProvider PipelineProvider { get; set; } = null!;
   public ulong RenderPass { get; set; } = 0;
 }
@@ -39,6 +40,7 @@ public class PipelineInputData {
   public IDescriptorSetLayout[] DescriptorSetLayouts = [];
   public string VertexName = string.Empty;
   public string FragmentName = string.Empty;
+  public string? GeometryName = null;
   public IPipelineProvider PipelineProvider { get; set; } = null!;
   public ulong RenderPass { get; set; } = 0;
 }
@@ -154,6 +156,7 @@ public abstract class SystemBase {
     ulong renderPass,
     string vertexName,
     string fragmentName,
+    string? geometryName,
     IPipelineProvider pipelineProvider,
     ulong pipelineLayout,
     out IPipeline pipeline
@@ -163,7 +166,7 @@ public abstract class SystemBase {
 
     switch (_device.RenderAPI) {
       case RenderAPI.Vulkan:
-        CreateVkPipeline(vertexName, fragmentName, pipelineLayout, pipelineProvider, out pipeline);
+        CreateVkPipeline(vertexName, fragmentName, geometryName, pipelineLayout, pipelineProvider, out pipeline);
         break;
       case RenderAPI.Metal:
         throw new NotImplementedException();
@@ -184,6 +187,7 @@ public abstract class SystemBase {
   private unsafe void CreateVkPipeline(
     string vertexName,
     string fragmentName,
+    string? geometryName,
     ulong pipelineLayout,
     IPipelineProvider pipelineProvider,
     out IPipeline pipeline
@@ -195,12 +199,13 @@ public abstract class SystemBase {
     pipelineConfig.PipelineLayout = pipelineLayout;
     pipeline = new VulkanPipeline(
       _device,
-      vertexName,
-      fragmentName,
       pipelineConfig,
       (VkPipelineProvider)pipelineProvider,
       depthFormat.AsVkFormat(),
-      colorFormat.AsVkFormat()
+      colorFormat.AsVkFormat(),
+            vertexName,
+      fragmentName,
+      geometryName ?? default
     );
   }
 
@@ -219,6 +224,7 @@ public abstract class SystemBase {
       pipelineInput.RenderPass,
       pipelineInput.VertexName,
       pipelineInput.FragmentName,
+      pipelineInput.GeometryName,
       pipelineInput.PipelineProvider,
       _pipelines[pipelineInput.PipelineName].PipelineLayout,
       out _pipelines[pipelineInput.PipelineName].Pipeline
@@ -240,10 +246,12 @@ public abstract class SystemBase {
       pipelineInput.RenderPass,
       pipelineInput.VertexName,
       pipelineInput.FragmentName,
+      pipelineInput.GeometryName,
       pipelineInput.PipelineProvider,
       _pipelines[pipelineInput.PipelineName].PipelineLayout,
       out _pipelines[pipelineInput.PipelineName].Pipeline
     );
+
   }
 
   protected void BindPipeline(VkCommandBuffer commandBuffer, string pipelineName = DefaultPipelineName) {

@@ -144,7 +144,7 @@ public class PostProcessingSystem : SystemBase {
   private void UpdateDescriptors(int currentFrame) {
     // _renderer.Swapchain.UpdateDescriptors(currentFrame);
     // _renderer.Swapchain.UpdatePostProcessDescriptors(currentFrame);
-    _renderer.UpdateDescriptors();
+    // _renderer.UpdateDescriptors();
   }
 
   public void Render(FrameInfo frameInfo) {

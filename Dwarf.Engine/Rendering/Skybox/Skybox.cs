@@ -447,12 +447,12 @@ public class Skybox : IDisposable {
     var depthFormat = _renderer.DepthFormat;
     _pipeline = new VulkanPipeline(
       _device,
-      vertexName,
-      fragmentName,
       pipelineConfig,
       pipelineProvider,
       depthFormat.AsVkFormat(),
-      colorFormat.AsVkFormat()
+      colorFormat.AsVkFormat(),
+      vertexName,
+      fragmentName
     );
   }
 
