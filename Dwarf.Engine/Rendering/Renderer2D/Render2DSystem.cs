@@ -399,8 +399,9 @@ public class Render2DSystem : SystemBase {
 
   private unsafe void CreateVertexBuffer(ReadOnlySpan<IDrawable2D> drawables) {
     _vertexBindings.Clear();
-    _bufferPool?.Dispose();
-    _bufferPool = new BufferPool(_device, _allocator);
+    // _bufferPool?.Dispose();
+    _bufferPool?.Flush();
+    _bufferPool ??= new BufferPool(_device, _allocator);
     _indirectData.Clear();
     _indirectData = [];
 

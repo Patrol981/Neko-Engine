@@ -183,6 +183,12 @@ public class BufferPool : IDisposable {
     }
   }
 
+  public void Flush() {
+    foreach (var buff in _buffers) {
+      buff.Value.VertexBuffer.Flush();
+    }
+  }
+
   public DwarfBuffer GetVertexBuffer(uint index) => _buffers[index].VertexBuffer;
   public DwarfBuffer GetIndexBuffer(uint index) => _buffers[index].IndexBuffer;
 

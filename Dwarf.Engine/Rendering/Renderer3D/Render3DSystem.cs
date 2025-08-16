@@ -90,6 +90,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       RenderPass = renderer.GetSwapchainRenderPass(),
       VertexName = "model_vertex",
       FragmentName = "model_fragment",
+      GeometryName = "model_geometry",
       PipelineProvider = new PipelineModelProvider(),
       DescriptorSetLayouts = [.. basicLayouts],
       PipelineName = Simple3D
@@ -99,6 +100,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       RenderPass = renderer.GetSwapchainRenderPass(),
       VertexName = "model_skinned_vertex",
       FragmentName = "model_skinned_fragment",
+      GeometryName = "model_geometry",
       PipelineProvider = new PipelineModelProvider(),
       DescriptorSetLayouts = [.. complexLayouts],
       PipelineName = Skinned3D

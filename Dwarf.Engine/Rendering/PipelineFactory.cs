@@ -61,12 +61,12 @@ public static class PipelineFactory {
 
     return new VulkanPipeline(
       app.Device,
-      vertexName,
-      fragmentName,
       (VkPipelineConfigInfo)pipelineConfigInfo,
       (VkPipelineProvider)pipelineProvider,
       depthFormat.AsVkFormat(),
-      colorFormat.AsVkFormat()
+      colorFormat.AsVkFormat(),
+      vertexName,
+      fragmentName
     );
   }
 }

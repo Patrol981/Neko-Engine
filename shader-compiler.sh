@@ -16,7 +16,7 @@ cargo run ../Shaders/Vulkan ../TranspiledShaders/Vulkan
 cd ..
 
 # Compile GLSL shaders to SPIR-V
-for i in TranspiledShaders/Vulkan/*.frag TranspiledShaders/Vulkan/*.vert; do
+for i in TranspiledShaders/Vulkan/*.frag TranspiledShaders/Vulkan/*.vert TranspiledShaders/Vulkan/*.geom; do
     base_name=$(basename "$i")  # Extract the file name
     output_name="CompiledShaders/Vulkan/${base_name%.*}.spv"  # Change extension to .spv
 
