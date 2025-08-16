@@ -55,7 +55,8 @@ bool outside_all(vec4 a, vec4 b, vec4 c) {
     bool farP  = (a.z >  a.w + eps) && (b.z >  b.w + eps) && (c.z >  c.w + eps); // <-- fixed c.w
 #endif
 
-    return left || right || bottom || top |
+    return left || right || bottom || top || nearP || farP;
+}
 
 void main() {
     vec4 A = gl_in[0].gl_Position;
