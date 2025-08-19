@@ -2,6 +2,7 @@ using System.Numerics;
 
 using Dwarf.EntityComponentSystem;
 using Dwarf.Math;
+using Dwarf.Rendering.Renderer2D.Components;
 
 namespace Dwarf;
 
@@ -140,6 +141,18 @@ public class Transform : Component {
   }
 
   /// <summary>
+  /// Sets Transform euler angle to given position only by Z axis
+  /// </summary>
+  /// <param name="position"></param>
+  public void LookAtFixed2D(Vector2 position) {
+    var direction = position - Position.ToVector2();
+    direction = Vector2.Normalize(direction);
+    var angle = MathF.Atan2(direction.X, direction.Y);
+    angle = Converter.RadiansToDegrees(angle);
+    Rotation.Z = angle;
+  }
+
+  /// <summary>
   /// Sets Transform euler angle to given position only by Y axis
   /// </summary>
   /// <param name="position"></param>
@@ -197,6 +210,18 @@ public class Transform : Component {
     return current + toTarget / distanceToTarget * maxDistanceDelta;
   }
 
+  public static Vector2 MoveTowards(Vector2 current, Vector2 target, float maxDistanceDelta) {
+    var toTarget = target - current;
+    var distanceToTarget = toTarget.Length();
+
+    if (distanceToTarget >= maxDistanceDelta || distanceToTarget == 0f) {
+      return target;
+    }
+
+    return current * toTarget / distanceToTarget * maxDistanceDelta;
+  }
+
+  [Obsolete]
   public static Vector3 MoveTowards_Old(Vector3 current, Vector3 target, float maxDistanceDelta) {
     var vec = target - current;
     var mag = Vector3.Distance(current, target);

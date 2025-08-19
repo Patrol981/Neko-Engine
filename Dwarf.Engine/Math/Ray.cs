@@ -5,6 +5,7 @@ using Dwarf.Globals;
 using Dwarf.Rendering.Renderer3D;
 
 namespace Dwarf.Math;
+
 public class Ray {
   public class RayResult {
     public Vector3 RayOrigin { get; set; }
@@ -21,22 +22,45 @@ public class Ray {
 
   public record Plane(Vector3 Normal, Vector3 Point);
 
-  public static Vector2 MouseToWorld2D(Camera camera, Vector2 screenSize) {
-    var mousePos = Input.MousePosition;
-    float normalizedX = 2.0f * (float)mousePos.X / screenSize.X - 1.0f;
-    float normalizedY = 1.0f - 2.0f * (float)mousePos.Y / screenSize.Y;
+  public static Vector2 MouseToWorld2D(Camera camera, Vector2 screenSize, float planeZ = 0f) {
+    var mouse = Input.MousePosition;
 
-    Matrix4x4.Invert(camera.GetProjectionMatrix(), out var unProject);
-    Vector4 nearPoint = new Vector4(normalizedX, normalizedY, 0.0f, 1.0f);
-    Vector4 worldPoint = Vector4.Transform(nearPoint, unProject);
-    var tmp = new Vector2 {
-      X = worldPoint.X / worldPoint.W,
-      Y = worldPoint.Y / worldPoint.W
-    };
+    float ndcX = 2f * (float)mouse.X / screenSize.X - 1f;
+    float ndcY = 2f * (float)mouse.Y / screenSize.Y - 1f;
 
-    tmp.X *= 100;
-    tmp.Y *= -100;
-    return tmp;
+    var nearClip = new Vector4(ndcX, ndcY, 0f, 1f);
+    var farClip = new Vector4(ndcX, ndcY, 1f, 1f);
+
+    var proj = camera.GetProjectionMatrix();
+    var view = camera.GetViewMatrix();
+
+    if (!Matrix4x4.Invert(proj, out var invProj) ||
+        !Matrix4x4.Invert(view, out var invView))
+      return new Vector2(float.NaN, float.NaN);
+
+    Vector4 n = Vector4.Transform(nearClip, invProj);
+    n /= n.W;
+    n = Vector4.Transform(n, invView);
+    n /= n.W;
+
+    Vector4 f = Vector4.Transform(farClip, invProj);
+    f /= f.W;
+    f = Vector4.Transform(f, invView);
+    f /= f.W;
+
+    Vector3 nearW = new Vector3(n.X, n.Y, n.Z);
+    Vector3 farW = new Vector3(f.X, f.Y, f.Z);
+
+    Vector3 dir = Vector3.Normalize(farW - nearW);
+
+    const float EPS = 1e-6f;
+    float denom = Vector3.Dot(dir, new Vector3(0f, 0f, 1f));
+    if (MathF.Abs(denom) < EPS) return new Vector2(float.NaN, float.NaN);
+
+    float t = (planeZ - nearW.Z) / denom;
+    Vector3 hit = nearW + t * dir;
+
+    return new Vector2(hit.X, hit.Y);
   }
 
   public static RayResult GetRayInfo(Camera camera, Vector2 screenSize) {
@@ -281,6 +305,7 @@ public class Ray {
   }
 
 
+  [Obsolete]
   public static Vector2 ScreenPointToWorld2D(Camera camera, Vector2 point, Vector2 screenSize) {
     float normalizedX = 2.0f * point.X / screenSize.X - 1.0f;
     float normalizedY = 1.0f - 2.0f * point.Y / screenSize.Y;
@@ -298,6 +323,7 @@ public class Ray {
     return tmp;
   }
 
+  [Obsolete]
   public static Vector2 WorldToScreenPoint(Camera camera, Vector3 point, Vector2 screenSize) {
     var vp = camera.GetViewMatrix() * camera.GetProjectionMatrix();
 
