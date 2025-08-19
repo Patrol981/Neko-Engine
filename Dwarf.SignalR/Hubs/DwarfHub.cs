@@ -12,7 +12,7 @@ namespace Dwarf.SignalR.Hubs;
 [JsonSerializable(typeof(Vector3))]
 public partial class DwarfHubJsonSerializerContext : JsonSerializerContext { }
 
-public class DwarfHub : Hub {
+public partial class DwarfHub : Hub {
   private IDwarfClientService<string> _dwarfClientService;
 
   public DwarfHub(IDwarfClientService<string> dwarfClientService) : base() {
