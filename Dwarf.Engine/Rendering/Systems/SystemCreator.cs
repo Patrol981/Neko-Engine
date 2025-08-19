@@ -151,7 +151,9 @@ public class SystemCreator {
         new(allocator, device, renderer, textureManager, systemConfig, layouts, new ModelPipelineConfig());
     }
 
-    systemCollection.PostProcessingSystem =
+    if (systemConfig.ApplicationType == ApplicationType.Default) {
+      systemCollection.PostProcessingSystem =
       new(allocator, device, renderer, textureManager, systemConfig, layouts, new PostProcessingPipeline());
+    }
   }
 }
