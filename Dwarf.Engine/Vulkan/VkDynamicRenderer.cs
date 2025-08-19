@@ -108,18 +108,18 @@ public unsafe class VkDynamicRenderer : IRenderer {
     vkGetPhysicalDeviceProperties2(_device.PhysicalDevice, &properties);
 
     VkSamplerCreateInfo samplerInfo = new();
-    samplerInfo.magFilter = VkFilter.Nearest;
-    samplerInfo.minFilter = VkFilter.Nearest;
-    samplerInfo.addressModeU = VkSamplerAddressMode.ClampToEdge;
-    samplerInfo.addressModeV = VkSamplerAddressMode.ClampToEdge;
-    samplerInfo.addressModeW = VkSamplerAddressMode.ClampToEdge;
+    samplerInfo.magFilter = VkFilter.Linear;
+    samplerInfo.minFilter = VkFilter.Linear;
+    samplerInfo.addressModeU = VkSamplerAddressMode.Repeat;
+    samplerInfo.addressModeV = VkSamplerAddressMode.Repeat;
+    samplerInfo.addressModeW = VkSamplerAddressMode.Repeat;
     samplerInfo.anisotropyEnable = false;
     samplerInfo.maxAnisotropy = properties.properties.limits.maxSamplerAnisotropy;
-    samplerInfo.borderColor = VkBorderColor.FloatOpaqueWhite;
+    samplerInfo.borderColor = VkBorderColor.FloatTransparentBlack;
     samplerInfo.unnormalizedCoordinates = false;
     samplerInfo.compareEnable = compare;
     samplerInfo.compareOp = compare ? VkCompareOp.LessOrEqual : VkCompareOp.Always;
-    samplerInfo.mipmapMode = VkSamplerMipmapMode.Nearest;
+    samplerInfo.mipmapMode = VkSamplerMipmapMode.Linear;
 
     vkCreateSampler(_device.LogicalDevice, &samplerInfo, null, out sampler).CheckResult();
   }
@@ -303,6 +303,10 @@ public unsafe class VkDynamicRenderer : IRenderer {
           vkDestroyImageView(_device.LogicalDevice, _depthStencil[i].ImageView, null);
           vkDestroyImage(_device.LogicalDevice, _depthStencil[i].Image, null);
           vkFreeMemory(_device.LogicalDevice, _depthStencil[i].ImageMemory, null);
+
+          vkDestroyImageView(_device.LogicalDevice, _sceneColor[i].ImageView, null);
+          vkDestroyImage(_device.LogicalDevice, _sceneColor[i].Image, null);
+          vkFreeMemory(_device.LogicalDevice, _sceneColor[i].ImageMemory, null);
         }
       }
     }
@@ -321,6 +325,10 @@ public unsafe class VkDynamicRenderer : IRenderer {
       CreateDepthStencil(i);
       CreateSceneColor(i);
     }
+
+    InitVulkan();
+    CreateSamplers();
+    CreateDescriptors();
 
     Logger.Info("Recreated Swapchain");
   }

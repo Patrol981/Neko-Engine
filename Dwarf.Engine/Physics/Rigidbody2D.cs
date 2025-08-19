@@ -122,7 +122,9 @@ public class Rigidbody2D : Component, IDisposable, ICloneable {
     if (Owner.CanBeDisposed) return;
 
     var pos = PhysicsBody2D?.Position;
-    var transform = Owner!.GetComponent<Transform>();
+    var transform = Owner!.TryGetComponent<Transform>();
+
+    if (transform == null) return;
 
     transform.Position.X = pos.HasValue ? pos.Value.X : 0;
     transform.Position.Y = pos.HasValue ? pos.Value.Y : 0;
