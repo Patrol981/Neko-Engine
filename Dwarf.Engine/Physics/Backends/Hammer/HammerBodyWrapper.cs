@@ -137,6 +137,16 @@ public class HammerBodyWrapper : IPhysicsBody2D {
     return (first, second);
   }
 
+  public static Rigidbody2D? GetCollisionData(BodyId body1) {
+    var entity = Application.Instance.GetEntities()
+      .Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody2D>())
+      .Where(x => (BodyId)x.GetComponent<Rigidbody2D>().PhysicsBody2D.BodyId == body1)
+      .SingleOrDefault()?
+      .GetComponent<Rigidbody2D>();
+
+    return entity;
+  }
+
   public void Dispose() {
     RemoveBody();
   }

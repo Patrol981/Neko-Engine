@@ -17,6 +17,7 @@ public class HammerProgram : IPhysicsProgram {
     _hammerInstance.OnContactAdded += OnContactAdded;
     _hammerInstance.OnContactPersisted += OnContactPersisted;
     _hammerInstance.OnContactExit += OnContactExit;
+    _hammerInstance.OnTilemapContactPersised += OnTilemapContactPersised;
   }
 
   public void Init(Span<Entity> entities) {
@@ -55,6 +56,11 @@ public class HammerProgram : IPhysicsProgram {
       data.Item1?.InvokeCollision(CollisionState.Exit, data.Item2?.Owner, data.Item2?.IsTrigger ?? false);
       data.Item2?.InvokeCollision(CollisionState.Exit, data.Item1?.Owner, data.Item1?.IsTrigger ?? false);
     }
+  }
+
+  public static void OnTilemapContactPersised(in BodyId body1) {
+    var data = HammerBodyWrapper.GetCollisionData(body1);
+    data?.InvokeCollision(CollisionState.Stay, null, false);
   }
 
   public void Dispose() {
