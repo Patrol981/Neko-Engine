@@ -368,7 +368,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     var commandBuffer = _commandBuffers[_imageIndex];
     vkEndCommandBuffer(commandBuffer).CheckResult();
 
-    fixed (VkSemaphore* renderPtr = &_semaphores[Swapchain.CurrentFrame].RenderComplete)
+    fixed (VkSemaphore* renderPtr = &_semaphores[_imageIndex].RenderComplete)
     fixed (VkSemaphore* presentPtr = &_semaphores[Swapchain.CurrentFrame].PresentComplete) {
       VkSubmitInfo submitInfo = new();
 
