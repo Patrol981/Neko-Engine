@@ -460,11 +460,24 @@ public partial class Application {
     }
   }
 
-  public List<Entity> GetEntities() {
+  public ReadOnlySpan<Entity> GetEntities() {
     lock (EntitiesLock) {
-      return _entities;
+      return _entities.Where(x => !x.CanBeDisposed).ToArray();
     }
   }
+
+  public List<Entity> GetEntitiesList() {
+    lock (EntitiesLock) {
+      return [.. _entities.Where(x => !x.CanBeDisposed)];
+    }
+  }
+
+  public IEnumerable<Entity> GetEntitiesEnumerable() {
+    lock (EntitiesLock) {
+      return [.. _entities.Where(x => !x.CanBeDisposed)];
+    }
+  }
+
 
   public Entity? GetEntity(Guid entitiyId) {
     lock (EntitiesLock) {

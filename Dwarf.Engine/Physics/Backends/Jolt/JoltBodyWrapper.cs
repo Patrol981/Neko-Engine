@@ -112,7 +112,7 @@ public class JoltBodyWrapper : IPhysicsBody {
   }
 
   public static (Entity?, Entity?) GetCollisionData(BodyID body1, BodyID body2) {
-    var entities = Application.Instance.GetEntities().Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody>());
+    var entities = Application.Instance.GetEntitiesEnumerable().Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody>());
     var first = entities.Where(x => (BodyID)x.GetComponent<Rigidbody>().BodyInterface.BodyId == body1).FirstOrDefault();
     var second = entities.Where(x => (BodyID)x.GetComponent<Rigidbody>().BodyInterface.BodyId == body2).FirstOrDefault();
 
