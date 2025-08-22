@@ -3,6 +3,7 @@ using Dwarf.Physics;
 using SDL3;
 
 namespace Dwarf.Testing;
+
 public class PerformanceTester {
   public static void KeyHandler(SDL_Keycode key) {
     if (key == SDL_Keycode.P) CreateNewModel(Application.Instance, false);
@@ -27,7 +28,7 @@ public class PerformanceTester {
   }
 
   public static void RemoveModel(Application app) {
-    var room = app.GetEntities().Where(x => x.Name == "test").FirstOrDefault();
+    var room = app.GetEntitiesEnumerable().Where(x => x.Name == "test").FirstOrDefault();
     if (room == null) return;
     room.CanBeDisposed = true;
   }

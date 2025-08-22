@@ -153,21 +153,21 @@ public class Entity {
   }
 
   public static T? FindComponentOfType<T>() where T : Component, new() {
-    var entities = Application.Instance.GetEntities();
+    var entities = Application.Instance.GetEntitiesEnumerable();
     var target = entities.Where(x => x.HasComponent<T>() && !x.CanBeDisposed)
       .FirstOrDefault();
     return target?.GetComponent<T>();
   }
 
   public static T? FindComponentByName<T>(string name) where T : Component, new() {
-    var entities = Application.Instance.GetEntities();
+    var entities = Application.Instance.GetEntitiesEnumerable();
     var target = entities.Where(x => x.Name == name && !x.CanBeDisposed)
       .FirstOrDefault();
     return target?.GetComponent<T>();
   }
 
   public static Entity? FindEntityByName(string name) {
-    var entities = Application.Instance.GetEntities();
+    var entities = Application.Instance.GetEntitiesEnumerable();
     var target = entities.Where(x => x.Name == name && !x.CanBeDisposed)
       .FirstOrDefault();
     return target ?? null!;

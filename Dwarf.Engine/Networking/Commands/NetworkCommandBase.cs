@@ -1,0 +1,14 @@
+namespace Dwarf.Networking.Commands;
+
+public abstract class NetworkCommandBase {
+  protected readonly Application _app;
+  protected readonly SignalRClientSystem _client;
+
+  protected NetworkCommandBase(Application app, SignalRClientSystem client) {
+    _app = app;
+    _client = client;
+    SetupListeners();
+  }
+
+  public abstract void SetupListeners();
+}

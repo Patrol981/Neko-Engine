@@ -121,7 +121,7 @@ public class Ray {
   }
 
   public static ReadOnlySpan<Entity> Raycast(AABBFilter aabbFilter = AABBFilter.None) {
-    var entities = Application.Instance.GetEntities();
+    var entities = Application.Instance.GetEntitiesEnumerable();
     var result = new Dictionary<Entity, RaycastHitResult>();
 
     foreach (var entity in entities.Where(x => !x.CanBeDisposed)) {
@@ -147,7 +147,7 @@ public class Ray {
     var entities = Application.Instance.GetEntities();
     var result = new Dictionary<Entity, RaycastHitResult>();
 
-    for (int i = 0; i < entities.Count; i++) {
+    for (int i = 0; i < entities.Length; i++) {
       if (entities[i].CanBeDisposed) continue;
       var enTransform = entities[i].TryGetComponent<Transform>();
       var enDistance = Vector3.Distance(

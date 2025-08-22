@@ -1,3 +1,4 @@
+using Dwarf.Networking;
 using Dwarf.Rendering;
 using Dwarf.Rendering.Renderer2D;
 using Dwarf.Rendering.Renderer2D.Interfaces;
@@ -158,8 +159,8 @@ public static class EntityHelper {
     public int Compare(IDrawable2D? a, IDrawable2D? b) {
       if (a != null && a.Entity.CanBeDisposed) return 0;
       if (b != null && b.Entity.CanBeDisposed) return 0;
-      float az = a!.Entity.GetComponent<Transform>().Position.Z;
-      float bz = b!.Entity.GetComponent<Transform>().Position.Z;
+      float az = a!.Entity.TryGetComponent<Transform>()?.Position.Z ?? 0;
+      float bz = b!.Entity.TryGetComponent<Transform>()?.Position.Z ?? 0;
       if (az < bz) return -1;
       if (az > bz) return 1;
       return 0;

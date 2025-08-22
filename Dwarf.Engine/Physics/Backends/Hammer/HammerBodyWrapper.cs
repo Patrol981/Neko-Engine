@@ -130,7 +130,7 @@ public class HammerBodyWrapper : IPhysicsBody2D {
   }
 
   public static (Rigidbody2D?, Rigidbody2D?) GetCollisionData(BodyId body1, BodyId body2) {
-    var entities = Application.Instance.GetEntities().Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody2D>());
+    var entities = Application.Instance.GetEntitiesEnumerable().Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody2D>());
     var first = entities.Where(x => (BodyId)x.GetComponent<Rigidbody2D>().PhysicsBody2D.BodyId == body1).FirstOrDefault()?.GetComponent<Rigidbody2D>();
     var second = entities.Where(x => (BodyId)x.GetComponent<Rigidbody2D>().PhysicsBody2D.BodyId == body2).FirstOrDefault()?.GetComponent<Rigidbody2D>(); ;
 
@@ -138,7 +138,7 @@ public class HammerBodyWrapper : IPhysicsBody2D {
   }
 
   public static Rigidbody2D? GetCollisionData(BodyId body1) {
-    var entity = Application.Instance.GetEntities()
+    var entity = Application.Instance.GetEntitiesEnumerable()
       .Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody2D>())
       .Where(x => (BodyId)x.GetComponent<Rigidbody2D>().PhysicsBody2D.BodyId == body1)
       .SingleOrDefault()?
