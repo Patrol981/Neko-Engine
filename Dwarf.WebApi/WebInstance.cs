@@ -1,46 +1,50 @@
+using System.Text.Json.Serialization.Metadata;
+using Dwarf.WebApi.Endpoints;
+
 namespace Dwarf.WebApi;
-public class WebInstance : IDisposable {
-  private Thread? _webThread;
 
-  public delegate void EndpointMapInvoker();
-  public EndpointMapInvoker? OnMap;
+public class WebInstance : IAsyncDisposable {
+  public const string HTTP_URL = "http://*:4212";
+  public const string HTTPS_URL = "https://*:4213";
 
-  public void Init() {
-    _webThread = new Thread(Run);
-    _webThread.Start();
+  private readonly WebApplicationBuilder? _builder;
+  private WebApplication? _app;
+
+  public WebInstance(
+    IJsonTypeInfoResolver[] expectedTypes
+  ) {
+    _builder = WebApplication.CreateSlimBuilder();
+    _builder.Services.ConfigureHttpJsonOptions(options => {
+      int index = 0;
+      foreach (var expectedType in expectedTypes) {
+        options.SerializerOptions.TypeInfoResolverChain.Insert(index, expectedType);
+        index++;
+      }
+    });
+    _builder.WebHost.UseUrls(HTTP_URL);
+  }
+
+  public void AddEndpoints(params IEndpoint[] endpoints) {
+    _builder?.Services.AddEndpoints(endpoints);
   }
 
   public void Run() {
-    var builder = WebApplication.CreateSlimBuilder();
-
-    builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
-
-    WebApplication = builder.Build();
-
-    WebApplication.UseSwagger();
-    WebApplication.UseSwaggerUI();
-    WebApplication.UseStaticFiles();
-
-    MapEndpoints();
-
-    WebApplication.Run();
-  }
-
-  public virtual void MapEndpoints() {
-    OnMap?.Invoke();
-  }
-
-  private async void Close() {
-    if (WebApplication != null) {
-      await WebApplication.DisposeAsync();
+    if (_builder == null) {
+      return;
     }
-    _webThread?.Join();
+
+    _app = _builder.Build();
+    _app.UseRouting();
+    _app.UseEndpoints();
+    _app.Run();
   }
 
-  public void Dispose() {
-    Close();
-  }
+  public async ValueTask DisposeAsync() {
+    if (_app != null) {
+      await _app.StopAsync();
+      await _app.DisposeAsync().AsTask();
+    }
 
-  public WebApplication? WebApplication { get; private set; }
+    GC.SuppressFinalize(this);
+  }
 }

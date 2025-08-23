@@ -1,5 +1,8 @@
+using System.Collections.Concurrent;
 using System.Numerics;
 using System.Text.Json.Serialization;
+using Dwarf.SignalR.Data;
+using Dwarf.SignalR.Globals;
 using Dwarf.SignalR.Interfaces;
 using Microsoft.AspNetCore.SignalR;
 
@@ -10,6 +13,8 @@ namespace Dwarf.SignalR.Hubs;
 [JsonSerializable(typeof(List<KeyValuePair<ISingleClientProxy, string>>))]
 [JsonSerializable(typeof(string[]))]
 [JsonSerializable(typeof(Vector3))]
+[JsonSerializable(typeof(DwarfPackage))]
+[JsonSerializable(typeof(ConcurrentDictionary<Guid, DwarfPackage>))]
 public partial class DwarfHubJsonSerializerContext : JsonSerializerContext { }
 
 public partial class DwarfHub : Hub {
@@ -26,8 +31,36 @@ public partial class DwarfHub : Hub {
 
   [HubMethodName(EventConstants.SEND_TRANSFORM)]
   public async Task SendTransform(string data) {
-    Console.WriteLine($"Received data from {data}");
-    await Clients.All.SendAsync(EventConstants.GET_TRANSFORM, data);
+    // Console.WriteLine($"Received data from {data}");
+
+    // uuid/x/y/z
+    var dataArray = data.Split('/');
+
+    if (DwarfHubData.DwarfClients.TryGetValue(Guid.Parse(dataArray[0]), out var dwarfPackage)) {
+      dwarfPackage.Uuid = dataArray[0];
+      dwarfPackage.Position.X = float.Parse(dataArray[1]);
+      dwarfPackage.Position.Y = float.Parse(dataArray[2]);
+      dwarfPackage.Position.Z = float.Parse(dataArray[3]);
+
+      // Console.WriteLine($"Updated package data: {dwarfPackage.Uuid} {dwarfPackage.Position}");
+    } else {
+      var newPackage = new DwarfPackage {
+        Uuid = dataArray[0],
+        Position = new() {
+          X = float.Parse(dataArray[1]),
+          Y = float.Parse(dataArray[2]),
+          Z = float.Parse(dataArray[3])
+        }
+      };
+
+      DwarfHubData.DwarfClients.TryAdd(Guid.Parse(newPackage.Uuid), newPackage);
+
+      // Console.WriteLine($"Added new package data: {newPackage.Uuid} {newPackage.Position}");
+    }
+
+    var toSend = DwarfHubData.DwarfClients.StringifyData();
+    // Console.WriteLine($"Resending data {toSend}");
+    await Clients.All.SendAsync(EventConstants.GET_TRANSFORM, toSend);
   }
 
   [HubMethodName(EventConstants.SEND_INIT)]

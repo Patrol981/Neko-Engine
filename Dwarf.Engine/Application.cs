@@ -10,6 +10,7 @@ using Dwarf.Globals;
 using Dwarf.Math;
 using Dwarf.Rendering;
 using Dwarf.Rendering.Lightning;
+using Dwarf.Rendering.Renderer2D.Components;
 using Dwarf.Rendering.Renderer2D.Models;
 using Dwarf.Rendering.Renderer3D;
 using Dwarf.Rendering.UI;
@@ -254,8 +255,11 @@ public partial class Application {
     Cleanup();
   }
 
-  public void RunHeadless() {
+  public async Task RunHeadless() {
     Logger.Info("[APPLICATION] Application started in headless mode");
+
+    await SetupScene();
+
 
     Systems.SetupHeadless(this, _systemCreationFlags, _systemConfiguration);
     var closeRequest = false;

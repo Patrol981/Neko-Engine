@@ -1,4 +1,7 @@
 using Dwarf.EntityComponentSystem;
+using Dwarf.Extensions.Logging;
+using Dwarf.Networking.WebApi;
+using Dwarf.Networking.WebApi.Endpoints;
 using Dwarf.Utils;
 using Dwarf.WebApi;
 
@@ -6,9 +9,11 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 
 namespace Dwarf.Networking;
+
 public class WebApiSystem : IDisposable {
   private readonly Application? _application;
   private readonly WebInstance? _webInstance;
+  private Thread? _webThread;
 
   public class RotationData {
     public float X { get; set; }
@@ -23,10 +28,25 @@ public class WebApiSystem : IDisposable {
   }
 
   public WebApiSystem(Application app) {
+    var commonTypes = CommonJsonTypesProvider.Provide();
+
     _application = app;
-    _webInstance = new WebInstance();
-    // _webInstance.OnMap += MapEndpoints;
-    _webInstance.Init();
+    _webInstance = new WebInstance([.. commonTypes]);
+    _webInstance.AddEndpoints([new CommonEndpoints()]);
+
+    _webThread = new Thread(Run) {
+      Name = "WebApi Thread",
+      IsBackground = true,
+      Priority = ThreadPriority.BelowNormal
+    };
+    _webThread.Start();
+  }
+
+  private void Run() {
+    if (_webThread == null) return;
+
+    Logger.Info($"[SYSTEMS] WebApi System Running on Thread {_webThread.Name} - {_webThread.ManagedThreadId}");
+    _webInstance?.Run();
   }
 
   /*
@@ -121,6 +141,9 @@ public class WebApiSystem : IDisposable {
   */
 
   public void Dispose() {
-    _webInstance?.Dispose();
+    _webInstance?.DisposeAsync().AsTask().Wait();
+    _webThread?.Join();
+
+    GC.SuppressFinalize(this);
   }
 }

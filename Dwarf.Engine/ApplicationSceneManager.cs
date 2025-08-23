@@ -105,8 +105,8 @@ public partial class Application {
 
     await LoadEntities();
 
-    Logger.Info($"Loaded entities: {_entities.Count}");
-    Logger.Info($"Loaded textures: {_textureManager.PerSceneLoadedTextures.Count}");
+    Logger.Info($"Loaded entities: {_entities?.Count}");
+    Logger.Info($"Loaded textures: {_textureManager?.PerSceneLoadedTextures?.Count}");
 
     return Task.CompletedTask;
   }
