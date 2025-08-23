@@ -1,5 +1,8 @@
+using Dwarf.EntityComponentSystem;
+
 namespace Dwarf.Networking.Commands;
 
 public interface INetworkCommand {
-  void SetupListeners();
+  Task SetupListeners();
+  Task Send(Entity target);
 }

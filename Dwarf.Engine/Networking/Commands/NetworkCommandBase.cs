@@ -1,6 +1,8 @@
+using Dwarf.EntityComponentSystem;
+
 namespace Dwarf.Networking.Commands;
 
-public abstract class NetworkCommandBase {
+public abstract class NetworkCommandBase<T> : INetworkCommand {
   protected readonly Application _app;
   protected readonly SignalRClientSystem _client;
 
@@ -10,5 +12,6 @@ public abstract class NetworkCommandBase {
     SetupListeners();
   }
 
-  public abstract void SetupListeners();
+  public abstract Task SetupListeners();
+  public abstract Task Send(Entity target);
 }

@@ -25,8 +25,9 @@ public partial class DwarfHub : Hub {
   }
 
   [HubMethodName(EventConstants.SEND_TRANSFORM)]
-  public async Task SendTransform(string user, string position) {
-    await Clients.Others.SendAsync(EventConstants.GET_TRANSFORM, user, position);
+  public async Task SendTransform(string data) {
+    Console.WriteLine($"Received data from {data}");
+    await Clients.All.SendAsync(EventConstants.GET_TRANSFORM, data);
   }
 
   [HubMethodName(EventConstants.SEND_INIT)]
