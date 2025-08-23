@@ -14,8 +14,8 @@ public class TransformCommand(
   SignalRClientSystem client
 ) : NetworkCommandBase<TransformData>(app, client) {
   public override Task SetupListeners() {
-    _client.RegisterEvent<object[]>(EventConstants.GET_TRANSFORM, (tranforms) => {
-      Logger.Info("GET TRANSFORM");
+    _client.RegisterEvent<string[]>(EventConstants.GET_TRANSFORM, (tranforms) => {
+      // Logger.Info("GET TRANSFORM");
 
       if (tranforms is not TransformData[] transformData) return;
 

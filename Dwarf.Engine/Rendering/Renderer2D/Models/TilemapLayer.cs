@@ -182,11 +182,15 @@ public class TilemapLayer : IDrawable2D {
     LayerMesh.Vertices = [.. vertices];
     LayerMesh.Indices = [.. indices];
 
+    if (Application.ApplicationMode == ApplicationType.Headless) return;
+
     LayerMesh.CreateVertexBuffer();
     LayerMesh.CreateIndexBuffer();
   }
 
   public void SetupTexture(string path) {
+    if (Application.ApplicationMode == ApplicationType.Headless) return;
+
     LayerTexture = _app.TextureManager.AddTextureLocal(path).Result;
   }
 

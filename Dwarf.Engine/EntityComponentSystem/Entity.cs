@@ -24,8 +24,8 @@ public class Entity {
     _componentManager = new ComponentManager();
   }
 
-  public void AddComponent(Component component) {
-    if (!VerifyAdd(component)) return;
+  public void AddComponent(Component component, bool skipVerify = false) {
+    if (!skipVerify && !VerifyAdd(component)) return;
     Application.Mutex.WaitOne();
     if (CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
     component.Owner = this;
