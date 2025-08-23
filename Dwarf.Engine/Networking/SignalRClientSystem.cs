@@ -46,7 +46,26 @@ public class SignalRClientSystem : IDisposable {
     return false;
   }
 
-  public async Task<Task> Send(
+  public async Task Send(
+    string eventName,
+    object data,
+    string hubName = HubNames.DEFAULT
+  ) {
+    var result = _connections.TryGetValue(hubName, out var connection);
+    if (!result) {
+      throw new KeyNotFoundException("Could not find given hub name");
+    }
+
+    if (connection == null || connection.State == HubConnectionState.Disconnected) {
+      return;
+    }
+
+    await connection.InvokeAsync(eventName, data);
+
+    return;
+  }
+
+  public async Task Send(
     string eventName,
     string args,
     string hubName = HubNames.DEFAULT
@@ -57,15 +76,15 @@ public class SignalRClientSystem : IDisposable {
     }
 
     if (connection == null || connection.State == HubConnectionState.Disconnected) {
-      return Task.CompletedTask;
+      return;
     }
 
     await connection.InvokeAsync(eventName, args);
 
-    return Task.CompletedTask;
+    return;
   }
 
-  public async Task<Task> Send<T>(
+  public async Task Send<T>(
     string eventName,
     string sender,
     T data,
@@ -77,12 +96,12 @@ public class SignalRClientSystem : IDisposable {
     }
 
     if (connection == null || connection.State == HubConnectionState.Disconnected) {
-      return Task.CompletedTask;
+      return;
     }
 
     await connection.InvokeAsync(eventName, sender, data);
 
-    return Task.CompletedTask;
+    return;
   }
 
   public void RegisterEvent<T1, T2>(
