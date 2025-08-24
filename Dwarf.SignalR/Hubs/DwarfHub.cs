@@ -63,9 +63,9 @@ public partial class DwarfHub : Hub {
     }
 
     var toSend = DwarfHubData.DwarfClients.StringifyData();
-    foreach (var ts in toSend) {
-      Console.WriteLine($"Resending data {ts}");
-    }
+    // foreach (var ts in toSend) {
+    //   Console.WriteLine($"Resending data {ts}");
+    // }
     await Clients.All.SendAsync(EventConstants.GET_TRANSFORM, toSend);
   }
 
