@@ -4,5 +4,5 @@ using Dwarf.Rendering;
 namespace Dwarf.Networking.WebApi.Interfaces;
 
 public interface IMeshService {
-  VertexResponse[] Get2DLevelMesh();
+  MeshResponse Get2DLevelMesh();
 }

@@ -20,7 +20,9 @@ public class MeshService : IMeshService {
   /// <summary>
   /// Retruns the first found level entity
   /// </summary>
-  public VertexResponse[] Get2DLevelMesh() {
+  public MeshResponse Get2DLevelMesh() {
+    var meshResponse = new MeshResponse();
+
     var level = _app.GetEntitiesEnumerable()
       .Where(
         x => x.Name.Contains("level") ||
@@ -31,13 +33,13 @@ public class MeshService : IMeshService {
 
     if (level == null) {
       _logger.LogWarning("level is null");
-      return [];
+      return meshResponse;
     }
 
     var tilemap = level.TryGetComponent<Tilemap>();
     if (tilemap is null) {
       _logger.LogWarning("tilemap is null");
-      return [];
+      return meshResponse;
     }
 
     var collMesh = tilemap.CollisionMesh?.Vertices;
@@ -45,6 +47,12 @@ public class MeshService : IMeshService {
       _logger.LogWarning("mesh is null");
     }
 
-    return collMesh.ToVertexResponseArray() ?? [];
+    var vertices = collMesh?.ToVertexResponseArray() ?? [];
+    var indices = tilemap.CollisionMesh?.Indices ?? [];
+
+    meshResponse.Vertices = vertices;
+    meshResponse.Indices = indices;
+
+    return meshResponse;
   }
 }

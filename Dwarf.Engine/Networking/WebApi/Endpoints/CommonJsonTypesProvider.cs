@@ -6,13 +6,14 @@ using Dwarf.Rendering;
 namespace Dwarf.Networking.WebApi;
 
 [JsonSerializable(typeof(VertexResponse[]))]
-internal partial class VertexJsonSerializerContext : JsonSerializerContext {
+[JsonSerializable(typeof(MeshResponse[]))]
+internal partial class MeshJsonSerializerContext : JsonSerializerContext {
 }
 
 public static class CommonJsonTypesProvider {
   public static IJsonTypeInfoResolver[] Provide() {
     return [
-      VertexJsonSerializerContext.Default
+      MeshJsonSerializerContext.Default,
     ];
   }
 }
