@@ -21,7 +21,7 @@ public class CommonEndpoints : IEndpoint {
     services.AddSingleton<IMeshService, MeshService>();
   }
 
-  public static VertexResponse[] Get2DLevelMesh(IMeshService meshService) {
+  public static MeshResponse Get2DLevelMesh(IMeshService meshService) {
     return meshService.Get2DLevelMesh();
   }
 }

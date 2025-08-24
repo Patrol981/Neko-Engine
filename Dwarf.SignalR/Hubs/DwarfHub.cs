@@ -36,11 +36,15 @@ public partial class DwarfHub : Hub {
     // uuid/x/y/z
     var dataArray = data.Split('/');
 
-    if (DwarfHubData.DwarfClients.TryGetValue(Guid.Parse(dataArray[0]), out var dwarfPackage)) {
+    var uuid = Guid.Parse(dataArray[0]);
+    if (DwarfHubData.DwarfClients.ContainsKey(uuid)) {
+      var dwarfPackage = new DwarfPackage();
       dwarfPackage.Uuid = dataArray[0];
       dwarfPackage.Position.X = float.Parse(dataArray[1]);
       dwarfPackage.Position.Y = float.Parse(dataArray[2]);
       dwarfPackage.Position.Z = float.Parse(dataArray[3]);
+
+      DwarfHubData.DwarfClients[uuid] = dwarfPackage;
 
       // Console.WriteLine($"Updated package data: {dwarfPackage.Uuid} {dwarfPackage.Position}");
     } else {
@@ -59,7 +63,9 @@ public partial class DwarfHub : Hub {
     }
 
     var toSend = DwarfHubData.DwarfClients.StringifyData();
-    // Console.WriteLine($"Resending data {toSend}");
+    foreach (var ts in toSend) {
+      Console.WriteLine($"Resending data {ts}");
+    }
     await Clients.All.SendAsync(EventConstants.GET_TRANSFORM, toSend);
   }
 
