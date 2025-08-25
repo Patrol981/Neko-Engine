@@ -30,17 +30,20 @@ public record SystemConfiguration {
   public PostProcessingConfigurationFlag PostProcessingFlag { get; init; }
   public string[]? PostProcessInputTextures { get; init; }
   public ApplicationType ApplicationType { get; init; } = ApplicationType.Default;
+  public string[]? WebAllowOrigins { get; init; }
 
   public static SystemConfiguration Default => new() {
     PhysiscsBackend = Physics.Backends.BackendKind.Default,
     PostProcessingFlag = PostProcessingConfigurationFlag.Custom,
-    ApplicationType = ApplicationType.Default
+    ApplicationType = ApplicationType.Default,
+    WebAllowOrigins = []
   };
 
   public static SystemConfiguration GetDefault() => new() {
     PhysiscsBackend = Physics.Backends.BackendKind.Default,
     PostProcessingFlag = PostProcessingConfigurationFlag.Custom,
-    ApplicationType = ApplicationType.Default
+    ApplicationType = ApplicationType.Default,
+    WebAllowOrigins = []
   };
 }
 

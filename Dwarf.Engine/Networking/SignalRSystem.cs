@@ -11,6 +11,7 @@ public class SignalRSystem : IDisposable {
   public SignalRSystem(Application app) {
     _application = app;
     _netInstance = new SignalRInstance();
+    _netInstance.AddCorsOptions(app.SystemConfiguration.WebAllowOrigins ?? []);
     Logger.Info("[SYSTEMS] SignalR System created");
 
     _netThread = new Thread(Run) {

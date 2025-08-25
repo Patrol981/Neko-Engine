@@ -6,9 +6,9 @@ using Microsoft.AspNetCore.SignalR;
 namespace Dwarf.SignalR.Globals;
 
 public static class DwarfHubData {
-  public static ConcurrentDictionary<Guid, DwarfPackage> DwarfClients { get; private set; } = [];
+  public static ConcurrentDictionary<string, DwarfPackage> DwarfClients { get; private set; } = [];
 
-  public static string[] StringifyData(this ConcurrentDictionary<Guid, DwarfPackage> clients) {
+  public static string[] StringifyData(this ConcurrentDictionary<string, DwarfPackage> clients) {
     var arr = new string[clients.Count];
     int i = 0;
     foreach (var client in clients.Values) {
