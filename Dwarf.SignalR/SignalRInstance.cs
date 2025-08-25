@@ -8,6 +8,7 @@ namespace Dwarf.SignalR;
 public class SignalRInstance : IAsyncDisposable {
   public const string HTTP_URL = "http://*:4222";
   public const string HTTPS_URL = "https://*:4223";
+  public const string CORS_NAME = "DEFAULT_CORS_POLICY_NAME";
 
   private readonly WebApplicationBuilder? _builder;
   private WebApplication? _app;
@@ -23,6 +24,32 @@ public class SignalRInstance : IAsyncDisposable {
     _builder.WebHost.UseUrls(HTTP_URL);
   }
 
+  public void AddCorsOptions(params string[] origins) {
+    _builder?.Services.AddCors(options => {
+      foreach (var origin in origins) {
+        options.AddPolicy(name: CORS_NAME, builder => {
+          builder.WithOrigins(
+            $"http://{origin}",
+            $"https://{origin}"
+          )
+          .AllowCredentials()
+          .AllowAnyHeader()
+          .AllowAnyMethod();
+        });
+      }
+    });
+  }
+
+  public void AllowAnyOrigin() {
+    _builder?.Services.AddCors(options => {
+      options.AddPolicy(name: CORS_NAME, builder => {
+        builder.AllowAnyHeader();
+        builder.AllowAnyMethod();
+        builder.AllowAnyOrigin();
+      });
+    });
+  }
+
   public void Run() {
     if (_builder == null) {
       return;
@@ -31,6 +58,7 @@ public class SignalRInstance : IAsyncDisposable {
     _app.UseRouting();
     _app.MapHub<DwarfHub>($"/{HubNames.DEFAULT}");
     _app.MapHub<ChatHub>($"/{HubNames.CHAT_HUB}");
+    _app.UseCors(CORS_NAME);
     _app.Run();
   }
 

@@ -32,6 +32,7 @@ public class WebApiSystem : IDisposable {
 
     _application = app;
     _webInstance = new WebInstance([.. commonTypes]);
+    _webInstance.AddCorsOptions(app.SystemConfiguration.WebAllowOrigins ?? []);
     _webInstance.AddEndpoints([new CommonEndpoints()]);
 
     _webThread = new Thread(Run) {

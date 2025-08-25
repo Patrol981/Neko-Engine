@@ -89,7 +89,7 @@ public partial class Application {
   private Dictionary<string, IDescriptorSetLayout> _descriptorSetLayouts = [];
 
   private readonly SystemCreationFlags _systemCreationFlags;
-  private readonly SystemConfiguration _systemConfiguration;
+  public readonly SystemConfiguration SystemConfiguration;
 
   private Thread? _renderThread;
   private bool _renderShouldClose = false;
@@ -134,9 +134,9 @@ public partial class Application {
     Debug = debugMode;
 
     systemConfiguration ??= SystemConfiguration.Default;
-    _systemConfiguration = systemConfiguration;
+    SystemConfiguration = systemConfiguration;
 
-    ApplicationMode = _systemConfiguration.ApplicationType;
+    ApplicationMode = SystemConfiguration.ApplicationType;
     Logger.Info($"[APP MODE] {ApplicationMode}");
 
     _ = new AudioSystem();
@@ -261,7 +261,7 @@ public partial class Application {
     await SetupScene();
 
 
-    Systems.SetupHeadless(this, _systemCreationFlags, _systemConfiguration);
+    Systems.SetupHeadless(this, _systemCreationFlags, SystemConfiguration);
     var closeRequest = false;
 
     Logger.NoLabel(HeadlessUI.DwarfWelcome, ConsoleColor.Green);
@@ -321,7 +321,7 @@ public partial class Application {
     Systems.Setup(
       this,
       _systemCreationFlags,
-      _systemConfiguration,
+      SystemConfiguration,
       Allocator,
       Device,
       Renderer,

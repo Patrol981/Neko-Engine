@@ -47,8 +47,15 @@ public class MeshService : IMeshService {
       _logger.LogWarning("mesh is null");
     }
 
+    var scale = level.GetComponent<Transform>().Scale;
+
     var vertices = collMesh?.ToVertexResponseArray() ?? [];
     var indices = tilemap.CollisionMesh?.Indices ?? [];
+
+    foreach (var vert in vertices) {
+      vert!.Position![0] *= scale.X;
+      vert!.Position![1] *= scale.Y;
+    }
 
     meshResponse.Vertices = vertices;
     meshResponse.Indices = indices;
