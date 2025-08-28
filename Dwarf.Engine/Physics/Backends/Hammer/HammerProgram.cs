@@ -1,4 +1,4 @@
-using Dwarf.EntityComponentSystem;
+using Dwarf.EntityComponentSystemRewrite;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
 using Dwarf.Hammer;
@@ -24,7 +24,7 @@ public class HammerProgram : IPhysicsProgram {
     foreach (var entity in entities) {
       var wrapper = new HammerBodyWrapper(HammerInterface);
       Bodies.Add(entity, wrapper);
-      entity.GetComponent<Rigidbody2D>()?.Init(wrapper);
+      entity.GetRigidbody2D()?.Init(wrapper);
     }
 
     HammerInterface.SetGravity(0.01f);

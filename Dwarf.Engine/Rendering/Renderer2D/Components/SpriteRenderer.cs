@@ -1,6 +1,7 @@
 using System.Numerics;
 using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
+using Dwarf.EntityComponentSystemRewrite;
 using Dwarf.Math;
 using Dwarf.Rendering.Renderer2D.Interfaces;
 using Dwarf.Rendering.Renderer2D.Models;
@@ -21,8 +22,8 @@ public class SpriteRenderer : Component, IDrawable2D {
   public Mesh Mesh => Sprites[CurrentSprite].SpriteMesh;
   public IDrawable2D[] Children => [];
 
-  public Entity Entity => Owner;
-  public bool Active => Owner.Active;
+  public EntityComponentSystemRewrite.Entity Entity { get; private set; }
+  public bool Active => Entity.Active;
   public int SpriteIndex => Sprites[CurrentSprite].SpriteIndex;
   public int SpriteCount => Sprites.Length;
   public ITexture Texture => Sprites[CurrentSprite].Texture;
@@ -164,9 +165,9 @@ public class SpriteRenderer : Component, IDrawable2D {
   public class Builder {
     private readonly Application _app;
     private readonly List<Sprite> _sprites = [];
-    private readonly Entity? _entity;
+    private EntityComponentSystemRewrite.Entity? _entity;
 
-    public Builder(Application app, Entity? entity = null!) {
+    public Builder(Application app, EntityComponentSystemRewrite.Entity? entity) {
       _app = app;
       _entity = entity;
 
@@ -199,10 +200,11 @@ public class SpriteRenderer : Component, IDrawable2D {
 
     public SpriteRenderer? Build() {
       var spriteRenderer = new SpriteRenderer() {
-        Sprites = [.. _sprites]
+        Sprites = [.. _sprites],
+        Entity = _entity ?? null!
       };
       if (_entity != null) {
-        _entity.AddComponent(spriteRenderer);
+        _entity.AddDrawable2D(spriteRenderer);
         Application.Mutex.ReleaseMutex();
         return null!;
       } else {

@@ -153,6 +153,138 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     out ObjectData[] objectData,
     out ObjectData[] skinnedObjects,
     out List<Matrix4x4> flatJoints
+) {
+    objectData = Array.Empty<ObjectData>();
+    skinnedObjects = Array.Empty<ObjectData>();
+    flatJoints = new List<Matrix4x4>(64); // small default to avoid immediate growth
+
+    PerfMonitor.ComunnalStopwatch.Restart();
+    Frustum.GetFrustrum(out var planes);
+    // entities = Frustum.FilterObjectsByPlanes(in planes, entities).ToArray();
+    Frustum.FlattenNodes(entities, out var flattenNodes);
+    // Frustum.FilterNodesByPlanes(planes, flattenNodes, out var frustumNodes);
+    // Frustum.FilterNodesByFog(flattenNodes, out var frustumNodes);
+
+    // Pre-size lists to cut reallocations (roughly half/half; adjust if you know typical ratios)
+    var expected = flattenNodes.Count;
+    var nodeObjectsSkinned = new List<KeyValuePair<Node, ObjectData>>(expected / 2);
+    var nodeObjectsNotSkinned = new List<KeyValuePair<Node, ObjectData>>(expected / 2);
+
+    int offset = 0;
+    // Cache texture index by id; NOTE: if TextureIdReference isn't a string, use that type directly to avoid ToString allocs.
+    var texIndexCache = new Dictionary<string, float>(StringComparer.Ordinal);
+
+    // ---------- Build phase (main thread; touches engine objects) ----------
+    foreach (var node in flattenNodes) {
+      if (!node.Enabled || node.Mesh is null)
+        continue;
+
+      var mesh = node.Mesh;
+      var owner = node.ParentRenderer.GetOwner();
+      var transform = owner.GetComponent<Transform>();
+      var material = owner.GetComponent<MaterialComponent>();
+
+      // Avoid ToString() churn if TextureIdReference is already a string/value type
+      var texKey = mesh.TextureIdReference.ToString();
+      if (!texIndexCache.TryGetValue(texKey, out float texId)) {
+        var targetTexture = _textureManager.GetTextureLocal(mesh.TextureIdReference);
+        texId = GetIndexOfMyTexture(targetTexture.TextureName);
+        texIndexCache[texKey] = texId;
+      }
+
+      var filterFlag = (node.FilterMeInShader == true) ? 1f : 0f;
+
+      var data = new ObjectData {
+        ModelMatrix = transform.Matrix4,
+        NormalMatrix = transform.NormalMatrix,
+        NodeMatrix = mesh.Matrix,
+        JointsBufferOffset = node.HasSkin ? new Vector4(offset, 0, 0, 0) : Vector4.Zero,
+        ColorAndFilterFlag = new Vector4(material.Color, filterFlag),
+        AmbientAndTexId0 = new Vector4(material.Ambient, texId),
+        DiffuseAndTexId1 = new Vector4(material.Diffuse, texId),
+        SpecularAndShininess = new Vector4(material.Specular, material.Shininess),
+      };
+
+      if (node.HasSkin) {
+        nodeObjectsSkinned.Add(new(node, data));
+
+        var joints = node.Skin!.OutputNodeMatrices;
+        flatJoints.AddRange(joints);
+        offset += joints.Length;
+      } else {
+        nodeObjectsNotSkinned.Add(new(node, data));
+      }
+    }
+
+    // ---------- Sort (keep deterministic order) ----------
+    nodeObjectsSkinned.Sort(static (x, y) => x.Key.CompareTo(y.Key));
+    nodeObjectsNotSkinned.Sort(static (x, y) => x.Key.CompareTo(y.Key));
+
+    // ---------- Animation update (main thread only) ----------
+    for (int i = 0; i < nodeObjectsSkinned.Count; i++) {
+      var n = nodeObjectsSkinned[i].Key;
+      n.ParentRenderer.GetOwner().TryGetComponent<AnimationController>()?.Update(n);
+    }
+
+    // ---------- Single-pass outputs + group counts (no LINQ) ----------
+    int skinnedCount = nodeObjectsSkinned.Count;
+    int notCount = nodeObjectsNotSkinned.Count;
+
+    _skinnedNodesCache = new Node[skinnedCount];
+    _notSkinnedNodesCache = new Node[notCount];
+
+    objectData = new ObjectData[notCount + skinnedCount];
+    skinnedObjects = new ObjectData[skinnedCount];
+
+    // Using dictionaries is far cheaper than GroupBy allocations.
+    var skinnedCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+    var notSkinnedCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+
+    // Not skinned block
+    for (int i = 0; i < notCount; i++) {
+      var kv = nodeObjectsNotSkinned[i];
+      var node = kv.Key;
+
+      _notSkinnedNodesCache[i] = node;
+      objectData[i] = kv.Value;
+
+      var name = node.Name;
+      notSkinnedCounts.TryGetValue(name, out int c);
+      notSkinnedCounts[name] = c + 1;
+    }
+
+    // Skinned block
+    for (int i = 0; i < skinnedCount; i++) {
+      var kv = nodeObjectsSkinned[i];
+      var node = kv.Key;
+
+      _skinnedNodesCache[i] = node;
+      skinnedObjects[i] = kv.Value;
+      objectData[notCount + i] = kv.Value;
+
+      var name = node.Name;
+      skinnedCounts.TryGetValue(name, out int c);
+      skinnedCounts[name] = c + 1;
+    }
+
+    // Materialize groups (order by key for stable output; drop OrderBy if not needed)
+    _skinnedGroups = skinnedCounts
+        .Select(static kv => (Key: kv.Key, Count: kv.Value))
+        .OrderBy(static t => t.Key)
+        .ToList();
+
+    _notSkinnedGroups = notSkinnedCounts
+        .Select(static kv => (Key: kv.Key, Count: kv.Value))
+        .OrderBy(static t => t.Key)
+        .ToList();
+  }
+
+
+  public void Update_(
+    Span<IRender3DElement> entities,
+    out ObjectData[] objectData,
+    out ObjectData[] skinnedObjects,
+    out List<Matrix4x4> flatJoints
   ) {
     if (entities.Length < 1) {
       objectData = [];
@@ -160,6 +292,10 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       flatJoints = [];
       return;
     }
+
+    objectData = [];
+    skinnedObjects = [];
+    flatJoints = [];
 
     PerfMonitor.ComunnalStopwatch.Restart();
     Frustum.GetFrustrum(out var planes);
@@ -173,6 +309,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
     int offset = 0;
     flatJoints = [];
+
+    return;
 
     foreach (var node in flattenNodes) {
       var transform = node.ParentRenderer.GetOwner().GetComponent<Transform>();
@@ -222,6 +360,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     nodeObjectsSkinned.Sort((x, y) => x.Key.CompareTo(y.Key));
     nodeObjectsNotSkinned.Sort((x, y) => x.Key.CompareTo(y.Key));
 
+    return;
+
     foreach (var skinned in nodeObjectsSkinned) {
       skinned.Key.ParentRenderer.GetOwner().TryGetComponent<AnimationController>()?.Update(skinned.Key);
     }
@@ -244,6 +384,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   }
 
   public void Render(FrameInfo frameInfo, bool indirect = true) {
+
     PerfMonitor.Clear3DRendererInfo();
     PerfMonitor.NumberOfObjectsRenderedIn3DRenderer = (uint)LastElemRenderedCount;
     CreateOrUpdateBuffers();

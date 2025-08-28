@@ -5,6 +5,7 @@ using Dwarf.Physics.Backends.Hammer;
 using Dwarf.Physics.Backends.Jolt;
 
 namespace Dwarf.Physics;
+
 public class PhysicsSystem : IDisposable {
   public IPhysicsProgram PhysicsProgram { get; private set; }
 
@@ -17,8 +18,8 @@ public class PhysicsSystem : IDisposable {
   }
 
   public void Init(Span<Entity> entities) {
-    var diff = entities.ToArray().Where(e => e.HasComponent<Rigidbody>()).ToArray();
-    PhysicsProgram?.Init(diff);
+    // var diff = entities.ToArray().Where(e => e.HasComponent<Rigidbody>()).ToArray();
+    // PhysicsProgram?.Init(diff);
   }
 
   public void Tick(Entity[] entities) {

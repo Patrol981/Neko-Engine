@@ -153,7 +153,7 @@ public static class EntityCreator {
 
   public static SpriteRenderer.Builder AddSpriteBuilder(this Entity entity) {
     var app = Application.Instance;
-    var builder = new SpriteRenderer.Builder(app, entity);
+    var builder = new SpriteRenderer.Builder(app, null);
     return builder;
   }
 
@@ -409,29 +409,29 @@ public static class EntityCreator {
     );
   }
 
-  public static void AddRigidbody2D(
-    this Entity entity,
-    PrimitiveType primitiveType,
-    MotionType motionType,
-    bool isTrigger = false
-  ) {
-    var app = Application.Instance;
-    entity.AddComponent(new Rigidbody2D(app, primitiveType, motionType, isTrigger));
-    entity.GetComponent<Rigidbody2D>().InitBase();
-  }
+  // public static void AddRigidbody2D(
+  //   this Entity entity,
+  //   PrimitiveType primitiveType,
+  //   MotionType motionType,
+  //   bool isTrigger = false
+  // ) {
+  //   var app = Application.Instance;
+  //   entity.AddComponent(new Rigidbody2D(app, primitiveType, motionType, isTrigger));
+  //   entity.GetComponent<Rigidbody2D>().InitBase();
+  // }
 
-  public static void AddRigidbody2D(
-    this Entity entity,
-    PrimitiveType primitiveType,
-    MotionType motionType,
-    Vector2 min,
-    Vector2 max,
-    bool isTrigger = false
-  ) {
-    var app = Application.Instance;
-    Application.Mutex.WaitOne();
-    entity.AddComponent(new Rigidbody2D(app, primitiveType, motionType, min, max, isTrigger));
-    entity.GetComponent<Rigidbody2D>().InitBase();
-    Application.Mutex.ReleaseMutex();
-  }
+  // public static void AddRigidbody2D(
+  //   this Entity entity,
+  //   PrimitiveType primitiveType,
+  //   MotionType motionType,
+  //   Vector2 min,
+  //   Vector2 max,
+  //   bool isTrigger = false
+  // ) {
+  //   var app = Application.Instance;
+  //   Application.Mutex.WaitOne();
+  //   entity.AddComponent(new Rigidbody2D(app, primitiveType, motionType, min, max, isTrigger));
+  //   entity.GetComponent<Rigidbody2D>().InitBase();
+  //   Application.Mutex.ReleaseMutex();
+  // }
 }

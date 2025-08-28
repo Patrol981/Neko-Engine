@@ -6,7 +6,8 @@ using Dwarf.Vulkan;
 namespace Dwarf.Rendering.Renderer2D.Interfaces;
 
 public interface IDrawable2D : IDrawable, ICloneable {
-  Entity Entity { get; }
+  // Entity Entity { get; }
+  Dwarf.EntityComponentSystemRewrite.Entity Entity { get; }
   bool Active { get; }
   ITexture Texture { get; }
   ITexture[] SpriteSheet { get; }

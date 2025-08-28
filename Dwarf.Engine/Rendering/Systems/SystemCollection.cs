@@ -1,5 +1,6 @@
 using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
+using Dwarf.EntityComponentSystemRewrite;
 using Dwarf.Networking;
 using Dwarf.Physics;
 using Dwarf.Physics.Interfaces;
@@ -14,6 +15,7 @@ using Dwarf.Rendering.Shadows;
 using Dwarf.Vulkan;
 
 using Vortice.Vulkan;
+using Entity = Dwarf.EntityComponentSystem.Entity;
 
 namespace Dwarf.Rendering;
 
@@ -66,7 +68,7 @@ public class SystemCollection : IDisposable {
 
   public Task UpdateCalculationSystems(Entity[] entities) {
     _physicsSystem?.Tick(entities);
-    _physicsSystem2D?.Tick(entities);
+    _physicsSystem2D?.Tick(Application.Instance.NewEntities.ToArray());
     _particleSystem?.Update();
     _particleSystem?.Collect();
     return Task.CompletedTask;
@@ -148,15 +150,18 @@ public class SystemCollection : IDisposable {
     // _postProcessingSystem = new(allocator, device, renderer, textureManager, systemConfiguration, layouts, new PostProcessingPipeline());
 
     var entities = app.GetEntities();
+
     var objs3D = entities.DistinctInterface<IRender3DElement>();
     _render3DSystem?.Setup(objs3D, ref textureManager);
-    _render2DSystem?.Setup(entities.ToArray().DistinctI2D(), ref textureManager);
+
+    var drawables = app.NewEntities.FlattenDrawable2D();
+    _render2DSystem?.Setup(drawables, ref textureManager);
     // _renderUISystem?.Setup(Canvas, ref textureManager);
     _directionaLightSystem?.Setup();
     _pointLightSystem?.Setup();
     _particleSystem?.Setup(ref textureManager);
     _physicsSystem?.Init(entities.ToArray());
-    _physicsSystem2D?.Init(entities.ToArray());
+    _physicsSystem2D?.Init(app.NewEntities.ToArray());
   }
 
   public void SetupHeadless(
@@ -175,12 +180,6 @@ public class SystemCollection : IDisposable {
       null!,
       null!
     );
-  }
-
-  public void SetupRenderDatas(ReadOnlySpan<Entity> entities, ref TextureManager textureManager, Renderer renderer) {
-    _render3DSystem?.Setup(entities.DistinctInterface<IRender3DElement>(), ref textureManager);
-    _render2DSystem?.Setup(entities.ToArray().DistinctI2D(), ref textureManager);
-    // _renderUISystem?.Setup(canvas, ref textureManager);
   }
 
   public void Reload3DRenderer(
@@ -221,7 +220,9 @@ public class SystemCollection : IDisposable {
     //   globalLayout,
     //   pipelineConfig
     // );
-    _render2DSystem?.Setup(entities.ToArray().DistinctI2D(), ref textureManager);
+    var app = Application.Instance;
+    var drawables = app.NewEntities.FlattenDrawable2D();
+    _render2DSystem?.Setup(drawables, ref textureManager);
   }
 
   public void ReloadUIRenderer(

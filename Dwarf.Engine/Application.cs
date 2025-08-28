@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using Dwarf.AbstractionLayer;
 using Dwarf.Audio;
 using Dwarf.EntityComponentSystem;
+using Dwarf.EntityComponentSystemRewrite;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
 using Dwarf.Math;
@@ -19,6 +20,8 @@ using Dwarf.Utils;
 using Dwarf.Vulkan;
 using Dwarf.Windowing;
 using Microsoft.OpenApi.Extensions;
+
+using Entity = Dwarf.EntityComponentSystem.Entity;
 
 namespace Dwarf;
 
@@ -225,8 +228,10 @@ public partial class Application {
       var updatable = _entities.AsArray();
       if (updatable.Length > 0) {
         MasterFixedUpdate(updatable.GetScriptsAsSpan());
+        MasterFixedUpdate(Scripts.Values.ToArray());
         _onUpdate?.Invoke();
         MasterUpdate(updatable.GetScriptsAsArray());
+        MasterUpdate(Scripts.Values.ToArray());
       }
 
       if (_newSceneShouldLoad) {
@@ -300,8 +305,10 @@ public partial class Application {
       var updatable = _entities.AsArray();
       if (updatable.Length > 0) {
         MasterFixedUpdate(updatable.GetScriptsAsSpan());
+        MasterFixedUpdate(Scripts.Values.ToArray());
         _onUpdate?.Invoke();
         MasterUpdate(updatable.GetScriptsAsArray());
+        MasterUpdate(Scripts.Values.ToArray());
       }
     }
 
@@ -342,8 +349,10 @@ public partial class Application {
     Mutex.ReleaseMutex();
 
     MasterAwake(_entities.GetScripts());
+    MasterAwake(Scripts.Values.ToArray());
     _onLoad?.Invoke();
     MasterStart(_entities.GetScripts());
+    MasterStart(Scripts.Values.ToArray());
 
     return Task.CompletedTask;
   }
@@ -391,6 +400,9 @@ public partial class Application {
     Mutex.WaitOne();
     CurrentScene.LoadEntities();
     _entities.AddRange(CurrentScene.GetEntities());
+    foreach (var entity in CurrentScene.NewEntities) {
+      NewEntities.Add(entity);
+    }
     Mutex.ReleaseMutex();
 
     var endTime = DateTime.Now;
@@ -400,40 +412,40 @@ public partial class Application {
 
   #endregion RESOURCES
   #region ENTITY_FLOW
-  private static void MasterAwake(ReadOnlySpan<DwarfScript> entities) {
+  private static void MasterAwake(ReadOnlySpan<DwarfScript> scripts) {
 #if RUNTIME
-    var ents = entities.ToArray();
+    var sc = scripts.ToArray();
     // Parallel.ForEach(ents, (entity) => {
     //   entity.Awake();
     // });
-    foreach (var e in ents) {
-      e.Awake();
+    foreach (var s in sc) {
+      s.Awake();
     }
 #endif
   }
 
-  private static void MasterStart(ReadOnlySpan<DwarfScript> entities) {
+  private static void MasterStart(ReadOnlySpan<DwarfScript> scripts) {
 #if RUNTIME
-    var ents = entities.ToArray();
+    var sc = scripts.ToArray();
     // Parallel.ForEach(ents, (entity) => {
     //   entity.Start();
     // });
-    foreach (var e in ents) {
-      e.Start();
+    foreach (var s in sc) {
+      s.Start();
     }
 #endif
   }
 
-  private static void MasterUpdate(DwarfScript[] entities) {
+  private static void MasterUpdate(DwarfScript[] scripts) {
 #if RUNTIME
-    Parallel.For(0, entities.Length, i => { entities[i].Update(); });
+    Parallel.For(0, scripts.Length, i => { scripts[i].Update(); });
 #endif
   }
 
-  private static void MasterFixedUpdate(ReadOnlySpan<DwarfScript> entities) {
+  private static void MasterFixedUpdate(ReadOnlySpan<DwarfScript> scripts) {
 #if RUNTIME
-    for (short i = 0; i < entities.Length; i++) {
-      entities[i].FixedUpdate();
+    for (short i = 0; i < scripts.Length; i++) {
+      scripts[i].FixedUpdate();
     }
 #endif
   }
@@ -455,6 +467,19 @@ public partial class Application {
       Device.WaitFence(fence, true);
     }
     _entitiesQueue.Enqueue(entity);
+    Mutex.ReleaseMutex();
+  }
+
+  public void AddEntityExperimental(Dwarf.EntityComponentSystemRewrite.Entity entity, bool fenced = false) {
+    Mutex.WaitOne();
+    var scripts = entity.GetScripts();
+    MasterAwake(scripts);
+    MasterStart(scripts);
+    if (fenced) {
+      var fence = Device.CreateFence(FenceCreateFlags.Signaled);
+      Device.WaitFence(fence, true);
+    }
+    NewEntities.Add(entity);
     Mutex.ReleaseMutex();
   }
 
@@ -620,7 +645,7 @@ public partial class Application {
       }
 
       var i3D = _entities.ToArray().DistinctI3D();
-      var i2D = _entities.ToArray().DistinctI2D();
+      var i2D = NewEntities.FlattenDrawable2D();
 
       if (Systems.Render3DSystem != null) {
         Systems.Render3DSystem.Update(
@@ -688,6 +713,7 @@ public partial class Application {
       Systems.UpdateSystems2(toUpdate, _currentFrame);
       var updatable = _entities.Where(x => x.CanBeDisposed == false).ToArray();
       MasterRenderUpdate(updatable.GetScriptsAsSpan());
+      MasterRenderUpdate(Scripts.Values.ToArray());
       _onGUI?.Invoke();
       if (UseImGui) {
         GuiController.Render(_currentFrame);
