@@ -321,23 +321,23 @@ public class Rigidbody : Component, IDisposable {
   }
 
   public void InvokeCollision(CollisionState collisionState, Entity otherColl) {
-    if (Owner.CanBeDisposed) return;
-    var scripts = Owner!.GetScripts();
-    for (short i = 0; i < scripts.Length; i++) {
-      switch (collisionState) {
-        case CollisionState.Enter:
-          scripts[i].CollisionEnter(otherColl);
-          break;
-        case CollisionState.Stay:
-          scripts[i].CollisionStay(otherColl);
-          break;
-        case CollisionState.Exit:
-          scripts[i].CollisionExit(otherColl);
-          break;
-        default:
-          break;
-      }
-    }
+    // if (Owner.CanBeDisposed) return;
+    // var scripts = Owner!.GetScripts();
+    // for (short i = 0; i < scripts.Length; i++) {
+    //   switch (collisionState) {
+    //     case CollisionState.Enter:
+    //       scripts[i].CollisionEnter(otherColl);
+    //       break;
+    //     case CollisionState.Stay:
+    //       scripts[i].CollisionStay(otherColl);
+    //       break;
+    //     case CollisionState.Exit:
+    //       scripts[i].CollisionExit(otherColl);
+    //       break;
+    //     default:
+    //       break;
+    //   }
+    // }
   }
 
 

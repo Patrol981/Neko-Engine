@@ -2,19 +2,16 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using Dwarf.AbstractionLayer;
+using Dwarf.EntityComponentSystemRewrite;
 using Dwarf.Extensions.Logging;
 using Dwarf.Rendering.Renderer2D.Interfaces;
 using Dwarf.Rendering.Renderer2D.Models;
 using Dwarf.Vulkan;
 using Vortice.Vulkan;
 
-using static Vortice.Vulkan.Vulkan;
-
 namespace Dwarf.Rendering.Renderer2D;
 
 public class Render2DSystem : SystemBase {
-  // private unsafe SpritePushConstant* _spritePushConstant;
-
   private DwarfBuffer? _globalVertexBuffer;
   private DwarfBuffer? _globalIndexBuffer;
   private DwarfBuffer[] _indirectBuffers = [];
@@ -129,13 +126,13 @@ public class Render2DSystem : SystemBase {
 
       if (target.LocalZDepth != 0) {
         spriteData[i] = new() {
-          SpriteMatrix = target.Entity.TryGetComponent<Transform>()?.Matrix4.OverrideZDepth(target.LocalZDepth) ?? Matrix4x4.Identity,
+          SpriteMatrix = target.Entity.GetTransform()?.Matrix().OverrideZDepth(target.LocalZDepth) ?? Matrix4x4.Identity,
           SpriteSheetData = new(target.SpriteSheetSize.X, target.SpriteSheetSize.Y, target.SpriteIndex, target.FlipX ? 1.0f : 0.0f),
           SpriteSheetData2 = new(target.FlipY ? 1.0f : 0.0f, myTexId.Value, -1, -1)
         };
       } else {
         spriteData[i] = new() {
-          SpriteMatrix = target.Entity.TryGetComponent<Transform>()?.Matrix4 ?? Matrix4x4.Identity,
+          SpriteMatrix = target.Entity.GetTransform()?.Matrix() ?? Matrix4x4.Identity,
           SpriteSheetData = new(target.SpriteSheetSize.X, target.SpriteSheetSize.Y, target.SpriteIndex, target.FlipX ? 1.0f : 0.0f),
           SpriteSheetData2 = new(target.FlipY ? 1.0f : 0.0f, myTexId.Value, -1, -1)
         };
@@ -453,48 +450,6 @@ public class Render2DSystem : SystemBase {
         staging.Dispose();
       }
     }
-  }
-
-  private unsafe void CreateVertexBuffer_(ReadOnlySpan<IDrawable2D> drawables) {
-    _globalVertexBuffer?.Dispose();
-    ulong size = 0;
-    List<Vertex> vertices = [];
-
-    _drawableCache = drawables.ToArray();
-    for (int i = 0; i < drawables.Length; i++) {
-      var buffer = drawables[i].Mesh.VertexBuffer;
-      if (buffer != null) {
-        size += buffer.GetBufferSize();
-        vertices.AddRange(drawables[i].Mesh.Vertices);
-      }
-    }
-
-    var stagingBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      size,
-      BufferUsage.TransferSrc,
-      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      stagingBuffer: true,
-      cpuAccessible: true
-    );
-
-    stagingBuffer.Map(size);
-    fixed (Vertex* pVertices = vertices.ToArray()) {
-      stagingBuffer.WriteToBuffer((nint)pVertices, size);
-    }
-
-    _globalVertexBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      size,
-      (ulong)vertices.Count,
-      BufferUsage.VertexBuffer | BufferUsage.TransferDst,
-      MemoryProperty.DeviceLocal
-    );
-
-    _device.CopyBuffer(stagingBuffer.GetBuffer(), _globalVertexBuffer.GetBuffer(), size);
-    stagingBuffer.Dispose();
   }
 
   public override unsafe void Dispose() {

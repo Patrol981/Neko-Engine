@@ -1,5 +1,6 @@
 using System.Numerics;
-using Dwarf.EntityComponentSystem;
+using DotTiled;
+using Dwarf.EntityComponentSystemRewrite;
 using Dwarf.Extensions.Logging;
 using Dwarf.Hammer;
 using Dwarf.Hammer.Models;
@@ -53,7 +54,7 @@ public class HammerBodyWrapper : IPhysicsBody2D {
   }
 
   public object ColldierMeshToPhysicsShape(Entity entity, Mesh colliderMesh) {
-    var transform = entity.GetComponent<Transform>();
+    var transform = entity.GetTransform();
     List<Dwarf.Hammer.Structs.Vertex> vertices = [];
     foreach (var m in colliderMesh.Vertices) {
       Dwarf.Hammer.Structs.Vertex v = new() {
@@ -64,12 +65,12 @@ public class HammerBodyWrapper : IPhysicsBody2D {
       vertices.Add(v);
     }
 
-    var rigidbody = entity.GetComponent<Rigidbody2D>();
+    var rigidbody = entity.GetRigidbody2D();
 
     object userData;
     Dwarf.Hammer.Enums.ObjectType objectType = Dwarf.Hammer.Enums.ObjectType.Sprite;
-    var tilemap = entity.TryGetComponent<Tilemap>();
-    if (tilemap != null) {
+
+    if (entity.HasComponent<Tilemap>()) {
       // var edges = tilemap.ExtractEgdges();
       // var hammerEdges = new List<Dwarf.Hammer.Structs.Edge>();
       // foreach (var edge in edges) {
@@ -80,12 +81,13 @@ public class HammerBodyWrapper : IPhysicsBody2D {
       //   });
       // }
 
-      var aabbs = tilemap.ExtractAABBs();
+      var tilemap = entity.GetDrawable2D() as Tilemap;
+      var aabbs = tilemap!.ExtractAABBs();
 
       userData = aabbs;
       objectType = Dwarf.Hammer.Enums.ObjectType.Tilemap;
     } else {
-      userData = (rigidbody.Min, rigidbody.Max);
+      userData = (rigidbody?.Min, rigidbody?.Max);
     }
 
     ShapeSettings shapeSettings = new ShapeSettings(
@@ -130,19 +132,19 @@ public class HammerBodyWrapper : IPhysicsBody2D {
   }
 
   public static (Rigidbody2D?, Rigidbody2D?) GetCollisionData(BodyId body1, BodyId body2) {
-    var entities = Application.Instance.GetEntitiesEnumerable().Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody2D>());
-    var first = entities.Where(x => (BodyId)x.GetComponent<Rigidbody2D>().PhysicsBody2D.BodyId == body1).FirstOrDefault()?.GetComponent<Rigidbody2D>();
-    var second = entities.Where(x => (BodyId)x.GetComponent<Rigidbody2D>().PhysicsBody2D.BodyId == body2).FirstOrDefault()?.GetComponent<Rigidbody2D>(); ;
+    var entities = Application.Instance.NewEntities.Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody2D>());
+    var first = entities.Where(x => (BodyId)x.GetRigidbody2D()!.PhysicsBody2D.BodyId == body1).FirstOrDefault()?.GetRigidbody2D();
+    var second = entities.Where(x => (BodyId)x.GetRigidbody2D()!.PhysicsBody2D.BodyId == body2).FirstOrDefault()?.GetRigidbody2D();
 
     return (first, second);
   }
 
   public static Rigidbody2D? GetCollisionData(BodyId body1) {
-    var entity = Application.Instance.GetEntitiesEnumerable()
+    var entity = Application.Instance.NewEntities
       .Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody2D>())
-      .Where(x => (BodyId)x.GetComponent<Rigidbody2D>().PhysicsBody2D.BodyId == body1)
+      .Where(x => (BodyId)x.GetRigidbody2D()!.PhysicsBody2D.BodyId == body1)
       .SingleOrDefault()?
-      .GetComponent<Rigidbody2D>();
+      .GetRigidbody2D();
 
     return entity;
   }

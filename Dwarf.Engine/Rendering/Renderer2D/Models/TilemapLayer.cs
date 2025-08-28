@@ -18,8 +18,8 @@ public class TilemapLayer : IDrawable2D {
   public TileInfo[,] Tiles { get; set; }
   public bool IsCollision { get; init; }
   public bool DescriptorBuilt => throw new NotImplementedException();
-  public Entity Entity => _parent.Owner;
-  public bool Active => _parent.Owner.Active;
+  public EntityComponentSystemRewrite.Entity Entity => _parent.Entity;
+  public bool Active => _parent.Entity.Active;
   public ITexture Texture => LayerTexture;
   public ITexture[] SpriteSheet => [LayerTexture];
   public Vector2I SpriteSheetSize => new(1, 1);

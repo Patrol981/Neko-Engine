@@ -5,6 +5,7 @@ namespace Dwarf;
 public abstract class Scene {
   protected readonly Application _app;
   private readonly List<Entity> _entities = [];
+  public readonly List<Dwarf.EntityComponentSystemRewrite.Entity> NewEntities = [];
 
   [Obsolete("Setting textures from scene's texture paths are deprecated. Please use TextureManager")]
   private List<List<string>> _texturePaths = [];
@@ -19,6 +20,10 @@ public abstract class Scene {
 
   public void AddEntity(Entity entity) {
     _entities.Add(entity);
+  }
+
+  public void AddEntityExperimental(Dwarf.EntityComponentSystemRewrite.Entity entity) {
+    NewEntities.Add(entity);
   }
 
   public void AddEntities(Entity[] entities) {

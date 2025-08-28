@@ -3,6 +3,8 @@ using Dwarf.Rendering;
 using Dwarf.Rendering.Renderer2D.Components;
 using Dwarf.Rendering.Renderer3D;
 using Dwarf.Rendering.Renderer3D.Animations;
+using ZLinq;
+
 namespace Dwarf.EntityComponentSystem;
 
 public class Entity {
@@ -187,7 +189,7 @@ public class Entity {
     var rigidbody = TryGetComponent<Rigidbody>();
 
     var spriteRenderer = TryGetComponent<SpriteRenderer>();
-    var rigidbody2D = TryGetComponent<Rigidbody2D>();
+    // var rigidbody2D = TryGetComponent<Rigidbody2D>();
 
     var scripts = GetScripts();
 
@@ -228,10 +230,10 @@ public class Entity {
     //   clone.AddComponent((ColliderMesh)debugMesh.Clone());
     // }
 
-    if (rigidbody2D != null) {
-      clone.AddComponent((Rigidbody2D)rigidbody2D.Clone());
-      clone.GetComponent<Rigidbody2D>().InitBase(scaleMinMax: false);
-    }
+    // if (rigidbody2D != null) {
+    //   clone.AddComponent((Rigidbody2D)rigidbody2D.Clone());
+    //   clone.GetComponent<Rigidbody2D>().InitBase(scaleMinMax: false);
+    // }
 
     return clone;
   }
