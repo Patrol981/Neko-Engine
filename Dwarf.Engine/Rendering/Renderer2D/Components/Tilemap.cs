@@ -27,8 +27,8 @@ public class Tilemap : Component, IDrawable2D {
 
   private VkPipelineLayout _pipelineLayout;
 
-  public Entity Entity => Owner;
-  public bool Active => Owner.Active;
+  public EntityComponentSystemRewrite.Entity Entity { get; set; }
+  public bool Active => Entity.Active;
   public ITexture Texture => throw new NotImplementedException();
 
   public Tilemap() {

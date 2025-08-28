@@ -138,36 +138,6 @@ public class AnimationController : Component {
       UpdateAnimation(animation, adjustedTimer, normalizedWeight);
     }
   }
-
-  public void Update_Old(Node node) {
-    // if (_currentAnimation == null) return;
-    if (_activeAnimations.Count < 1) return;
-    node.AnimationTimer += Time.DeltaTimeRender;
-
-    // var currentAnimation = _activeAnimations.MaxBy(x => x.Weight);
-    (Animation Animation, float Weight) currentAnimation = (null!, -1);
-    float weightSum = 0.0f;
-
-    for (int i = 0; i < _activeAnimations.Count; i++) {
-      weightSum += _activeAnimations[i].Weight;
-      if (_activeAnimations[i].Weight > currentAnimation.Weight) {
-        currentAnimation = _activeAnimations[i];
-      }
-    }
-
-    if (node.AnimationTimer > currentAnimation.Animation.End) {
-      node.AnimationTimer -= currentAnimation.Animation.End;
-    }
-
-    UpdateAnimation(currentAnimation.Animation, node.AnimationTimer, weightSum);
-
-    // if (node.AnimationTimer > _currentAnimation.End) {
-    //   node.AnimationTimer -= _currentAnimation.End;
-    // }
-
-    // UpdateAnimation(_currentAnimation, node.AnimationTimer, 1);
-  }
-
   public void UpdateAnimation(Animation animation, float time, float weight) {
     foreach (var channel in animation.Channels) {
       var sampler = animation.Samplers[channel.SamplerIndex];
@@ -196,57 +166,6 @@ public class AnimationController : Component {
 
     foreach (var node in _meshRenderer.Nodes) {
       node.Update();
-    }
-  }
-
-  public void UpdateAnimation_Old(Animation animation, float time, float weight) {
-    bool updated = false;
-    foreach (var channel in animation.Channels) {
-      var sampler = animation.Samplers[channel.SamplerIndex];
-      if (sampler.Inputs.Count > sampler.OutputsVec4.Count) {
-        continue;
-      }
-      for (int i = 0; i < sampler.Inputs.Count - 1; i++) {
-        if ((time >= sampler.Inputs[i]) && (time <= sampler.Inputs[i + 1])) {
-          float u = MathF.Max(0.0f, time - sampler.Inputs[i]) / (sampler.Inputs[i + 1] - sampler.Inputs[i]);
-          if (u <= 1.0f) {
-            switch (channel.Path) {
-              case AnimationChannel.PathType.Translation:
-                sampler.Translate(i, time, channel.Node, weight);
-                break;
-              case AnimationChannel.PathType.Rotation:
-                sampler.Rotate(i, time, channel.Node, weight);
-                break;
-              case AnimationChannel.PathType.Scale:
-                sampler.Scale(i, time, channel.Node, weight);
-                break;
-            }
-
-            if (channel.Node.ParentRenderer != null) {
-              var target = channel.Node.ParentRenderer.AddedNodes.Where(x => x.Value == channel.Node).ToArray();
-              if (target.Length > 0) {
-                // Logger.Info(target);
-                foreach (var t in target) {
-                  t.Key.Translation = t.Value.Translation + t.Key.TranslationOffset;
-                  // t.Key.Rotation.X = t.Value.Rotation.X + t.Key.RotationOffset.X;
-                  // t.Key.Rotation.Y = t.Value.Rotation.Y + t.Key.RotationOffset.Y;
-                  // t.Key.Rotation.Z = t.Value.Rotation.Z + t.Key.RotationOffset.Z;
-                  t.Key.Rotation = Quaternion.Normalize(t.Value.Rotation) + Quaternion.Normalize(t.Key.RotationOffset);
-                  // t.Key.Rotation.W = t.Value.Rotation.W + t.Key.RotationOffset.W;
-                  // t.Key.Scale = t.Value.Scale;
-                }
-              }
-            }
-
-            updated = true;
-          }
-        }
-      }
-    }
-    if (updated) {
-      foreach (var node in _meshRenderer.Nodes) {
-        node.Update();
-      }
     }
   }
 }

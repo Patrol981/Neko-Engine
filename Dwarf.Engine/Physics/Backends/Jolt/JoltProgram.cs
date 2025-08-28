@@ -150,4 +150,8 @@ public class JoltProgram : IPhysicsProgram {
     Foundation.Shutdown();
     GC.SuppressFinalize(this);
   }
+
+  public void Init(Span<EntityComponentSystemRewrite.Entity> entities) {
+    throw new NotImplementedException();
+  }
 }

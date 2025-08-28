@@ -1,5 +1,5 @@
 using System.Numerics;
-using Dwarf.EntityComponentSystem;
+using Dwarf.EntityComponentSystemRewrite;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
 using Dwarf.Hammer.Models;
@@ -14,7 +14,7 @@ using Vortice.Vulkan;
 
 namespace Dwarf.Physics;
 
-public class Rigidbody2D : Component, IDisposable, ICloneable {
+public class Rigidbody2D : IDisposable, ICloneable {
   private readonly Application _app;
   private readonly nint _allocator = IntPtr.Zero;
   public IPhysicsBody2D PhysicsBody2D { get; private set; } = null!;
@@ -28,6 +28,9 @@ public class Rigidbody2D : Component, IDisposable, ICloneable {
   public Vector2 Velocity => Vector2.Zero;
   public bool Kinematic => false;
   public bool Grounded { get; private set; }
+
+  public Entity? Owner { get; internal set; }
+  private TransformComponent? _transform;
 
   public Rigidbody2D() {
     _app = Application.Instance;
@@ -74,6 +77,7 @@ public class Rigidbody2D : Component, IDisposable, ICloneable {
   }
 
   public void Init(in IPhysicsBody2D physicsBody2D) {
+    if (Owner == null) throw new NullReferenceException("Owner cannot be null");
     if (Owner.CanBeDisposed) throw new Exception("Entity is being disposed");
     if (PrimitiveType == PrimitiveType.None) throw new Exception("Collider must have certain type!");
     if (_collisionShape == null) throw new ArgumentNullException(nameof(_collisionShape));
@@ -81,16 +85,17 @@ public class Rigidbody2D : Component, IDisposable, ICloneable {
 
     PhysicsBody2D = physicsBody2D;
 
-    var pos = Owner.GetComponent<Transform>().Position;
+    var pos = Owner.GetTransform()!.Position;
     var shapeSettings = PhysicsBody2D.ColldierMeshToPhysicsShape(Owner, _collisionShape);
     PhysicsBody2D.CreateAndAddBody(MotionType, shapeSettings, pos.ToVector2(), IsTrigger);
     PhysicsBody2D.GravityFactor = 0.1f;
   }
 
   public void InitBase(bool scaleMinMax = true) {
+    if (Owner == null) throw new NullReferenceException("Owner cannot be null");
     Application.Mutex.WaitOne();
     if (scaleMinMax) {
-      var scale = Owner.GetComponent<Transform>().Scale;
+      var scale = Owner.GetTransform()!.Scale;
       Min = new Vector2(Min.X * scale.X, Min.Y * scale.Y);
       Max = new Vector2(Max.X * scale.X, Max.Y * scale.Y);
     }
@@ -101,13 +106,13 @@ public class Rigidbody2D : Component, IDisposable, ICloneable {
       _ => throw new NotImplementedException(),
     };
 
-    Owner.AddComponent(new ColliderMesh(_app.Allocator, _app.Device, _collisionShape!));
+    // Owner.AddComponent(new ColliderMesh(_app.Allocator, _app.Device, _collisionShape!));
     Application.Mutex.ReleaseMutex();
   }
 
   private Mesh GetFromOwner() {
-    var mesh = ((IDrawable2D)Owner.GetDrawable<IDrawable2D>()).CollisionMesh.Clone() as Mesh;
-    var scale = Owner.GetComponent<Transform>().Scale;
+    var mesh = Owner!.GetDrawable2D()!.CollisionMesh.Clone() as Mesh;
+    var scale = Owner!.GetTransform()!.Scale;
     Logger.Info($"Scale to apply {scale}");
     for (int i = 0; i < mesh!.Vertices.Length; i++) {
       mesh.Vertices[i].Position.X *= scale.X;
@@ -119,10 +124,10 @@ public class Rigidbody2D : Component, IDisposable, ICloneable {
   }
 
   public void Update() {
-    if (Owner.CanBeDisposed) return;
+    if (Owner == null || Owner.CanBeDisposed) return;
 
     var pos = PhysicsBody2D?.Position;
-    var transform = Owner.TryGetComponent<Transform>();
+    var transform = Owner.GetTransform();
 
     if (transform == null) return;
 
@@ -133,32 +138,32 @@ public class Rigidbody2D : Component, IDisposable, ICloneable {
   }
 
   public void AddForce(Vector2 vec2) {
-    if (Owner.CanBeDisposed) return;
+    if (Owner == null || Owner.CanBeDisposed) return;
     PhysicsBody2D.AddForce(vec2);
   }
 
   public void AddVelocity(Vector2 vec2) {
-    if (Owner.CanBeDisposed) return;
+    if (Owner == null || Owner.CanBeDisposed) return;
     PhysicsBody2D.AddLinearVelocity(vec2);
   }
 
   public void AddImpule(Vector2 vec2) {
-    if (Owner.CanBeDisposed) return;
+    if (Owner == null || Owner.CanBeDisposed) return;
     PhysicsBody2D.AddImpulse(vec2);
   }
 
   public void Translate(Vector2 vec2) {
-    if (Owner.CanBeDisposed) return;
+    if (Owner == null || Owner.CanBeDisposed) return;
     PhysicsBody2D.AddLinearVelocity(vec2);
   }
 
   public void SetPosition(Vector2 vec2) {
-    if (Owner.CanBeDisposed) return;
+    if (Owner == null || Owner.CanBeDisposed) return;
     PhysicsBody2D.Position = vec2;
   }
 
   public void InvokeCollision(CollisionState collisionState, Entity? otherColl, bool otherTrigger) {
-    if (Owner.CanBeDisposed) return;
+    if (Owner == null || Owner.CanBeDisposed) return;
     var scripts = Owner!.GetScripts();
     for (short i = 0; i < scripts.Length; i++) {
       switch (collisionState) {

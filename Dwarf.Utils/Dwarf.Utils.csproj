@@ -17,6 +17,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="StbImageSharp" Version="2.27.13" />
+    <PackageReference Include="StbImageSharp" Version="2.30.15" />
   </ItemGroup>
 </Project>
