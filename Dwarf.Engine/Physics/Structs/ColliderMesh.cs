@@ -11,7 +11,7 @@ using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Physics;
 
-public class ColliderMesh : Component, IDebugRenderObject, ICloneable {
+public class ColliderMesh : IDebugRenderObject {
   private readonly IDevice _device = null!;
   private readonly nint _allocator = IntPtr.Zero;
 
@@ -21,10 +21,15 @@ public class ColliderMesh : Component, IDebugRenderObject, ICloneable {
   private ulong _indexCount = 0;
   private readonly bool _hasIndexBuffer = false;
 
-  public ColliderMesh() { }
+  public Entity Owner { get; init; }
 
-  public ColliderMesh(nint allocator, IDevice device, Mesh mesh) {
+  public ColliderMesh(Entity owner) {
+    Owner = owner;
+  }
+
+  public ColliderMesh(Entity owner, nint allocator, IDevice device, Mesh mesh) {
     Application.Mutex.WaitOne();
+    Owner = owner;
     _allocator = allocator;
     _device = device;
     Mesh = mesh;
@@ -35,8 +40,9 @@ public class ColliderMesh : Component, IDebugRenderObject, ICloneable {
     Application.Mutex.ReleaseMutex();
   }
 
-  public ColliderMesh(nint allocator, IDevice device, AABB aabb) {
+  public ColliderMesh(Entity owner, nint allocator, IDevice device, AABB aabb) {
     Application.Mutex.WaitOne();
+    Owner = owner;
     _device = device;
     _allocator = allocator;
 
@@ -309,8 +315,8 @@ public class ColliderMesh : Component, IDebugRenderObject, ICloneable {
     Enabled = false;
   }
 
-  public object Clone() {
-    var cm = new ColliderMesh(_allocator, _device, (Mesh)Mesh.Clone()) {
+  public object Clone(Entity target) {
+    var cm = new ColliderMesh(target, _allocator, _device, (Mesh)Mesh.Clone()) {
     };
     cm.Init().Wait();
     return cm;

@@ -4,9 +4,11 @@ using Dwarf.Loaders.Tiled;
 using Dwarf.Physics;
 using Dwarf.Rendering.Renderer2D.Components;
 using Dwarf.Rendering.Renderer2D.Interfaces;
+using Dwarf.Rendering.Renderer3D;
+using Dwarf.Rendering.Renderer3D.Animations;
 using ZLinq;
 
-namespace Dwarf.EntityComponentSystemRewrite;
+namespace Dwarf.EntityComponentSystem;
 
 public static class EntityExtensions {
   public static TransformComponent? GetTransform(this Entity entity) {
@@ -28,6 +30,15 @@ public static class EntityExtensions {
       }
     } catch {
       throw;
+    }
+  }
+
+  public static IRender3DElement? GetDrawable3D(this Entity entity) {
+    if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+    if (entity.Components.TryGetValue(typeof(IRender3DElement), out var guid)) {
+      return Application.Instance.Drawables3D[guid];
+    } else {
+      return null;
     }
   }
 
@@ -155,6 +166,32 @@ public static class EntityExtensions {
       var rb2D = new Rigidbody2D(Application.Instance, primitiveType, motionType, min, max, isTrigger) {
         Owner = entity
       };
+      rb2D.InitBase();
+      if (!Application.Instance.Rigidbodies2D.TryAdd(guid, rb2D)) {
+        throw new Exception("Cannot add transform to list");
+      }
+      Application.Mutex.ReleaseMutex();
+    } catch {
+      Application.Mutex.ReleaseMutex();
+      throw;
+    }
+  }
+
+  public static void AddRigidbody2D(
+  this Entity entity,
+  PrimitiveType primitiveType,
+  MotionType motionType,
+  bool isTrigger = false
+) {
+    if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+    var guid = Guid.NewGuid();
+    try {
+      Application.Mutex.WaitOne();
+      entity.Components.Add(typeof(Rigidbody2D), guid);
+      var rb2D = new Rigidbody2D(Application.Instance, primitiveType, motionType, isTrigger) {
+        Owner = entity
+      };
+      rb2D.InitBase();
       if (!Application.Instance.Rigidbodies2D.TryAdd(guid, rb2D)) {
         throw new Exception("Cannot add transform to list");
       }
@@ -175,9 +212,67 @@ public static class EntityExtensions {
     }
   }
 
+  public static Rigidbody? GetRigidbody(this Entity entity) {
+    if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+    if (entity.Components.TryGetValue(typeof(Rigidbody), out var guid)) {
+      var result = Application.Instance.Rigidbodies[guid];
+      return result;
+    } else {
+      return null;
+    }
+  }
+
+  public static Camera? GetCamera(this Entity entity) {
+    if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+    if (entity.Components.TryGetValue(typeof(Camera), out _)) {
+      var result = Application.Instance.CameraComponent;
+      return result;
+    } else {
+      return null;
+    }
+  }
+
+  public static MaterialComponent? GetMaterial(this Entity entity) {
+    if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+    if (entity.Components.TryGetValue(typeof(MaterialComponent), out var guid)) {
+      var result = Application.Instance.Materials[guid];
+      return result;
+    } else {
+      return null;
+    }
+  }
+
+  public static AnimationController? GetAnimationController(this Entity entity) {
+    if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+    if (entity.Components.TryGetValue(typeof(AnimationController), out var guid)) {
+      var result = Application.Instance.AnimationControllers[guid];
+      return result;
+    } else {
+      return null;
+    }
+  }
+
   public static bool HasComponent<T>(this Entity entity) {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
     return entity.Components.ContainsKey(typeof(T));
+  }
+
+  public static void AddComponent<T>(this Entity entity, T data) {
+    if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+    var guid = Guid.NewGuid();
+    var app = Application.Instance;
+    try {
+      switch (data) {
+        case ColliderMesh colliderMesh:
+          entity.Components.Add(typeof(T), guid);
+          app.DebugMeshes.TryAdd(guid, colliderMesh);
+          return;
+        default:
+          throw new ArgumentException("AddComponent does not support this type", nameof(T));
+      }
+    } catch {
+      throw;
+    }
   }
 
   private sealed class Drawable2DComparer : IComparer<IDrawable2D> {
@@ -187,13 +282,13 @@ public static class EntityExtensions {
     public int Compare(IDrawable2D? a, IDrawable2D? b) {
       if (a != null && a.Entity.CanBeDisposed) return 0;
       if (b != null && b.Entity.CanBeDisposed) return 0;
-      // float az = a!.Entity.TryGetComponent<Transform>()?.Position.Z ?? 0;
-      // float bz = b!.Entity.TryGetComponent<Transform>()?.Position.Z ?? 0;
 
       float az = a!.Entity.GetTransform()?.Position.Z ?? 0;
       float bz = b!.Entity.GetTransform()?.Position.Z ?? 0;
+
       if (az < bz) return -1;
       if (az > bz) return 1;
+
       return 0;
     }
   }

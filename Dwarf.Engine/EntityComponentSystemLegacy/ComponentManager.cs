@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace Dwarf.EntityComponentSystem;
+namespace Dwarf.EntityComponentSystemLegacy;
 
 public class ComponentManager {
   private ConcurrentDictionary<Type, Component> _components;

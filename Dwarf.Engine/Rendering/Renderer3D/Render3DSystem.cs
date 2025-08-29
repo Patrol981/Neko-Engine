@@ -122,23 +122,22 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     Logger.Info("[RENDER 3D SYSTEM] Constructor");
   }
 
-  public void Setup(ReadOnlySpan<Entity> entities, ref TextureManager textures) {
-    if (entities.Length < 1) {
+  public void Setup(ReadOnlySpan<IRender3DElement> renderables, ref TextureManager textures) {
+    if (renderables.Length < 1) {
       Logger.Warn("Entities that are capable of using 3D renderer are less than 1, thus 3D Render System won't be recreated");
       return;
     }
 
-    LastKnownElemCount = CalculateNodesLength(entities);
+    LastKnownElemCount = CalculateNodesLength(renderables);
     LastKnownElemSize = 0;
-    var (len, joints) = CalculateNodesLengthWithSkin(entities);
+    var (len, joints) = CalculateNodesLengthWithSkin(renderables);
     LastKnownSkinnedElemCount = (ulong)len;
     LastKnownSkinnedElemJointsCount = (ulong)joints;
 
     Logger.Info($"Recreating Renderer 3D [{LastKnownSkinnedElemCount}]");
 
-    for (int i = 0; i < entities.Length; i++) {
-      var targetModel = entities[i].GetDrawable<IRender3DElement>() as IRender3DElement;
-      LastKnownElemSize += targetModel!.CalculateBufferSize();
+    for (int i = 0; i < renderables.Length; i++) {
+      LastKnownElemSize += renderables[i]!.CalculateBufferSize();
     }
 
     // CreateVertexBuffer(entities);
@@ -181,8 +180,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
       var mesh = node.Mesh;
       var owner = node.ParentRenderer.GetOwner();
-      var transform = owner.GetComponent<Transform>();
-      var material = owner.GetComponent<MaterialComponent>();
+      var transform = owner.GetTransform();
+      var material = owner.GetMaterial();
 
       // Avoid ToString() churn if TextureIdReference is already a string/value type
       var texKey = mesh.TextureIdReference.ToString();
@@ -195,14 +194,14 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       var filterFlag = (node.FilterMeInShader == true) ? 1f : 0f;
 
       var data = new ObjectData {
-        ModelMatrix = transform.Matrix4,
-        NormalMatrix = transform.NormalMatrix,
+        ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity,
+        NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity,
         NodeMatrix = mesh.Matrix,
         JointsBufferOffset = node.HasSkin ? new Vector4(offset, 0, 0, 0) : Vector4.Zero,
-        ColorAndFilterFlag = new Vector4(material.Color, filterFlag),
-        AmbientAndTexId0 = new Vector4(material.Ambient, texId),
-        DiffuseAndTexId1 = new Vector4(material.Diffuse, texId),
-        SpecularAndShininess = new Vector4(material.Specular, material.Shininess),
+        ColorAndFilterFlag = new Vector4(material?.Color ?? Vector3.Zero, filterFlag),
+        AmbientAndTexId0 = new Vector4(material?.Ambient ?? Vector3.Zero, texId),
+        DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId),
+        SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f),
       };
 
       if (node.HasSkin) {
@@ -223,7 +222,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     // ---------- Animation update (main thread only) ----------
     for (int i = 0; i < nodeObjectsSkinned.Count; i++) {
       var n = nodeObjectsSkinned[i].Key;
-      n.ParentRenderer.GetOwner().TryGetComponent<AnimationController>()?.Update(n);
+      n.ParentRenderer.GetOwner().GetAnimationController()?.Update(n);
     }
 
     // ---------- Single-pass outputs + group counts (no LINQ) ----------
@@ -280,108 +279,108 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   }
 
 
-  public void Update_(
-    Span<IRender3DElement> entities,
-    out ObjectData[] objectData,
-    out ObjectData[] skinnedObjects,
-    out List<Matrix4x4> flatJoints
-  ) {
-    if (entities.Length < 1) {
-      objectData = [];
-      skinnedObjects = [];
-      flatJoints = [];
-      return;
-    }
+  // public void Update_(
+  //   Span<IRender3DElement> entities,
+  //   out ObjectData[] objectData,
+  //   out ObjectData[] skinnedObjects,
+  //   out List<Matrix4x4> flatJoints
+  // ) {
+  //   if (entities.Length < 1) {
+  //     objectData = [];
+  //     skinnedObjects = [];
+  //     flatJoints = [];
+  //     return;
+  //   }
 
-    objectData = [];
-    skinnedObjects = [];
-    flatJoints = [];
+  //   objectData = [];
+  //   skinnedObjects = [];
+  //   flatJoints = [];
 
-    PerfMonitor.ComunnalStopwatch.Restart();
-    Frustum.GetFrustrum(out var planes);
-    // entities = Frustum.FilterObjectsByPlanes(in planes, entities).ToArray();
-    Frustum.FlattenNodes(entities, out var flattenNodes);
-    // Frustum.FilterNodesByPlanes(planes, flattenNodes, out var frustumNodes);
-    // Frustum.FilterNodesByFog(flattenNodes, out var frustumNodes);
+  //   PerfMonitor.ComunnalStopwatch.Restart();
+  //   Frustum.GetFrustrum(out var planes);
+  //   // entities = Frustum.FilterObjectsByPlanes(in planes, entities).ToArray();
+  //   Frustum.FlattenNodes(entities, out var flattenNodes);
+  //   // Frustum.FilterNodesByPlanes(planes, flattenNodes, out var frustumNodes);
+  //   // Frustum.FilterNodesByFog(flattenNodes, out var frustumNodes);
 
-    List<KeyValuePair<Node, ObjectData>> nodeObjectsSkinned = [];
-    List<KeyValuePair<Node, ObjectData>> nodeObjectsNotSkinned = [];
+  //   List<KeyValuePair<Node, ObjectData>> nodeObjectsSkinned = [];
+  //   List<KeyValuePair<Node, ObjectData>> nodeObjectsNotSkinned = [];
 
-    int offset = 0;
-    flatJoints = [];
+  //   int offset = 0;
+  //   flatJoints = [];
 
-    return;
+  //   return;
 
-    foreach (var node in flattenNodes) {
-      var transform = node.ParentRenderer.GetOwner().GetComponent<Transform>();
-      var material = node.ParentRenderer.GetOwner().GetComponent<MaterialComponent>();
-      var targetTexture = _textureManager.GetTextureLocal(node.Mesh!.TextureIdReference);
-      float texId = GetIndexOfMyTexture(targetTexture.TextureName)!;
+  //   foreach (var node in flattenNodes) {
+  //     var transform = node.ParentRenderer.GetOwner().GetComponent<Transform>();
+  //     var material = node.ParentRenderer.GetOwner().GetComponent<MaterialComponent>();
+  //     var targetTexture = _textureManager.GetTextureLocal(node.Mesh!.TextureIdReference);
+  //     float texId = GetIndexOfMyTexture(targetTexture.TextureName)!;
 
-      if (!node.Enabled) continue;
+  //     if (!node.Enabled) continue;
 
-      if (node.HasSkin) {
-        nodeObjectsSkinned.Add(
-          new(
-            node,
-            new ObjectData {
-              ModelMatrix = transform.Matrix4,
-              NormalMatrix = transform.NormalMatrix,
-              NodeMatrix = node.Mesh!.Matrix,
-              JointsBufferOffset = new Vector4(offset, 0, 0, 0),
-              ColorAndFilterFlag = new Vector4(material.Color, node.FilterMeInShader == true ? 1 : 0),
-              AmbientAndTexId0 = new Vector4(material.Ambient, texId),
-              DiffuseAndTexId1 = new Vector4(material.Diffuse, texId),
-              SpecularAndShininess = new Vector4(material.Specular, material.Shininess)
-            }
-          )
-        );
-        flatJoints.AddRange(node.Skin!.OutputNodeMatrices);
-        offset += node.Skin!.OutputNodeMatrices.Length;
-      } else {
-        nodeObjectsNotSkinned.Add(
-          new(
-            node,
-            new ObjectData {
-              ModelMatrix = transform.Matrix4,
-              NormalMatrix = transform.NormalMatrix,
-              NodeMatrix = node.Mesh!.Matrix,
-              JointsBufferOffset = Vector4.Zero,
-              ColorAndFilterFlag = new Vector4(material.Color, node.FilterMeInShader == true ? 1 : 0),
-              AmbientAndTexId0 = new Vector4(material.Ambient, texId),
-              DiffuseAndTexId1 = new Vector4(material.Diffuse, texId),
-              SpecularAndShininess = new Vector4(material.Specular, material.Shininess)
-            }
-          )
-        );
-      }
-    }
+  //     if (node.HasSkin) {
+  //       nodeObjectsSkinned.Add(
+  //         new(
+  //           node,
+  //           new ObjectData {
+  //             ModelMatrix = transform.Matrix4,
+  //             NormalMatrix = transform.NormalMatrix,
+  //             NodeMatrix = node.Mesh!.Matrix,
+  //             JointsBufferOffset = new Vector4(offset, 0, 0, 0),
+  //             ColorAndFilterFlag = new Vector4(material.Color, node.FilterMeInShader == true ? 1 : 0),
+  //             AmbientAndTexId0 = new Vector4(material.Ambient, texId),
+  //             DiffuseAndTexId1 = new Vector4(material.Diffuse, texId),
+  //             SpecularAndShininess = new Vector4(material.Specular, material.Shininess)
+  //           }
+  //         )
+  //       );
+  //       flatJoints.AddRange(node.Skin!.OutputNodeMatrices);
+  //       offset += node.Skin!.OutputNodeMatrices.Length;
+  //     } else {
+  //       nodeObjectsNotSkinned.Add(
+  //         new(
+  //           node,
+  //           new ObjectData {
+  //             ModelMatrix = transform.Matrix4,
+  //             NormalMatrix = transform.NormalMatrix,
+  //             NodeMatrix = node.Mesh!.Matrix,
+  //             JointsBufferOffset = Vector4.Zero,
+  //             ColorAndFilterFlag = new Vector4(material.Color, node.FilterMeInShader == true ? 1 : 0),
+  //             AmbientAndTexId0 = new Vector4(material.Ambient, texId),
+  //             DiffuseAndTexId1 = new Vector4(material.Diffuse, texId),
+  //             SpecularAndShininess = new Vector4(material.Specular, material.Shininess)
+  //           }
+  //         )
+  //       );
+  //     }
+  //   }
 
-    nodeObjectsSkinned.Sort((x, y) => x.Key.CompareTo(y.Key));
-    nodeObjectsNotSkinned.Sort((x, y) => x.Key.CompareTo(y.Key));
+  //   nodeObjectsSkinned.Sort((x, y) => x.Key.CompareTo(y.Key));
+  //   nodeObjectsNotSkinned.Sort((x, y) => x.Key.CompareTo(y.Key));
 
-    return;
+  //   return;
 
-    foreach (var skinned in nodeObjectsSkinned) {
-      skinned.Key.ParentRenderer.GetOwner().TryGetComponent<AnimationController>()?.Update(skinned.Key);
-    }
+  //   foreach (var skinned in nodeObjectsSkinned) {
+  //     skinned.Key.ParentRenderer.GetOwner().TryGetComponent<AnimationController>()?.Update(skinned.Key);
+  //   }
 
-    _skinnedGroups = [.. nodeObjectsSkinned
-      .GroupBy(x => x.Key.Name)
-      .Select(group => (Key: group.Key, Count: group.Count()))];
+  //   _skinnedGroups = [.. nodeObjectsSkinned
+  //     .GroupBy(x => x.Key.Name)
+  //     .Select(group => (Key: group.Key, Count: group.Count()))];
 
-    _notSkinnedGroups = [.. nodeObjectsNotSkinned
-      .GroupBy(x => x.Key.Name)
-      .Select(group => (Key: group.Key, Count: group.Count()))];
+  //   _notSkinnedGroups = [.. nodeObjectsNotSkinned
+  //     .GroupBy(x => x.Key.Name)
+  //     .Select(group => (Key: group.Key, Count: group.Count()))];
 
-    _skinnedNodesCache = [.. nodeObjectsSkinned.Select(x => x.Key)];
-    _notSkinnedNodesCache = [.. nodeObjectsNotSkinned.Select(x => x.Key)];
+  //   _skinnedNodesCache = [.. nodeObjectsSkinned.Select(x => x.Key)];
+  //   _notSkinnedNodesCache = [.. nodeObjectsNotSkinned.Select(x => x.Key)];
 
-    objectData = [.. nodeObjectsNotSkinned.Select(x => x.Value), .. nodeObjectsSkinned.Select(x => x.Value)];
-    skinnedObjects = [.. nodeObjectsSkinned.Select(x => x.Value)];
+  //   objectData = [.. nodeObjectsNotSkinned.Select(x => x.Value), .. nodeObjectsSkinned.Select(x => x.Value)];
+  //   skinnedObjects = [.. nodeObjectsSkinned.Select(x => x.Value)];
 
-    PerfMonitor.Render3DComputeTime = PerfMonitor.ComunnalStopwatch.ElapsedMilliseconds;
-  }
+  //   PerfMonitor.Render3DComputeTime = PerfMonitor.ComunnalStopwatch.ElapsedMilliseconds;
+  // }
 
   public void Render(FrameInfo frameInfo, bool indirect = true) {
 
@@ -590,15 +589,15 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     // Logger.Info("render");
   }
 
-  public bool CheckTextures(ReadOnlySpan<Entity> entities) {
-    var len = CalculateLengthOfPool(entities);
+  public bool CheckTextures(ReadOnlySpan<IRender3DElement> renderables) {
+    var len = CalculateLengthOfPool(renderables);
     // return len == _texturesCount;
 
     return true;
   }
 
-  public bool CheckSizes(ReadOnlySpan<Entity> entities) {
-    var newCount = CalculateNodesLength(entities);
+  public bool CheckSizes(ReadOnlySpan<IRender3DElement> renderables) {
+    var newCount = CalculateNodesLength(renderables);
 
     if (newCount > LastKnownElemCount) {
       return false;
@@ -607,24 +606,18 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     return true;
   }
 
-  private static int CalculateLengthOfPool(ReadOnlySpan<Entity> entities) {
+  private static int CalculateLengthOfPool(ReadOnlySpan<IRender3DElement> renderables) {
     int count = 0;
-    for (int i = 0; i < entities.Length; i++) {
-      var targetItems = entities[i].GetDrawables<IRender3DElement>();
-      for (int j = 0; j < targetItems.Length; j++) {
-        var t = targetItems[j] as IRender3DElement;
-        count += t!.MeshedNodesCount;
-      }
-
+    for (int i = 0; i < renderables.Length; i++) {
+      count += renderables[i].MeshedNodesCount;
     }
     return count;
   }
 
-  private static int CalculateNodesLength(ReadOnlySpan<Entity> entities) {
+  private static int CalculateNodesLength(ReadOnlySpan<IRender3DElement> renderables) {
     int len = 0;
-    foreach (var entity in entities) {
-      var i3d = entity.GetDrawable<IRender3DElement>() as IRender3DElement;
-      len += i3d!.MeshedNodesCount;
+    foreach (var renderable in renderables) {
+      len += renderable.MeshedNodesCount;
     }
     return len;
   }
@@ -633,12 +626,11 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     return texturePair.Value.TextureManagerIndex;
   }
 
-  private static (int len, int joints) CalculateNodesLengthWithSkin(ReadOnlySpan<Entity> entities) {
+  private static (int len, int joints) CalculateNodesLengthWithSkin(ReadOnlySpan<IRender3DElement> renderables) {
     int len = 0;
     int joints = 0;
-    foreach (var entity in entities) {
-      var i3d = entity.GetDrawable<IRender3DElement>() as IRender3DElement;
-      foreach (var mNode in i3d!.MeshedNodes) {
+    foreach (var renderable in renderables) {
+      foreach (var mNode in renderable.MeshedNodes) {
         if (mNode.HasSkin) {
           len += 1;
           joints += mNode.Skin!.OutputNodeMatrices.Length;
@@ -753,12 +745,12 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     }
   }
 
-  private void CreateIndirectCommands(ReadOnlySpan<Entity> drawables) {
+  private void CreateIndirectCommands(ReadOnlySpan<IRender3DElement> drawables) {
     _indirectDrawCommands.Clear();
     uint indexOffset = 0;
 
     for (int i = 0; i < drawables.Length; i++) {
-      foreach (var node in drawables[i].GetComponent<MeshRenderer>().MeshedNodes) {
+      foreach (var node in drawables[i].MeshedNodes) {
         var mesh = node.Mesh;
         if (mesh?.IndexBuffer == null)
           continue;

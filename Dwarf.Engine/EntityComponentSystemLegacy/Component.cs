@@ -1,4 +1,4 @@
-namespace Dwarf.EntityComponentSystem;
+namespace Dwarf.EntityComponentSystemLegacy;
 
 public abstract class Component {
   public Entity Owner { get; internal set; } = null!;

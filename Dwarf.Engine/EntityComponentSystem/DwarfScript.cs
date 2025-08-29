@@ -1,10 +1,10 @@
 ﻿namespace Dwarf.EntityComponentSystem;
 
-public class DwarfScript : Component, ICloneable, IDisposable {
+public class DwarfScript : ICloneable, IDisposable {
   protected bool DidAwake { get; private set; }
   protected bool DidStart { get; private set; }
 
-  public EntityComponentSystemRewrite.Entity OwnerNew { get; internal set; } = default!;
+  public Entity OwnerNew { get; internal set; } = default!;
 
   public virtual void Start() {
     if (DidStart) return;
@@ -30,17 +30,17 @@ public class DwarfScript : Component, ICloneable, IDisposable {
   /// </summary>
   public virtual void RenderUpdate() { }
 
-  public virtual void CollisionEnter(EntityComponentSystemRewrite.Entity? entity, bool IsTrigger) { }
+  public virtual void CollisionEnter(Entity? entity, bool IsTrigger) { }
 
-  public virtual void CollisionStay(EntityComponentSystemRewrite.Entity? entity, bool isTrigger) { }
+  public virtual void CollisionStay(Entity? entity, bool isTrigger) { }
 
-  public virtual void CollisionExit(EntityComponentSystemRewrite.Entity? entity, bool isTrigger) { }
+  public virtual void CollisionExit(Entity? entity, bool isTrigger) { }
 
-  public virtual void CollisionEnter(EntityComponentSystemRewrite.Entity? entity) { }
+  public virtual void CollisionEnter(Entity? entity) { }
 
-  public virtual void CollisionStay(EntityComponentSystemRewrite.Entity? entity) { }
+  public virtual void CollisionStay(Entity? entity) { }
 
-  public virtual void CollisionExit(EntityComponentSystemRewrite.Entity? entity) { }
+  public virtual void CollisionExit(Entity? entity) { }
 
   public virtual object Clone() {
     return MemberwiseClone();

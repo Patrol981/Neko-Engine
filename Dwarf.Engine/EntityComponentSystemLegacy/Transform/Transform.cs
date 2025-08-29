@@ -4,7 +4,7 @@ using Dwarf.EntityComponentSystem;
 using Dwarf.Math;
 using Dwarf.Rendering.Renderer2D.Components;
 
-namespace Dwarf;
+namespace Dwarf.EntityComponentSystemLegacy;
 
 public static class TransformExtensions {
   public static Matrix4x4 OverrideZDepth(this Matrix4x4 mat4, float z) {

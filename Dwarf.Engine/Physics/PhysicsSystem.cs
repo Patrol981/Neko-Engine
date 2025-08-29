@@ -18,14 +18,14 @@ public class PhysicsSystem : IDisposable {
   }
 
   public void Init(Span<Entity> entities) {
-    // var diff = entities.ToArray().Where(e => e.HasComponent<Rigidbody>()).ToArray();
-    // PhysicsProgram?.Init(diff);
+    var diff = entities.ToArray().Where(e => e.HasComponent<Rigidbody>()).ToArray();
+    PhysicsProgram?.Init(diff);
   }
 
-  public void Tick(Entity[] entities) {
-    for (short i = 0; i < entities.Length; i++) {
-      if (entities[i].CanBeDisposed) continue;
-      entities[i].GetComponent<Rigidbody>()?.Update();
+  public void Tick(ReadOnlySpan<Rigidbody> rigidbodies) {
+    for (short i = 0; i < rigidbodies.Length; i++) {
+      if (rigidbodies[i].Owner.CanBeDisposed) continue;
+      rigidbodies[i].Update();
     }
 
     PhysicsProgram?.Update();

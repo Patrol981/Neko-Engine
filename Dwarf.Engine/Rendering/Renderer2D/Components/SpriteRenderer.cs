@@ -1,14 +1,13 @@
 using System.Numerics;
 using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
-using Dwarf.EntityComponentSystemRewrite;
 using Dwarf.Math;
 using Dwarf.Rendering.Renderer2D.Interfaces;
 using Dwarf.Rendering.Renderer2D.Models;
 
 namespace Dwarf.Rendering.Renderer2D.Components;
 
-public class SpriteRenderer : Component, IDrawable2D {
+public class SpriteRenderer : IDrawable2D {
   public delegate void OnAnimationEnd();
 
   public Sprite[] Sprites { get; init; } = [];
@@ -22,7 +21,7 @@ public class SpriteRenderer : Component, IDrawable2D {
   public Mesh Mesh => Sprites[CurrentSprite].SpriteMesh;
   public IDrawable2D[] Children => [];
 
-  public EntityComponentSystemRewrite.Entity Entity { get; private set; }
+  public Entity Entity { get; private set; }
   public bool Active => Entity.Active;
   public int SpriteIndex => Sprites[CurrentSprite].SpriteIndex;
   public int SpriteCount => Sprites.Length;
@@ -117,7 +116,7 @@ public class SpriteRenderer : Component, IDrawable2D {
   }
 
   private Bounds2D GetBounds() {
-    var pos = Owner!.GetComponent<Transform>().Position;
+    var pos = Entity.GetTransform()!.Position;
     var size = GetSize();
 
     _cachedBounds = new() {
@@ -129,7 +128,7 @@ public class SpriteRenderer : Component, IDrawable2D {
   }
 
   private Vector2 GetSize() {
-    var scale = Owner!.GetComponent<Transform>().Scale;
+    var scale = Entity.GetTransform()!.Scale;
     if (_lastKnownScale == scale) return _cachedSize;
 
     float minX, minY, maxX, maxY;
@@ -165,9 +164,9 @@ public class SpriteRenderer : Component, IDrawable2D {
   public class Builder {
     private readonly Application _app;
     private readonly List<Sprite> _sprites = [];
-    private EntityComponentSystemRewrite.Entity? _entity;
+    private Entity? _entity;
 
-    public Builder(Application app, EntityComponentSystemRewrite.Entity? entity) {
+    public Builder(Application app, Entity? entity) {
       _app = app;
       _entity = entity;
 

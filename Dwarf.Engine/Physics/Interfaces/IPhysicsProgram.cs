@@ -1,4 +1,4 @@
-using Dwarf.EntityComponentSystemRewrite;
+using Dwarf.EntityComponentSystem;
 
 namespace Dwarf.Physics;
 
