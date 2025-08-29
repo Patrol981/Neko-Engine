@@ -2,7 +2,8 @@
 
 using Dwarf.Rendering.UI;
 
-namespace Dwarf;
+namespace Dwarf.EntityComponentSystemLegacy;
+
 public class RectTransform : Transform {
   public Anchor Anchor { get; set; }
   public Vector2 OffsetFromVector { get; set; }

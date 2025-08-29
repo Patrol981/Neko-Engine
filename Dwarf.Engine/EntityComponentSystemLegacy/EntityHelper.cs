@@ -1,4 +1,3 @@
-using Dwarf.EntityComponentSystemRewrite;
 using Dwarf.Networking;
 using Dwarf.Rendering;
 using Dwarf.Rendering.Renderer2D;
@@ -6,7 +5,7 @@ using Dwarf.Rendering.Renderer2D.Interfaces;
 using Dwarf.Rendering.Renderer3D;
 using ZLinq;
 
-namespace Dwarf.EntityComponentSystem;
+namespace Dwarf.EntityComponentSystemLegacy;
 
 public static class EntityHelper {
   public static Entity[] Distinct<T>(this List<Entity> entities) where T : Component {
@@ -93,35 +92,35 @@ public static class EntityHelper {
     return returnEntities.ToArray();
   }
 
-  public static ReadOnlySpan<DwarfScript> GetScripts(this List<Entity> entities) {
-    var list = new List<DwarfScript>();
+  // public static ReadOnlySpan<DwarfScript> GetScripts(this List<Entity> entities) {
+  //   var list = new List<DwarfScript>();
 
-    foreach (var e in entities.Where(x => !x.CanBeDisposed)) {
-      list.AddRange(e.GetScripts());
-    }
+  //   foreach (var e in entities.Where(x => !x.CanBeDisposed)) {
+  //     list.AddRange(e.GetScripts());
+  //   }
 
-    return list.ToArray();
-  }
+  //   return list.ToArray();
+  // }
 
-  public static ReadOnlySpan<DwarfScript> GetScriptsAsSpan(this Entity[] entities) {
-    var list = new List<DwarfScript>();
+  // public static ReadOnlySpan<DwarfScript> GetScriptsAsSpan(this Entity[] entities) {
+  //   var list = new List<DwarfScript>();
 
-    foreach (var e in entities.Where(x => !x.CanBeDisposed)) {
-      list.AddRange(e.GetScripts());
-    }
+  //   foreach (var e in entities.Where(x => !x.CanBeDisposed)) {
+  //     list.AddRange(e.GetScripts());
+  //   }
 
-    return list.ToArray();
-  }
+  //   return list.ToArray();
+  // }
 
-  public static DwarfScript[] GetScriptsAsArray(this Entity[] entities) {
-    var list = new List<DwarfScript>();
+  // public static DwarfScript[] GetScriptsAsArray(this Entity[] entities) {
+  //   var list = new List<DwarfScript>();
 
-    foreach (var e in entities.Where(x => !x.CanBeDisposed)) {
-      list.AddRange(e.GetScripts());
-    }
+  //   foreach (var e in entities.Where(x => !x.CanBeDisposed)) {
+  //     list.AddRange(e.GetScripts());
+  //   }
 
-    return [.. list];
-  }
+  //   return [.. list];
+  // }
 
   public static ReadOnlySpan<Entity> AsReadOnlySpan(this List<Entity> entities) {
     var tmpList = new List<Entity>();

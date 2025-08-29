@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Dwarf.EntityComponentSystemRewrite;
+namespace Dwarf.EntityComponentSystem;
 
 public class TransformComponent {
   public Vector3 Position;

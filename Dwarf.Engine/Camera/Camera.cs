@@ -11,7 +11,7 @@ public enum CameraType {
   Orthographic
 }
 
-public class Camera : Component {
+public class Camera {
   private Matrix4x4 _projectionMatrix = Matrix4x4.Identity;
   private Matrix4x4 _viewMatrix = Matrix4x4.Identity;
 
@@ -27,11 +27,16 @@ public class Camera : Component {
   internal float _fov = -MathF.PI;
   internal float _aspect = 1;
 
-  public Camera() { }
+  internal Entity Owner { get; init; }
 
-  public Camera(float fov, float aspect) {
+  public Camera(Entity owner) {
+    Owner = owner;
+  }
+
+  public Camera(Entity owner, float fov, float aspect) {
     _fov = fov;
     _aspect = aspect;
+    Owner = owner;
   }
 
   public void SetOrthograpicProjection() {
@@ -88,7 +93,7 @@ public class Camera : Component {
   }
 
   public Matrix4x4 GetViewMatrix() {
-    Vector3 position = Owner!.GetComponent<Transform>().Position;
+    Vector3 position = Owner.GetTransform()!.Position;
     _viewMatrix = Matrix4x4.CreateLookAt(position, position + _front, _up);
     return _viewMatrix;
   }

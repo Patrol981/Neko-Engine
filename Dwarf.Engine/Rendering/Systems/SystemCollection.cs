@@ -1,6 +1,5 @@
 using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
-using Dwarf.EntityComponentSystemRewrite;
 using Dwarf.Networking;
 using Dwarf.Physics;
 using Dwarf.Physics.Interfaces;
@@ -10,6 +9,7 @@ using Dwarf.Rendering.Lightning;
 using Dwarf.Rendering.Particles;
 using Dwarf.Rendering.PostProcessing;
 using Dwarf.Rendering.Renderer2D;
+using Dwarf.Rendering.Renderer2D.Interfaces;
 using Dwarf.Rendering.Renderer3D;
 using Dwarf.Rendering.Shadows;
 using Dwarf.Vulkan;
@@ -45,19 +45,19 @@ public class SystemCollection : IDisposable {
   public bool ReloadUISystem = false;
   public bool ReloadParticleSystem = false;
 
-  public void UpdateSystems(Entity[] entities, FrameInfo frameInfo) {
+  public void UpdateSystems(Application app, FrameInfo frameInfo) {
     _render3DSystem?.Render(frameInfo);
-    _render2DSystem?.Render(frameInfo, entities.DistinctI2D());
+    _render2DSystem?.Render(frameInfo, app.Sprites.Values.ToArray());
     _shadowRenderSystem?.Render(frameInfo);
     _directionaLightSystem?.Render(frameInfo);
     _pointLightSystem?.Render(frameInfo);
 
     // _renderDebugSystem?.Render(frameInfo, entities.DistinctInterface<IDebugRenderObject>());
-    _renderDebugSystem?.Render(frameInfo, entities.DistinctInterface<IDebugRenderObject>());
+    _renderDebugSystem?.Render(frameInfo, app.DebugMeshes.Values.ToArray());
     _particleSystem?.Render(frameInfo);
   }
 
-  public void UpdateSystems2(Entity[] entities, FrameInfo frameInfo) {
+  public void UpdateSystems2(Application app, FrameInfo frameInfo) {
     // _guizmoRenderSystem?.Render(frameInfo);
     // _renderDebugSystem?.Render(frameInfo, entities.DistinctInterface<IDebugRenderObject>());
     // _particleSystem?.Render(frameInfo);
@@ -66,16 +66,16 @@ public class SystemCollection : IDisposable {
     _postProcessingSystem?.Render(frameInfo);
   }
 
-  public Task UpdateCalculationSystems(Entity[] entities) {
-    _physicsSystem?.Tick(entities);
-    _physicsSystem2D?.Tick(Application.Instance.NewEntities.ToArray());
+  public Task UpdateCalculationSystems(Application app) {
+    _physicsSystem?.Tick(app.Rigidbodies.Values.ToArray());
+    _physicsSystem2D?.Tick(app.Rigidbodies2D.Values.ToArray());
     _particleSystem?.Update();
     _particleSystem?.Collect();
     return Task.CompletedTask;
   }
 
   public void ValidateSystems(
-    ReadOnlySpan<Entity> entities,
+    Application app,
     nint allocator,
     IDevice device,
     IRenderer renderer,
@@ -84,24 +84,40 @@ public class SystemCollection : IDisposable {
     ref TextureManager textureManager
   ) {
     if (_render3DSystem != null) {
-      var modelEntities = entities.DistinctInterface<IRender3DElement>();
+      var modelEntities = app.Drawables3D.Values.ToArray();
       if (modelEntities.Length < 1) return;
       var sizes = _render3DSystem.CheckSizes(modelEntities);
       var textures = _render3DSystem.CheckTextures(modelEntities);
       if (!sizes || !textures || Reload3DRenderSystem) {
         Reload3DRenderSystem = false;
-        Reload3DRenderer(allocator, device, renderer, layouts, ref textureManager, pipelineConfigInfo, entities);
+        Reload3DRenderer(
+          allocator,
+          device,
+          renderer,
+          layouts,
+          ref textureManager,
+          pipelineConfigInfo,
+          modelEntities
+        );
       }
     }
 
     if (_render2DSystem != null) {
-      var spriteEntities = entities.ToArray().DistinctI2D();
+      var spriteEntities = app.Sprites.Values.ToArray();
       if (spriteEntities.Length < 1) return;
       var sizes = _render2DSystem.CheckSizes(spriteEntities);
       // var textures = _render2DSystem.CheckTextures(spriteEntities);
       if (!sizes || Reload2DRenderSystem) {
         Reload2DRenderSystem = false;
-        Reload2DRenderer(allocator, device, renderer, layouts["Global"], ref textureManager, pipelineConfigInfo, entities);
+        Reload2DRenderer(
+          allocator,
+          device,
+          renderer,
+          layouts["Global"],
+          ref textureManager,
+          pipelineConfigInfo,
+          spriteEntities
+        );
       }
     }
 
@@ -149,19 +165,16 @@ public class SystemCollection : IDisposable {
     // _subpassConnectorSystem = new(allocator, device, renderer, layouts, new SecondSubpassPipeline());
     // _postProcessingSystem = new(allocator, device, renderer, textureManager, systemConfiguration, layouts, new PostProcessingPipeline());
 
-    var entities = app.GetEntities();
+    _render3DSystem?.Setup(app.Drawables3D.Values.ToArray(), ref textureManager);
 
-    var objs3D = entities.DistinctInterface<IRender3DElement>();
-    _render3DSystem?.Setup(objs3D, ref textureManager);
-
-    var drawables = app.NewEntities.FlattenDrawable2D();
+    var drawables = app.Entities.FlattenDrawable2D();
     _render2DSystem?.Setup(drawables, ref textureManager);
     // _renderUISystem?.Setup(Canvas, ref textureManager);
     _directionaLightSystem?.Setup();
     _pointLightSystem?.Setup();
     _particleSystem?.Setup(ref textureManager);
-    _physicsSystem?.Init(entities.ToArray());
-    _physicsSystem2D?.Init(app.NewEntities.ToArray());
+    _physicsSystem?.Init(app.Entities.ToArray());
+    _physicsSystem2D?.Init(app.Entities.ToArray());
   }
 
   public void SetupHeadless(
@@ -189,7 +202,7 @@ public class SystemCollection : IDisposable {
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     ref TextureManager textureManager,
     IPipelineConfigInfo pipelineConfig,
-    ReadOnlySpan<Entity> entities
+    ReadOnlySpan<IRender3DElement> renderables
   ) {
     _render3DSystem?.Dispose();
     _render3DSystem = new Render3DSystem(
@@ -200,7 +213,7 @@ public class SystemCollection : IDisposable {
       externalLayouts,
       pipelineConfig
     );
-    _render3DSystem?.Setup(entities.DistinctInterface<IRender3DElement>(), ref textureManager);
+    _render3DSystem?.Setup(renderables, ref textureManager);
   }
 
   public void Reload2DRenderer(
@@ -210,7 +223,7 @@ public class SystemCollection : IDisposable {
     IDescriptorSetLayout globalLayout,
     ref TextureManager textureManager,
     IPipelineConfigInfo pipelineConfig,
-    ReadOnlySpan<Entity> entities
+    ReadOnlySpan<IDrawable2D> drawables
   ) {
     // _render2DSystem?.Dispose();
     // _render2DSystem = new Render2DSystem(
@@ -220,8 +233,6 @@ public class SystemCollection : IDisposable {
     //   globalLayout,
     //   pipelineConfig
     // );
-    var app = Application.Instance;
-    var drawables = app.NewEntities.FlattenDrawable2D();
     _render2DSystem?.Setup(drawables, ref textureManager);
   }
 

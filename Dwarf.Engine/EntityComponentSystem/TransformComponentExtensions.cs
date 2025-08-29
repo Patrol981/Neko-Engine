@@ -1,7 +1,7 @@
 using System.Numerics;
 using Dwarf.Math;
 
-namespace Dwarf.EntityComponentSystemRewrite;
+namespace Dwarf.EntityComponentSystem;
 
 public static class TransformComponentExtensions {
   public static Matrix4x4 OverrideZDepth(this Matrix4x4 mat4, float z) {

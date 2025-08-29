@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
@@ -6,7 +7,7 @@ using Dwarf.Physics;
 using Dwarf.Physics.Interfaces;
 using Dwarf.Rendering.Renderer3D;
 using Dwarf.Vulkan;
-
+using OpenTK.Mathematics;
 using Vortice.Vulkan;
 
 using static Vortice.Vulkan.Vulkan;
@@ -36,7 +37,7 @@ public class RenderDebugSystem : SystemBase, IRenderSystem {
     });
   }
 
-  public unsafe void Render(FrameInfo frameInfo, ReadOnlySpan<Entity> entities) {
+  public unsafe void Render(FrameInfo frameInfo, ReadOnlySpan<ColliderMesh> colliderMeshes) {
     if (!PerfMonitor.IsDebug) return;
 
     BindPipeline(frameInfo.CommandBuffer);
@@ -52,13 +53,11 @@ public class RenderDebugSystem : SystemBase, IRenderSystem {
       null
     );
 
-    for (int i = 0; i < entities.Length; i++) {
-      if (entities[i].CanBeDisposed) continue;
-      if (entities[i].GetDrawable<IDebugRenderObject>() is not IDebugRenderObject targetEntity) continue;
-      if (!targetEntity.Enabled) continue;
+    for (int i = 0; i < colliderMeshes.Length; i++) {
+      if (!colliderMeshes[i].Enabled || colliderMeshes[i].Owner.CanBeDisposed) continue;
 
       var pushConstant = new ColliderMeshPushConstant {
-        ModelMatrix = entities[i].GetComponent<Transform>().MatrixWithAngleYRotationWithoutScale
+        ModelMatrix = colliderMeshes[i].Owner?.GetTransform()?.MatrixWithAngleYRotationWithoutScale() ?? Matrix4x4.Identity
       };
 
       vkCmdPushConstants(
@@ -70,13 +69,11 @@ public class RenderDebugSystem : SystemBase, IRenderSystem {
         &pushConstant
       );
 
-      if (!entities[i].CanBeDisposed) {
-        targetEntity.Bind(frameInfo.CommandBuffer, 0);
+      colliderMeshes[i].Bind(frameInfo.CommandBuffer, 0);
 
-        for (uint x = 0; x < targetEntity!.MeshsesCount; x++) {
-          if (!targetEntity.FinishedInitialization) continue;
-          targetEntity.Draw(frameInfo.CommandBuffer, x);
-        }
+      for (uint x = 0; x < colliderMeshes[i].MeshsesCount; x++) {
+        if (!colliderMeshes[i].FinishedInitialization) continue;
+        colliderMeshes[i].Draw(frameInfo.CommandBuffer, x);
       }
     }
   }

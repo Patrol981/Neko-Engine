@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using Dwarf.AbstractionLayer;
 using Dwarf.Audio;
 using Dwarf.EntityComponentSystem;
-using Dwarf.EntityComponentSystemRewrite;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
 using Dwarf.Math;
@@ -80,12 +79,8 @@ public partial class Application {
   private EventCallback? _onLoadPrimaryResources;
   private TextureManager _textureManager = null!;
 
-  private List<Entity> _entities = [];
-  private readonly Queue<Entity> _entitiesQueue = new();
-  private readonly Queue<MeshRenderer> _reloadQueue = new();
-  public readonly Lock EntitiesLock = new();
-
-  private Entity _camera = new();
+  private Entity _camera = default!;
+  internal Camera CameraComponent = default!;
 
   // ubos
   private IDescriptorPool _globalPool = null!;
@@ -225,12 +220,9 @@ public partial class Application {
 
       PerformCalculations();
 
-      var updatable = _entities.AsArray();
-      if (updatable.Length > 0) {
-        MasterFixedUpdate(updatable.GetScriptsAsSpan());
+      if (!Scripts.IsEmpty) {
         MasterFixedUpdate(Scripts.Values.ToArray());
         _onUpdate?.Invoke();
-        MasterUpdate(updatable.GetScriptsAsArray());
         MasterUpdate(Scripts.Values.ToArray());
       }
 
@@ -279,7 +271,7 @@ public partial class Application {
             closeRequest = true;
             break;
           case ConsoleKey.L:
-            foreach (var ent in _entities) {
+            foreach (var ent in Entities) {
               Logger.Info(ent.Name);
             }
             break;
@@ -302,12 +294,9 @@ public partial class Application {
       Time.Tick();
       PerformCalculations();
 
-      var updatable = _entities.AsArray();
-      if (updatable.Length > 0) {
-        MasterFixedUpdate(updatable.GetScriptsAsSpan());
+      if (!Scripts.IsEmpty) {
         MasterFixedUpdate(Scripts.Values.ToArray());
         _onUpdate?.Invoke();
-        MasterUpdate(updatable.GetScriptsAsArray());
         MasterUpdate(Scripts.Values.ToArray());
       }
     }
@@ -348,10 +337,8 @@ public partial class Application {
     );
     Mutex.ReleaseMutex();
 
-    MasterAwake(_entities.GetScripts());
     MasterAwake(Scripts.Values.ToArray());
     _onLoad?.Invoke();
-    MasterStart(_entities.GetScripts());
     MasterStart(Scripts.Values.ToArray());
 
     return Task.CompletedTask;
@@ -399,9 +386,8 @@ public partial class Application {
 
     Mutex.WaitOne();
     CurrentScene.LoadEntities();
-    _entities.AddRange(CurrentScene.GetEntities());
-    foreach (var entity in CurrentScene.NewEntities) {
-      NewEntities.Add(entity);
+    foreach (var entity in CurrentScene.GetEntities()) {
+      Entities.Add(entity);
     }
     Mutex.ReleaseMutex();
 
@@ -458,104 +444,6 @@ public partial class Application {
 #endif
   }
 
-  public void AddEntity(Entity entity, bool fenced = false) {
-    Mutex.WaitOne();
-    MasterAwake(new[] { entity }.GetScriptsAsSpan());
-    MasterStart(new[] { entity }.GetScriptsAsSpan());
-    if (fenced) {
-      var fence = Device.CreateFence(FenceCreateFlags.Signaled);
-      Device.WaitFence(fence, true);
-    }
-    _entitiesQueue.Enqueue(entity);
-    Mutex.ReleaseMutex();
-  }
-
-  public void AddEntityExperimental(Dwarf.EntityComponentSystemRewrite.Entity entity, bool fenced = false) {
-    Mutex.WaitOne();
-    var scripts = entity.GetScripts();
-    MasterAwake(scripts);
-    MasterStart(scripts);
-    if (fenced) {
-      var fence = Device.CreateFence(FenceCreateFlags.Signaled);
-      Device.WaitFence(fence, true);
-    }
-    NewEntities.Add(entity);
-    Mutex.ReleaseMutex();
-  }
-
-  public void AddEntities(Entity[] entities) {
-    foreach (var entity in entities) {
-      AddEntity(entity);
-    }
-  }
-
-  public ReadOnlySpan<Entity> GetEntities() {
-    lock (EntitiesLock) {
-      return _entities.Where(x => !x.CanBeDisposed).ToArray();
-    }
-  }
-
-  public List<Entity> GetEntitiesList() {
-    lock (EntitiesLock) {
-      return [.. _entities.Where(x => !x.CanBeDisposed)];
-    }
-  }
-
-  public IEnumerable<Entity> GetEntitiesEnumerable() {
-    lock (EntitiesLock) {
-      return [.. _entities.Where(x => !x.CanBeDisposed)];
-    }
-  }
-
-
-  public Entity? GetEntity(Guid entitiyId) {
-    lock (EntitiesLock) {
-      return _entities.Where(x => x.EntityID == entitiyId).First();
-    }
-  }
-
-  public void RemoveEntityAt(int index) {
-    lock (EntitiesLock) {
-      Device.WaitDevice();
-      Device.WaitQueue();
-      _entities.RemoveAt(index);
-    }
-  }
-
-  public void RemoveEntity(Entity entity) {
-    lock (EntitiesLock) {
-      Device.WaitDevice();
-      Device.WaitQueue();
-      _entities.Remove(entity);
-    }
-  }
-
-  public void RemoveEntity(Guid id) {
-    lock (EntitiesLock) {
-      if (_entities.Count == 0) return;
-      var target = _entities.Where((x) => x.EntityID == id).FirstOrDefault();
-      if (target == null) return;
-      Device.WaitDevice();
-      Device.WaitQueue();
-      _entities.Remove(target);
-    }
-  }
-
-  public void DestroyEntity(Entity entity) {
-    lock (EntitiesLock) {
-      entity.CanBeDisposed = true;
-    }
-  }
-
-  public void RemoveEntityRange(int index, int count) {
-    lock (EntitiesLock) {
-      _entities.RemoveRange(index, count);
-    }
-  }
-
-  public void AddModelToReloadQueue(MeshRenderer meshRenderer) {
-    _reloadQueue.Enqueue(meshRenderer);
-  }
   #endregion ENTITY_FLOW
   #region APPLICATION_LOOP
   private unsafe void Render(ThreadInfo threadInfo) {
@@ -563,7 +451,7 @@ public partial class Application {
     if (Window.IsMinimalized) return;
 
     Systems.ValidateSystems(
-        _entities.ToArray(),
+        this,
         Allocator, Device, Renderer,
         _descriptorSetLayouts,
         CurrentPipelineConfig,
@@ -571,22 +459,22 @@ public partial class Application {
       );
 
     float aspect = Renderer.AspectRatio;
-    var cameraAsppect = _camera.TryGetComponent<Camera>()?.Aspect;
+    var cameraAsppect = _camera.GetCamera()?.Aspect;
     if (aspect != cameraAsppect && cameraAsppect != null) {
-      _camera.GetComponent<Camera>().Aspect = aspect;
-      switch (_camera.GetComponent<Camera>().CameraType) {
+      _camera.GetCamera()!.Aspect = aspect;
+      switch (_camera.GetCamera()?.CameraType) {
         case CameraType.Perspective:
-          _camera.GetComponent<Camera>()?.SetPerspectiveProjection(0.1f, 100f);
+          _camera.GetCamera()?.SetPerspectiveProjection(0.1f, 100f);
           break;
         case CameraType.Orthographic:
-          _camera.GetComponent<Camera>()?.SetOrthograpicProjection();
+          _camera.GetCamera()?.SetOrthograpicProjection();
           break;
         default:
           break;
       }
     }
 
-    var camera = _camera.TryGetComponent<Camera>();
+    var camera = _camera.GetCamera();
     nint commandBuffer = IntPtr.Zero;
 
     if (camera != null) {
@@ -604,15 +492,15 @@ public partial class Application {
       _currentFrame.SpriteDataDescriptorSet = StorageCollection.GetDescriptor("SpriteStorage", frameIndex);
       _currentFrame.JointsBufferDescriptorSet = StorageCollection.GetDescriptor("JointsStorage", frameIndex);
       _currentFrame.TextureManager = _textureManager;
-      _currentFrame.ImportantEntity = _entities.Where(x => x.IsImportant).FirstOrDefault() ?? null!;
+      _currentFrame.ImportantEntity = Entities.Where(x => x.IsImportant).FirstOrDefault() ?? null!;
 
-      _ubo->Projection = _camera.TryGetComponent<Camera>()?.GetProjectionMatrix() ?? Matrix4x4.Identity;
-      _ubo->View = _camera.TryGetComponent<Camera>()?.GetViewMatrix() ?? Matrix4x4.Identity;
-      _ubo->CameraPosition = _camera.TryGetComponent<Transform>()?.Position ?? Vector3.Zero;
+      _ubo->Projection = _camera.GetCamera()?.GetProjectionMatrix() ?? Matrix4x4.Identity;
+      _ubo->View = _camera.GetCamera()?.GetViewMatrix() ?? Matrix4x4.Identity;
+      _ubo->CameraPosition = _camera.GetTransform()?.Position ?? Vector3.Zero;
       _ubo->Fov = 60;
-      _ubo->ImportantEntityPosition = _currentFrame.ImportantEntity?.TryGetComponent<Transform>()?.Position ?? Vector3.Zero;
+      _ubo->ImportantEntityPosition = _currentFrame.ImportantEntity?.GetTransform()?.Position ?? Vector3.Zero;
       _ubo->ImportantEntityPosition.Z += 0.5f;
-      _ubo->ImportantEntityDirection = _currentFrame.ImportantEntity?.TryGetComponent<Transform>()?.Forward ?? Vector3.Zero;
+      _ubo->ImportantEntityDirection = _currentFrame.ImportantEntity?.GetTransform()?.Forward() ?? Vector3.Zero;
       _ubo->HasImportantEntity = _currentFrame.ImportantEntity != null ? 1 : 0;
       // _ubo->Fog = FogValue;
       _ubo->Fog = new(FogValue.X, Window.Extent.Width, Window.Extent.Height);
@@ -625,7 +513,7 @@ public partial class Application {
 
       _ubo->DirectionalLight = DirectionalLight;
 
-      ReadOnlySpan<Entity> entities = _entities.ToArray();
+      ReadOnlySpan<Entity> entities = Entities.ToArray();
 
       if (Systems.PointLightSystem != null) {
         Systems.PointLightSystem.Update(entities, out var pointLights);
@@ -644,8 +532,8 @@ public partial class Application {
         }
       }
 
-      var i3D = _entities.ToArray().DistinctI3D();
-      var i2D = NewEntities.FlattenDrawable2D();
+      var i3D = Drawables3D.Values.ToArray();
+      var i2D = Entities.FlattenDrawable2D();
 
       if (Systems.Render3DSystem != null) {
         Systems.Render3DSystem.Update(
@@ -701,8 +589,8 @@ public partial class Application {
 
       _onRender?.Invoke();
       _skybox?.Render(_currentFrame);
-      Entity[] toUpdate = [.. _entities];
-      Systems.UpdateSystems(toUpdate, _currentFrame);
+      Entity[] toUpdate = [.. Entities];
+      Systems.UpdateSystems(this, _currentFrame);
 
       Renderer.EndRendering(commandBuffer);
       Renderer.BeginPostProcess(commandBuffer);
@@ -710,9 +598,7 @@ public partial class Application {
       if (UseImGui) {
         GuiController.Update(Time.StopwatchDelta);
       }
-      Systems.UpdateSystems2(toUpdate, _currentFrame);
-      var updatable = _entities.Where(x => x.CanBeDisposed == false).ToArray();
-      MasterRenderUpdate(updatable.GetScriptsAsSpan());
+      Systems.UpdateSystems2(this, _currentFrame);
       MasterRenderUpdate(Scripts.Values.ToArray());
       _onGUI?.Invoke();
       if (UseImGui) {
@@ -744,7 +630,7 @@ public partial class Application {
     if (_entitiesQueue.Count > 0) {
       Mutex.WaitOne();
       while (_entitiesQueue.Count > 0) {
-        _entities.Add(_entitiesQueue.Dequeue());
+        Entities.Add(_entitiesQueue.Dequeue());
       }
       Mutex.ReleaseMutex();
     }
@@ -771,7 +657,7 @@ public partial class Application {
   }
 
   private void PerformCalculations() {
-    Systems?.UpdateCalculationSystems([.. GetEntities()]);
+    Systems?.UpdateCalculationSystems(this);
   }
 
   internal unsafe void LoaderLoop() {
@@ -827,9 +713,9 @@ public partial class Application {
     _skybox?.Dispose();
     GuiController?.Dispose();
 
-    Span<Entity> entities = _entities.ToArray();
+    Span<Entity> entities = Entities.ToArray();
     for (int i = 0; i < entities.Length; i++) {
-      entities[i].DisposeEverything();
+      entities[i].Dispose(this);
     }
 
     _textureManager?.Dispose();
@@ -851,19 +737,6 @@ public partial class Application {
     Device?.Dispose();
   }
 
-  private void Collect() {
-    if (_entities.Count == 0) return;
-    for (short i = 0; i < _entities.Count; i++) {
-      if (_entities[i].CanBeDisposed) {
-        if (_entities[i].Collected) continue;
-
-        _entities[i].Collected = true;
-        _entities[i].DisposeEverything();
-        RemoveEntity(_entities[i].EntityID);
-      }
-    }
-  }
-
   public void CloseApp() {
     _appExitRequest = true;
   }
@@ -873,12 +746,12 @@ public partial class Application {
 
     Guizmos.Clear();
     Guizmos.Free();
-    foreach (var e in _entities) {
+    foreach (var e in Entities) {
       e.CanBeDisposed = true;
     }
 
-    Logger.Info($"Waiting for entities to dispose... [{_entities.Count()}]");
-    if (_entities.Count() > 0) {
+    Logger.Info($"Waiting for entities to dispose... [{Entities.Count()}]");
+    if (Entities.Count() > 0) {
       return;
     }
 

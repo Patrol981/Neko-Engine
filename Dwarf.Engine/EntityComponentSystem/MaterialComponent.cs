@@ -1,9 +1,7 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
 
-using Dwarf.EntityComponentSystem;
-
-namespace Dwarf;
+namespace Dwarf.EntityComponentSystem;
 
 /*
 [StructLayout(LayoutKind.Explicit)]
@@ -40,7 +38,7 @@ public enum AlphaMode {
   Blend
 }
 
-public class MaterialComponent : Component {
+public class MaterialComponent {
   private MaterialData _materialData;
 
   public MaterialComponent() {

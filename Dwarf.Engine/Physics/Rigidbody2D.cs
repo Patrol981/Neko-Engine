@@ -107,6 +107,7 @@ public class Rigidbody2D : IDisposable, ICloneable {
     };
 
     // Owner.AddComponent(new ColliderMesh(_app.Allocator, _app.Device, _collisionShape!));
+    Owner.AddComponent(new ColliderMesh(_app.Allocator, _app.Device, _collisionShape!));
     Application.Mutex.ReleaseMutex();
   }
 
