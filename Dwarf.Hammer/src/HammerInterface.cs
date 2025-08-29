@@ -89,8 +89,8 @@ public class HammerInterface {
     _hammerWorld.Bodies[body].ObjectType = shapeSettings.ObjectType;
     _hammerWorld.Bodies[body].IsTrigger = isTrigger;
     if (shapeSettings.ObjectType == ObjectType.Sprite && shapeSettings.UserData != null) {
-      var minMax = ((Vector2, Vector2))shapeSettings.UserData;
-      _hammerWorld.Bodies[body].AABB = new AABB() { Min = minMax.Item1, Max = minMax.Item2 };
+      var minMax = ((Vector2?, Vector2?))shapeSettings.UserData;
+      _hammerWorld.Bodies[body].AABB = new AABB() { Min = minMax.Item1!.Value, Max = minMax.Item2!.Value };
     } else {
       try {
         var edges = (List<Edge>)shapeSettings.UserData!;

@@ -1,4 +1,4 @@
-using Dwarf.EntityComponentSystemRewrite;
+using Dwarf.EntityComponentSystem;
 using Dwarf.Physics.Backends;
 using Dwarf.Physics.Backends.Hammer;
 
@@ -19,10 +19,10 @@ public class PhysicsSystem2D : IDisposable {
     PhysicsProgram?.Init(entities);
   }
 
-  public void Tick(Entity[] entities) {
-    for (short i = 0; i < entities.Length; i++) {
-      if (entities[i].CanBeDisposed) continue;
-      entities[i].GetRigidbody2D()?.Update();
+  public void Tick(ReadOnlySpan<Rigidbody2D> rigidbodies2D) {
+    for (short i = 0; i < rigidbodies2D.Length; i++) {
+      if (rigidbodies2D[i].Owner?.CanBeDisposed) continue;
+      rigidbodies2D[i]?.Update();
     }
 
     PhysicsProgram.Update();

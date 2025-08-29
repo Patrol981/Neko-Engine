@@ -14,7 +14,7 @@ using static Dwarf.Physics.JoltConfig;
 
 namespace Dwarf.Physics;
 
-public class Rigidbody : Component, IDisposable {
+public class Rigidbody : IDisposable {
   private readonly IDevice _device = null!;
   private readonly nint _allocator = IntPtr.Zero;
   private IPhysicsBody _bodyInterface = null!;
@@ -32,9 +32,14 @@ public class Rigidbody : Component, IDisposable {
 
   private Mesh? _collisionShape;
 
-  public Rigidbody() { }
+  internal Entity Owner { get; init; }
+
+  public Rigidbody(Entity owner) {
+    Owner = owner;
+  }
 
   public Rigidbody(
+    Entity owner,
     nint allocator,
     IDevice device,
     PrimitiveType primitiveType,
@@ -59,9 +64,11 @@ public class Rigidbody : Component, IDisposable {
     _physicsControlRotation = physicsControlRotation;
     _inputRadius = default;
     _useMesh = useMesh;
+    Owner = owner;
   }
 
   public Rigidbody(
+    Entity owner,
     nint allocator,
     IDevice device,
     PrimitiveType colliderShape,
@@ -79,9 +86,11 @@ public class Rigidbody : Component, IDisposable {
     _motionType = motionType;
     _physicsControlRotation = physicsControlRotation;
     _useMesh = useMesh;
+    Owner = owner;
   }
 
   public Rigidbody(
+    Entity owner,
     nint allocator,
     IDevice device,
     PrimitiveType primitiveType,
@@ -103,9 +112,11 @@ public class Rigidbody : Component, IDisposable {
     _sizeZ = sizeZ;
     _physicsControlRotation = physicsControlRotation;
     _useMesh = useMesh;
+    Owner = owner;
   }
 
   public Rigidbody(
+    Entity owner,
     nint allocator,
     IDevice device,
     PrimitiveType primitiveType,
@@ -133,6 +144,7 @@ public class Rigidbody : Component, IDisposable {
     _offsetZ = offsetZ;
     _physicsControlRotation = physicsControlRotation;
     _useMesh = useMesh;
+    Owner = owner;
   }
 
   public void InitBase(Mesh? mesh = null) {
@@ -164,8 +176,7 @@ public class Rigidbody : Component, IDisposable {
         break;
       case PrimitiveType.Convex:
         if (mesh == null) {
-          var target = Owner?.GetDrawable<IRender3DElement>() as IRender3DElement;
-          if (target == null) throw new ArgumentException(nameof(mesh));
+          var target = (Owner?.GetDrawable3D()) ?? throw new ArgumentException(nameof(mesh));
           _collisionShape = Primitives.CreateConvex(target!.MeshedNodes, Flipped);
         } else {
           _collisionShape = Primitives.CreateConvex(mesh, Flipped);
@@ -185,7 +196,7 @@ public class Rigidbody : Component, IDisposable {
     }
 
     if (_useMesh) {
-      Owner!.AddComponent(new ColliderMesh(_allocator, _device, _collisionShape));
+      Owner!.AddComponent(new ColliderMesh(Owner, _allocator, _device, _collisionShape));
     }
 
   }
@@ -198,7 +209,7 @@ public class Rigidbody : Component, IDisposable {
 
     _bodyInterface = bodyInterface;
 
-    var pos = Owner!.GetComponent<Transform>().Position;
+    var pos = Owner!.GetTransform()!.Position;
     object shapeSettings;
 
     switch (PrimitiveType) {
@@ -243,12 +254,12 @@ public class Rigidbody : Component, IDisposable {
     if (Owner.CanBeDisposed) return;
 
     var pos = _bodyInterface.Position;
-    var transform = Owner!.GetComponent<Transform>();
+    var transform = Owner!.GetTransform()!;
 
     transform.Position = pos;
 
     if (!_physicsControlRotation) {
-      var quat = Quaternion.CreateFromRotationMatrix(transform.AngleYMatrix);
+      var quat = Quaternion.CreateFromRotationMatrix(transform.AngleY());
       _bodyInterface.Rotation = quat;
     } else {
       transform.Rotation = Quat.ToEuler(_bodyInterface.Rotation);
