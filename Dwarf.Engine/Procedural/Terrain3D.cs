@@ -11,6 +11,8 @@ public class Terrain3D {
   const int HEIGHT = 512;
   const int WIDTH = 512;
 
+  public Entity Owner { get; init; }
+
   private readonly double[,] _points;
   private readonly Application _app = default!;
 
@@ -19,11 +21,13 @@ public class Terrain3D {
   private int _repX;
   private int _repY;
 
-  public Terrain3D() {
+  public Terrain3D(Entity owner) {
+    Owner = owner;
     _points = new double[HEIGHT, WIDTH];
   }
 
-  public Terrain3D(Application app) {
+  public Terrain3D(Entity owner, Application app) {
+    Owner = owner;
     _app = app;
     _points = new double[HEIGHT, WIDTH];
   }
@@ -35,6 +39,12 @@ public class Terrain3D {
     _texturePath = texturePath != null ? texturePath : "./Resources/Textures/base/no_texture.png";
     var mesh = Generate(_app);
     SetupTexture(_app);
+
+    Owner.AddDrawable3D(new MeshRenderer(Owner, _app.Device, _app.Renderer));
+    Owner.GetDrawable3D()?.AddLinearNode(new Node() { Mesh = mesh, });
+    Owner.GetDrawable3D()?.Init();
+    Owner.GetDrawable3D()?.BindToTexture(_app.TextureManager, _texturePath);
+
     // Owner!.AddComponent(new MeshRenderer(_app.Device, _app.Renderer));
     // Owner!.GetComponent<MeshRenderer>().AddLinearNode(new Node() { Mesh = mesh, });
     // Owner!.GetComponent<MeshRenderer>().Init();
