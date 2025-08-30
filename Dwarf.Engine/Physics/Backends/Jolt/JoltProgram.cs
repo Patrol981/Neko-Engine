@@ -78,7 +78,7 @@ public class JoltProgram : IPhysicsProgram {
     foreach (var entity in entities) {
       var wrapper = new JoltBodyWrapper(BodyInterface);
       Bodies.Add(entity, wrapper);
-      entity.GetComponent<Rigidbody>()?.Init(wrapper);
+      entity.GetRigidbody()?.Init(wrapper);
     }
   }
 
@@ -111,24 +111,24 @@ public class JoltProgram : IPhysicsProgram {
   public static void OnContactAdded(JoltPhysicsSharp.PhysicsSystem system, in Body body1, in Body body2, in ContactManifold manifold, in ContactSettings settings) {
     var data = JoltBodyWrapper.GetCollisionData(body1.ID, body2.ID);
     if (data.Item1 != null && data.Item2 != null) {
-      data.Item1.GetComponent<Rigidbody>().InvokeCollision(CollisionState.Enter, data.Item2);
-      data.Item2.GetComponent<Rigidbody>().InvokeCollision(CollisionState.Enter, data.Item1);
+      data.Item1.GetRigidbody()?.InvokeCollision(CollisionState.Enter, data.Item2);
+      data.Item2.GetRigidbody()?.InvokeCollision(CollisionState.Enter, data.Item1);
     }
   }
 
   public static void OnContactPersisted(JoltPhysicsSharp.PhysicsSystem system, in Body body1, in Body body2, in ContactManifold manifold, in ContactSettings settings) {
     var data = JoltBodyWrapper.GetCollisionData(body1.ID, body2.ID);
     if (data.Item1 != null && data.Item2 != null) {
-      data.Item1.GetComponent<Rigidbody>().InvokeCollision(CollisionState.Stay, data.Item2);
-      data.Item2.GetComponent<Rigidbody>().InvokeCollision(CollisionState.Stay, data.Item1);
+      data.Item1.GetRigidbody()?.InvokeCollision(CollisionState.Stay, data.Item2);
+      data.Item2.GetRigidbody()?.InvokeCollision(CollisionState.Stay, data.Item1);
     }
   }
 
   public static void OnContactRemoved(JoltPhysicsSharp.PhysicsSystem system, ref SubShapeIDPair subShapePair) {
     var data = JoltBodyWrapper.GetCollisionData(subShapePair.Body1ID, subShapePair.Body2ID);
     if (data.Item1 != null && data.Item2 != null) {
-      data.Item1.GetComponent<Rigidbody>().InvokeCollision(CollisionState.Exit, data.Item2);
-      data.Item2.GetComponent<Rigidbody>().InvokeCollision(CollisionState.Exit, data.Item1);
+      data.Item1.GetRigidbody()?.InvokeCollision(CollisionState.Exit, data.Item2);
+      data.Item2.GetRigidbody()?.InvokeCollision(CollisionState.Exit, data.Item1);
     }
   }
 
@@ -143,15 +143,11 @@ public class JoltProgram : IPhysicsProgram {
   public void Dispose() {
     foreach (var body in Bodies) {
       body.Value.Dispose();
-      body.Key.TryGetComponent<Rigidbody>()?.Dispose();
+      body.Key.GetRigidbody()?.Dispose();
     }
     JobSystem?.Dispose();
     PhysicsSystem?.Dispose();
     Foundation.Shutdown();
     GC.SuppressFinalize(this);
-  }
-
-  public void Init(Span<EntityComponentSystemRewrite.Entity> entities) {
-    throw new NotImplementedException();
   }
 }

@@ -16,11 +16,11 @@ public static class DwarfFileParser {
   };
 
   public static DwarfFile? Parse(in Entity entity) {
-    var meshRenderer = entity.GetComponent<MeshRenderer>();
+    var meshRenderer = entity.GetDrawable3D();
 
     if (meshRenderer == null) return null;
 
-    return DwarfFile.ToDwarfFile(meshRenderer);
+    return DwarfFile.ToDwarfFile((meshRenderer as MeshRenderer)!);
   }
 
   public static void SaveToFile(string path, DwarfFile file) {

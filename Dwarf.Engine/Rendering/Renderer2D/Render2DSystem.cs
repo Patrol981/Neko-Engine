@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using Dwarf.AbstractionLayer;
-using Dwarf.EntityComponentSystemRewrite;
+using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
 using Dwarf.Rendering.Renderer2D.Interfaces;
 using Dwarf.Rendering.Renderer2D.Models;

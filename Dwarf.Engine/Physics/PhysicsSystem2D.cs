@@ -21,7 +21,7 @@ public class PhysicsSystem2D : IDisposable {
 
   public void Tick(ReadOnlySpan<Rigidbody2D> rigidbodies2D) {
     for (short i = 0; i < rigidbodies2D.Length; i++) {
-      if (rigidbodies2D[i].Owner?.CanBeDisposed) continue;
+      if (rigidbodies2D[i].Owner!.CanBeDisposed) continue;
       rigidbodies2D[i]?.Update();
     }
 

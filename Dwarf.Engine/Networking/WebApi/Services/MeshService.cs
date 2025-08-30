@@ -1,3 +1,4 @@
+using Dwarf.EntityComponentSystem;
 using Dwarf.Networking.WebApi.Interfaces;
 using Dwarf.Networking.WebApi.Mappers;
 using Dwarf.Networking.WebApi.Models;
@@ -36,7 +37,7 @@ public class MeshService : IMeshService {
       return meshResponse;
     }
 
-    var tilemap = level.TryGetComponent<Tilemap>();
+    var tilemap = level.GetDrawable2D();
     if (tilemap is null) {
       _logger.LogWarning("tilemap is null");
       return meshResponse;
@@ -47,7 +48,7 @@ public class MeshService : IMeshService {
       _logger.LogWarning("mesh is null");
     }
 
-    var scale = level.GetComponent<Transform>().Scale;
+    var scale = level.GetTransform()!.Scale;
 
     var vertices = collMesh?.ToVertexResponseArray() ?? [];
     var indices = tilemap.CollisionMesh?.Indices ?? [];

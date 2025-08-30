@@ -12,7 +12,7 @@ using Vortice.Vulkan;
 
 namespace Dwarf.Rendering.Renderer2D.Components;
 
-public class Tilemap : Component, IDrawable2D {
+public class Tilemap : IDrawable2D {
   private readonly Application _application;
 
   public Vector2I TilemapSize { get; private set; }
@@ -27,16 +27,18 @@ public class Tilemap : Component, IDrawable2D {
 
   private VkPipelineLayout _pipelineLayout;
 
-  public EntityComponentSystemRewrite.Entity Entity { get; set; }
+  public Entity Entity { get; init; }
   public bool Active => Entity.Active;
   public ITexture Texture => throw new NotImplementedException();
 
-  public Tilemap() {
+  public Tilemap(Entity entity) {
+    Entity = entity;
     _application = Application.Instance;
     TilemapSize = new Vector2I(0, 0);
   }
 
-  public Tilemap(Application app, Vector2I tileMapSize, int tileSize) {
+  public Tilemap(Entity entity, Application app, Vector2I tileMapSize, int tileSize) {
+    Entity = entity;
     _application = app;
     TilemapSize = tileMapSize;
     TileSize = tileSize;
@@ -113,11 +115,8 @@ public class Tilemap : Component, IDrawable2D {
       offset.X -= LocalSizeX / 20;
       //offset.X += offset.X;
 
-      var bgEntity = new Entity() {
-        Name = $"tilemap-bg-{i}"
-      };
-      bgEntity.AddMaterial();
-      bgEntity.AddTransform(new(offset, -10), default, scale: new(1, 1, 1));
+      var bgEntity = new Entity($"tilemap-bg-{i}");
+      bgEntity.AddTransform(new(new(offset, -10), default, scale: new(1, 1, 1)));
       bgEntity.AddSpriteBuilder().AddSprite(backgrounds[i].ImagePath, LocalSizeY / 10, repeatCount).Build();
 
       // Logger.Info($"Setting offset to {backgrounds[i].PositionOffset}");
@@ -146,7 +145,7 @@ public class Tilemap : Component, IDrawable2D {
   public Vector3 WorldSize {
     get {
       var size = Sprite.VERTEX_SIZE * Layers[0].Tiles.GetLength(1);
-      return Owner.GetComponent<Transform>().Scale * size;
+      return Entity.GetTransform()!.Scale * size;
     }
   }
 

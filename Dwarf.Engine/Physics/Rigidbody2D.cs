@@ -1,5 +1,5 @@
 using System.Numerics;
-using Dwarf.EntityComponentSystemRewrite;
+using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
 using Dwarf.Hammer.Models;
@@ -107,7 +107,7 @@ public class Rigidbody2D : IDisposable, ICloneable {
     };
 
     // Owner.AddComponent(new ColliderMesh(_app.Allocator, _app.Device, _collisionShape!));
-    Owner.AddComponent(new ColliderMesh(_app.Allocator, _app.Device, _collisionShape!));
+    Owner.AddComponent(new ColliderMesh(Owner, _app.Allocator, _app.Device, _collisionShape!));
     Application.Mutex.ReleaseMutex();
   }
 

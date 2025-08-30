@@ -11,7 +11,7 @@ public partial class EditorUtils {
   public static void NodeView(Entity? target) {
     if (target == null) return;
 
-    var nodes = target.GetComponent<MeshRenderer>().Nodes;
+    var nodes = target.GetDrawable3D()!.Nodes;
 
     ImGui.Begin("Node View");
 

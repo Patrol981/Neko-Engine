@@ -14,10 +14,10 @@ public static class Collision3D {
     var collisionObjects = Application.Instance.GetEntitiesEnumerable().Where(x => x.Layer == layerMask);
 
     foreach (var coll in collisionObjects) {
-      if (!coll.HasComponent<Transform>()) continue;
+      if (!coll.HasComponent<TransformComponent>()) continue;
 
-      var collTransform = coll.GetComponent<Transform>();
-      var collMesh = coll.GetComponent<MeshRenderer>();
+      var collTransform = coll.GetTransform()!;
+      var collMesh = coll.GetDrawable3D()!;
 
       var aabb = collMesh.AABB;
       float sqrDist = SquaredDistancePointAABB(

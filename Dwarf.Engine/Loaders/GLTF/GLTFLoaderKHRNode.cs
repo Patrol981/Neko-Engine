@@ -1,5 +1,6 @@
 using System.Numerics;
 using Dwarf.AbstractionLayer;
+using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
 using Dwarf.Math;
 using Dwarf.Rendering;
@@ -14,7 +15,7 @@ using Node = glTFLoader.Schema.Node;
 namespace Dwarf.Loaders;
 
 public static partial class GLTFLoaderKHR {
-  public unsafe static Task<MeshRenderer> LoadGLTF(Application app, string path, int flip = 1) {
+  public unsafe static Task<MeshRenderer> LoadGLTF(Entity targetEntity, Application app, string path, int flip = 1) {
     var gltf = Interface.LoadModel(path);
     var glb = Interface.LoadBinaryBuffer(path);
 
@@ -22,7 +23,7 @@ public static partial class GLTFLoaderKHR {
     LoadTextures(app, path, gltf, glb, textureSamplers, flip, out var textureIds);
     LoadMaterials(gltf, out var materials);
 
-    var meshRenderer = new MeshRenderer(app.Device, app.Renderer);
+    var meshRenderer = new MeshRenderer(targetEntity, app.Device, app.Renderer);
     var scene = gltf.Scenes[gltf.Scene.HasValue ? gltf.Scene.Value : 0];
     for (int i = 0; i < scene.Nodes.Length; i++) {
       var node = gltf.Nodes[scene.Nodes[i]];
@@ -152,11 +153,11 @@ public static partial class GLTFLoaderKHR {
     }
   }
 
-  private static void LoadMaterials(Gltf gltf, out List<Material> materials) {
+  private static void LoadMaterials(Gltf gltf, out List<EntityComponentSystem.Material> materials) {
     materials = [];
 
     foreach (var mat in gltf.Materials) {
-      var material = new Material(mat.Name);
+      var material = new EntityComponentSystem.Material(mat.Name);
       material.DoubleSided = material.DoubleSided;
 
       if (mat.PbrMetallicRoughness != null) {
@@ -364,7 +365,7 @@ public static partial class GLTFLoaderKHR {
     byte[] globalBuffer,
     float globalScale,
     ref MeshRenderer meshRenderer,
-    ref List<Material> materials
+    ref List<EntityComponentSystem.Material> materials
   ) {
     Dwarf.Rendering.Renderer3D.Node newNode = new() {
       Index = nodeIdx,
@@ -421,13 +422,13 @@ public static partial class GLTFLoaderKHR {
 
       var indices = new List<uint>();
       var vertices = new List<Vertex>();
-      Material material = null!;
+      EntityComponentSystem.Material material = null!;
 
       for (int j = 0; j < gltfMesh.Primitives.Length; j++) {
         var primitive = gltfMesh.Primitives[j];
 
         int materialIdx = primitive.Material.HasValue ? primitive.Material.Value : -1;
-        material = materialIdx >= 0 && materialIdx < materials.Count ? materials[materialIdx] : new Material();
+        material = materialIdx >= 0 && materialIdx < materials.Count ? materials[materialIdx] : new EntityComponentSystem.Material();
 
         Vector2[] textureCoords = [];
         Vector3[] normals = [];
@@ -487,7 +488,7 @@ public static partial class GLTFLoaderKHR {
 
       newMesh.Vertices = [.. vertices];
       newMesh.Indices = [.. indices];
-      material ??= new Material();
+      material ??= new EntityComponentSystem.Material();
       newMesh.Material = material;
       newNode.Mesh = newMesh;
     }

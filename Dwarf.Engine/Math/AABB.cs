@@ -30,7 +30,7 @@ public class AABB {
     _min = min;
   }
 
-  public unsafe void CalculateOnFly(ColliderMesh colliderMesh, Transform transform) {
+  public unsafe void CalculateOnFly(ColliderMesh colliderMesh, TransformComponent transform) {
     if (colliderMesh == null || transform == null) return;
 
     int len = colliderMesh.Mesh.Vertices.Length;
@@ -38,8 +38,8 @@ public class AABB {
     Vector3* aabbTransformed = stackalloc Vector3[len];
     for (short i = 0; i < len; i++) {
       aabbTransformed[i] = colliderMesh.Mesh.Vertices[i].Position;
-      aabbTransformed[i] = Vector3.Transform(aabbTransformed[i], transform.RotationMatrix);
-      aabbTransformed[i] = Vector3.Transform(aabbTransformed[i], transform.ScaleMatrix);
+      aabbTransformed[i] = Vector3.Transform(aabbTransformed[i], transform.Rotation());
+      aabbTransformed[i] = Vector3.Transform(aabbTransformed[i], transform.Scale());
     }
 
     Max = MAX;
@@ -56,12 +56,12 @@ public class AABB {
     }
   }
 
-  public static AABB CalculateOnFlyWithMatrix(Mesh mesh, Transform transform) {
+  public static AABB CalculateOnFlyWithMatrix(Mesh mesh, TransformComponent transform) {
     Vector3[] aabbTransformed = new Vector3[mesh.Vertices.Length];
     for (short i = 0; i < aabbTransformed.Length; i++) {
       aabbTransformed[i] = mesh.Vertices[i].Position;
-      aabbTransformed[i] = Vector3.Transform(aabbTransformed[i], transform.RotationMatrix);
-      aabbTransformed[i] = Vector3.Transform(aabbTransformed[i], transform.ScaleMatrix);
+      aabbTransformed[i] = Vector3.Transform(aabbTransformed[i], transform.Rotation());
+      aabbTransformed[i] = Vector3.Transform(aabbTransformed[i], transform.Scale());
     }
 
     Vector3 max = new Vector3(1, -1, 1);

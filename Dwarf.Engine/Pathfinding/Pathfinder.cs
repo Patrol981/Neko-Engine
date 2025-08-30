@@ -11,21 +11,18 @@ public class Pathfinder : DwarfScript {
   private Grid _grid = null!;
 
   public static Entity Create(Vector2 WorldSize = default) {
-    var pathfindingManager = new Entity() {
-      Name = "PathfindingManager"
-    };
-    pathfindingManager.AddTransform();
-    pathfindingManager.AddComponent(new Grid());
-    pathfindingManager.AddComponent(new Pathfinder());
-    pathfindingManager.AddComponent(new PathRequestManager());
-    if (WorldSize != default) {
-      pathfindingManager.GetComponent<Grid>().GridSizeWorld = WorldSize;
-    }
+    var pathfindingManager = new Entity("PathfindingManager");
+    // pathfindingManager.AddComponent(new Grid());
+    // pathfindingManager.AddComponent(new Pathfinder());
+    // pathfindingManager.AddComponent(new PathRequestManager());
+    // if (WorldSize != default) {
+    //   pathfindingManager.GetComponent<Grid>().GridSizeWorld = WorldSize;
+    // }
     return pathfindingManager;
   }
 
   public override void Awake() {
-    _grid = Owner!.GetComponent<Grid>();
+    // _grid = Owner!.GetComponent<Grid>();
   }
 
   public void StartFindPath(Vector3 start, Vector3 end) {

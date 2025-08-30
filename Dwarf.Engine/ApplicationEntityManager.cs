@@ -21,6 +21,10 @@ public partial class Application {
   internal ConcurrentDictionary<Guid, AnimationController> AnimationControllers = [];
   internal ConcurrentDictionary<Guid, Rigidbody> Rigidbodies = [];
 
+  internal ConcurrentDictionary<Guid, PointLightComponent> Lights = [];
+
+  // internal ConcurrentDictionary<Guid, Camera> Cameras = [];
+
   private readonly Queue<Entity> _entitiesQueue = new();
   private readonly Queue<MeshRenderer> _reloadQueue = new();
   public readonly Lock EntitiesLock = new();

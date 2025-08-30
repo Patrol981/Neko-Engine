@@ -11,6 +11,7 @@ public class Entity {
   public bool Active { get; set; }
   public bool CanBeDisposed { get; set; }
   public bool IsImportant { get; set; }
+  public EntityLayer Layer { get; set; }
   internal bool Collected { get; set; }
 
   public Entity(string name) {
@@ -21,9 +22,10 @@ public class Entity {
     IsImportant = false;
     Active = true;
     Collected = false;
+    Layer = EntityLayer.Default;
   }
 
-  internal void Dispose(Application app) {
+  public void Dispose(Application app) {
     foreach (var comp in Components) {
       Type key = comp.Key;
       Guid id = comp.Value;

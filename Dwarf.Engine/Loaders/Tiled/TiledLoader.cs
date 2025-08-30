@@ -1,5 +1,6 @@
 using DotTiled;
 using DotTiled.Serialization;
+using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
 using Dwarf.Rendering.Renderer2D;
 using Dwarf.Rendering.Renderer2D.Components;
@@ -9,7 +10,7 @@ using Dwarf.Utils;
 namespace Dwarf.Loaders.Tiled;
 
 public static class TiledLoader {
-  public static Tilemap LoadTilemap(Application app, string tmxPath) {
+  public static Tilemap LoadTilemap(Entity owner, Application app, string tmxPath) {
     var loader = Loader.Default();
     var map = loader.LoadMap(Path.Combine(DwarfPath.AssemblyDirectory, tmxPath));
 
@@ -17,7 +18,7 @@ public static class TiledLoader {
 
     List<string> tileSources = [];
     List<BackgroundData> bgSources = [];
-    var tilemap = new Tilemap(app, new((int)map.Width, (int)map.Height), (int)map.TileHeight);
+    var tilemap = new Tilemap(owner, app, new((int)map.Width, (int)map.Height), (int)map.TileHeight);
 
     var idx = 0f;
 

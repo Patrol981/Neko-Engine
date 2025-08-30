@@ -163,10 +163,10 @@ public static class EntityHelper {
       // float az = a!.Entity.TryGetComponent<Transform>()?.Position.Z ?? 0;
       // float bz = b!.Entity.TryGetComponent<Transform>()?.Position.Z ?? 0;
 
-      float az = a!.Entity.GetTransform()?.Position.Z ?? 0;
-      float bz = b!.Entity.GetTransform()?.Position.Z ?? 0;
-      if (az < bz) return -1;
-      if (az > bz) return 1;
+      // float az = a!.Entity.GetTransform()?.Position.Z ?? 0;
+      //float bz = b!.Entity.GetTransform()?.Position.Z ?? 0;
+      //if (az < bz) return -1;
+      //if (az > bz) return 1;
       return 0;
     }
   }
