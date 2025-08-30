@@ -79,7 +79,7 @@ public partial class Application {
   private EventCallback? _onLoadPrimaryResources;
   private TextureManager _textureManager = null!;
 
-  private Entity _camera = default!;
+  internal Entity CameraEntity = default!;
   internal Camera CameraComponent = default!;
 
   // ubos
@@ -307,7 +307,7 @@ public partial class Application {
   }
 
   public void SetCamera(Entity camera) {
-    _camera = camera;
+    CameraEntity = camera;
   }
   #region RESOURCES
   private unsafe Task InitResources() {
@@ -459,22 +459,22 @@ public partial class Application {
       );
 
     float aspect = Renderer.AspectRatio;
-    var cameraAsppect = _camera.GetCamera()?.Aspect;
+    var cameraAsppect = CameraEntity.GetCamera()?.Aspect;
     if (aspect != cameraAsppect && cameraAsppect != null) {
-      _camera.GetCamera()!.Aspect = aspect;
-      switch (_camera.GetCamera()?.CameraType) {
+      CameraEntity.GetCamera()!.Aspect = aspect;
+      switch (CameraEntity.GetCamera()?.CameraType) {
         case CameraType.Perspective:
-          _camera.GetCamera()?.SetPerspectiveProjection(0.1f, 100f);
+          CameraEntity.GetCamera()?.SetPerspectiveProjection(0.1f, 100f);
           break;
         case CameraType.Orthographic:
-          _camera.GetCamera()?.SetOrthograpicProjection();
+          CameraEntity.GetCamera()?.SetOrthograpicProjection();
           break;
         default:
           break;
       }
     }
 
-    var camera = _camera.GetCamera();
+    var camera = CameraEntity.GetCamera();
     nint commandBuffer = IntPtr.Zero;
 
     if (camera != null) {
@@ -494,9 +494,9 @@ public partial class Application {
       _currentFrame.TextureManager = _textureManager;
       _currentFrame.ImportantEntity = Entities.Where(x => x.IsImportant).FirstOrDefault() ?? null!;
 
-      _ubo->Projection = _camera.GetCamera()?.GetProjectionMatrix() ?? Matrix4x4.Identity;
-      _ubo->View = _camera.GetCamera()?.GetViewMatrix() ?? Matrix4x4.Identity;
-      _ubo->CameraPosition = _camera.GetTransform()?.Position ?? Vector3.Zero;
+      _ubo->Projection = CameraEntity.GetCamera()?.GetProjectionMatrix() ?? Matrix4x4.Identity;
+      _ubo->View = CameraEntity.GetCamera()?.GetViewMatrix() ?? Matrix4x4.Identity;
+      _ubo->CameraPosition = CameraEntity.GetTransform()?.Position ?? Vector3.Zero;
       _ubo->Fov = 60;
       _ubo->ImportantEntityPosition = _currentFrame.ImportantEntity?.GetTransform()?.Position ?? Vector3.Zero;
       _ubo->ImportantEntityPosition.Z += 0.5f;
