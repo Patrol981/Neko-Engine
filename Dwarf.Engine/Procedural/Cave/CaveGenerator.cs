@@ -511,15 +511,15 @@ public class CaveGenerator {
   public void GenerateMap(Application app, string topTexture, string wallTexture, ref Entity dstTarget) {
     GenerateMap(app.Device, out var cave, out var wall);
 
-    var meshRenderer = new MeshRenderer(app.Device, app.Renderer);
-    meshRenderer.AddLinearNode(new() { Mesh = cave });
-    meshRenderer.AddLinearNode(new() { Mesh = wall });
+    // var meshRenderer = new MeshRenderer(app.Device, app.Renderer);
+    // meshRenderer.AddLinearNode(new() { Mesh = cave });
+    // meshRenderer.AddLinearNode(new() { Mesh = wall });
 
-    dstTarget.AddComponent(meshRenderer);
-    dstTarget.GetComponent<MeshRenderer>().Init(AABBFilter.Terrain);
-    dstTarget.GetComponent<MeshRenderer>().BindToTexture(app.TextureManager, topTexture, 0);
-    dstTarget.GetComponent<MeshRenderer>().BindToTexture(app.TextureManager, wallTexture, 1);
-    dstTarget.GetComponent<MeshRenderer>().FilterMeInShader = true;
+    // dstTarget.AddComponent(meshRenderer);
+    // dstTarget.GetComponent<MeshRenderer>().Init(AABBFilter.Terrain);
+    // dstTarget.GetComponent<MeshRenderer>().BindToTexture(app.TextureManager, topTexture, 0);
+    // dstTarget.GetComponent<MeshRenderer>().BindToTexture(app.TextureManager, wallTexture, 1);
+    // dstTarget.GetComponent<MeshRenderer>().FilterMeInShader = true;
 
     // dstTarget.AddRigidbody(PrimitiveType.Convex, true, false);
     // dstTarget.GetComponent<MeshRenderer>().BindMultipleModelPartsToTexture(app.TextureManager, textureName);

@@ -8,20 +8,21 @@ using Dwarf.Pathfinding.AStar;
 using Dwarf.Rendering.Renderer3D.Animations;
 
 namespace Dwarf.Pathfinding;
+
 public class Unit : DwarfScript {
   private float _speed = 0.5f;
   private Vector3[] _path = [];
   private int _targetIndex;
-  private Transform _transform = null!;
+  private TransformComponent _transform = null!;
   private AnimationController? _animationController;
 
   public override void Awake() {
-    var hasTransform = Owner!.HasComponent<Transform>();
+    var hasTransform = Owner!.HasComponent<TransformComponent>();
     if (!hasTransform) {
-      Owner!.AddComponent(new Transform());
+      Owner!.AddComponent(new TransformComponent());
     }
-    _transform = Owner!.GetComponent<Transform>();
-    _animationController = Owner!.TryGetComponent<AnimationController>();
+    _transform = Owner!.GetTransform()!;
+    _animationController = Owner!.GetAnimationController();
   }
 
   public override void Start() {
@@ -97,7 +98,7 @@ public class Unit : DwarfScript {
         currentWaypoint = _path[currentWaypointIndex];
       }
 
-      _transform.Position = Transform.MoveTowards(_transform.Position, currentWaypoint, Time.StopwatchDelta);
+      _transform.Position = _transform.MoveTowards(_transform.Position, currentWaypoint, Time.StopwatchDelta);
       // _transform.Position = Vector3.Lerp(_transform.Position, currentWaypoint, _speed * Time.DeltaTime);
       yield return null;
     }
@@ -123,7 +124,7 @@ public class Unit : DwarfScript {
         }
         currentWaypoint = _path[currentWaypointIndex];
       }
-      _transform.Position = Transform.MoveTowards(_transform.Position, currentWaypoint, _speed * Time.DeltaTime);
+      _transform.Position = _transform.MoveTowards(_transform.Position, currentWaypoint, _speed * Time.DeltaTime);
       yield return null;
     }
   }
@@ -151,7 +152,7 @@ public class Unit : DwarfScript {
         currentWaypoint = _path[_targetIndex];
         _transform.LookAtFixed(currentWaypoint);
       }
-      _transform.Position = Transform.MoveTowards(_transform.Position, currentWaypoint, _speed * Time.DeltaTime);
+      _transform.Position = _transform.MoveTowards(_transform.Position, currentWaypoint, _speed * Time.DeltaTime);
       yield return null;
     }
   }

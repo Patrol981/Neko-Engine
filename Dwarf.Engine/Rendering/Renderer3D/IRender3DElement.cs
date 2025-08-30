@@ -23,7 +23,7 @@ public interface IRender3DElement : IDrawable {
   Matrix4x4[] InverseMatrices { get; }
   VkDescriptorSet SkinDescriptor { get; }
   void BuildDescriptors(IDescriptorSetLayout descriptorSetLayout, IDescriptorPool descriptorPool);
-  Entity GetOwner();
+  Entity Owner { get; }
   Guid GetTextureIdReference(int index = 0);
   float CalculateHeightOfAnModel();
   AABB AABB { get; }

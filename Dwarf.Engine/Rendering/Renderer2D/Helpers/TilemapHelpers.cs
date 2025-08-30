@@ -1,4 +1,5 @@
 using System.Numerics;
+using Dwarf.EntityComponentSystem;
 using Dwarf.Math;
 using Dwarf.Rendering.Renderer2D.Components;
 using Dwarf.Rendering.Renderer2D.Models;
@@ -20,7 +21,7 @@ public static class TilemapHelpers {
     int w = collTimemap.Tiles.GetLength(0), h = collTimemap.Tiles.GetLength(1);
     var tileSize = tilemap.TileSize;
     var edges = new List<Edge>();
-    var scale = tilemap.Owner.GetComponent<Transform>().Scale;
+    var scale = tilemap.Entity.GetTransform()!.Scale;
 
     void AddEdge(int x1, int y1, int x2, int y2) {
       var A = new Vector2(x1 * scale.X, y1 * scale.Y) * tileSize;
@@ -49,7 +50,7 @@ public static class TilemapHelpers {
   public static List<(Vector2, Vector2)> ExtractAABBs(this Tilemap tilemap) {
     var list = new List<(Vector2, Vector2)>();
     var targetLayer = tilemap.CollisionLayer;
-    var tilemapTransform = tilemap.Owner.GetComponent<Transform>();
+    var tilemapTransform = tilemap.Entity.GetTransform();
 
     for (int y = 0; y < targetLayer.Tiles.GetLength(1); y++) {
       for (int x = 0; x < targetLayer.Tiles.GetLength(0); x++) {
@@ -58,7 +59,7 @@ public static class TilemapHelpers {
 
         float pixelsPerUnit = tilemap.TileSize * 10;
 
-        float worldX = tile.X * (tilemap.TileSize / pixelsPerUnit) * tilemapTransform.Scale.X + tilemapTransform.Position.X;
+        float worldX = tile.X * (tilemap.TileSize / pixelsPerUnit) * tilemapTransform!.Scale.X + tilemapTransform.Position.X;
         float worldY = tile.Y * (tilemap.TileSize / pixelsPerUnit) * tilemapTransform.Scale.Y + tilemapTransform.Position.Y;
 
         float tileSizeWorld = (float)tilemap.TileSize / pixelsPerUnit * tilemapTransform.Scale.X;

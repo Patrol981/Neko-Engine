@@ -72,7 +72,7 @@ public class JoltBodyWrapper : IPhysicsBody {
 
   public object ColldierMeshToPhysicsShape(Entity entity, Mesh colliderMesh) {
     List<Vector3> vertices = [];
-    var scale = entity.GetComponent<Transform>().Scale;
+    var scale = entity.GetTransform()!.Scale;
     foreach (var m in colliderMesh.Vertices) {
       Vertex v = new();
       v.Position.X = m.Position.X * scale.X;
@@ -113,8 +113,8 @@ public class JoltBodyWrapper : IPhysicsBody {
 
   public static (Entity?, Entity?) GetCollisionData(BodyID body1, BodyID body2) {
     var entities = Application.Instance.GetEntitiesEnumerable().Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody>());
-    var first = entities.Where(x => (BodyID)x.GetComponent<Rigidbody>().BodyInterface.BodyId == body1).FirstOrDefault();
-    var second = entities.Where(x => (BodyID)x.GetComponent<Rigidbody>().BodyInterface.BodyId == body2).FirstOrDefault();
+    var first = entities.Where(x => (BodyID)x.GetRigidbody()!.BodyInterface.BodyId == body1).FirstOrDefault();
+    var second = entities.Where(x => (BodyID)x.GetRigidbody()!.BodyInterface.BodyId == body2).FirstOrDefault();
 
     return (first, second);
   }

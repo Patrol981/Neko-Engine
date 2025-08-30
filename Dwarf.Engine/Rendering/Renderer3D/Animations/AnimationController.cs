@@ -6,19 +6,22 @@ using Dwarf.Rendering.Renderer3D;
 
 namespace Dwarf.Rendering.Renderer3D.Animations;
 
-public class AnimationController : Component {
+public class AnimationController {
   private MeshRenderer _meshRenderer;
   private readonly Dictionary<string, Animation> _animations = [];
   // private Animation _currentAnimation = null!;
   private readonly float _tickRate = 0.0f;
   private List<(Animation Animation, float Weight)> _activeAnimations = [];
 
-  public AnimationController() {
-    var mr = Owner?.TryGetComponent<MeshRenderer>();
+  public Entity Owner { get; init; }
+
+  public AnimationController(Entity owner) {
+    Owner = owner;
+    var mr = Owner.GetDrawable3D() as MeshRenderer;
     if (mr != null) {
       _meshRenderer = mr;
     } else {
-      _meshRenderer = new MeshRenderer();
+      _meshRenderer = new MeshRenderer(owner);
     }
     _tickRate = 1.0f / Application.Instance.Window.RefreshRate;
   }

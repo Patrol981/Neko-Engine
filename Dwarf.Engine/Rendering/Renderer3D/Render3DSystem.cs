@@ -179,7 +179,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
         continue;
 
       var mesh = node.Mesh;
-      var owner = node.ParentRenderer.GetOwner();
+      var owner = node.ParentRenderer.Owner;
       var transform = owner.GetTransform();
       var material = owner.GetMaterial();
 
@@ -222,7 +222,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     // ---------- Animation update (main thread only) ----------
     for (int i = 0; i < nodeObjectsSkinned.Count; i++) {
       var n = nodeObjectsSkinned[i].Key;
-      n.ParentRenderer.GetOwner().GetAnimationController()?.Update(n);
+      n.ParentRenderer.Owner.GetAnimationController()?.Update(n);
     }
 
     // ---------- Single-pass outputs + group counts (no LINQ) ----------
@@ -421,7 +421,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalSimpleIndexBuffer!, 0);
 
     for (int i = 0; i < nodes.Length; i++) {
-      if (nodes[i].ParentRenderer.GetOwner().CanBeDisposed || !nodes[i].ParentRenderer.GetOwner().Active) continue;
+      if (nodes[i].ParentRenderer.Owner.CanBeDisposed || !nodes[i].ParentRenderer.Owner.Active) continue;
       if (!nodes[i].ParentRenderer.FinishedInitialization) continue;
 
       uint thisCount = (uint)nodes[i].Mesh!.Indices.Length;
@@ -465,7 +465,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     for (int i = 0; i < nodes.Length; i++) {
       uint thisCount = (uint)nodes[i].Mesh!.Indices.Length;
 
-      if (!nodes[i].ParentRenderer.GetOwner().Active || nodes[i].ParentRenderer.GetOwner().CanBeDisposed || nodes[i].Mesh?.IndexBuffer == null) {
+      if (!nodes[i].ParentRenderer.Owner.Active || nodes[i].ParentRenderer.Owner.CanBeDisposed || nodes[i].Mesh?.IndexBuffer == null) {
         indexOffset += thisCount;
         continue;
       }

@@ -1,5 +1,5 @@
 using System.Numerics;
-using Dwarf.EntityComponentSystemRewrite;
+using Dwarf.EntityComponentSystem;
 using Dwarf.Rendering;
 
 namespace Dwarf.Physics.Interfaces;

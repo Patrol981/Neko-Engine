@@ -18,7 +18,7 @@ public class TilemapLayer : IDrawable2D {
   public TileInfo[,] Tiles { get; set; }
   public bool IsCollision { get; init; }
   public bool DescriptorBuilt => throw new NotImplementedException();
-  public EntityComponentSystemRewrite.Entity Entity => _parent.Entity;
+  public Entity Entity => _parent.Entity;
   public bool Active => _parent.Entity.Active;
   public ITexture Texture => LayerTexture;
   public ITexture[] SpriteSheet => [LayerTexture];
@@ -35,7 +35,14 @@ public class TilemapLayer : IDrawable2D {
   public IDrawable2D[] Children => [];
   public float LocalZDepth { get; set; }
 
-  public TilemapLayer(Application app, Tilemap parent, TileInfo[,] tiles, string path, bool isCollision, float zDepth) {
+  public TilemapLayer(
+    Application app,
+    Tilemap parent,
+    TileInfo[,] tiles,
+    string path,
+    bool isCollision,
+    float zDepth
+  ) {
     _app = app;
     _parent = parent;
     Tiles = tiles;

@@ -4,7 +4,7 @@ public class DwarfScript : ICloneable, IDisposable {
   protected bool DidAwake { get; private set; }
   protected bool DidStart { get; private set; }
 
-  public Entity OwnerNew { get; internal set; } = default!;
+  public Entity Owner { get; internal set; } = default!;
 
   public virtual void Start() {
     if (DidStart) return;

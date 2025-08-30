@@ -34,13 +34,12 @@ public static class PerfMonitor {
   public static void ChangeDebugVisiblity() {
     s_debug = !s_debug;
     var entities = Application.Instance.GetEntities();
-    var debugObjects = entities.DistinctInterface<IDebugRenderObject>();
+    var debugObjects = Application.Instance.DebugMeshes.Values.ToArray();
     foreach (var entity in debugObjects) {
-      var e = entity.GetDrawable<IDebugRenderObject>() as IDebugRenderObject;
       if (s_debug) {
-        e?.Enable();
+        entity?.Enable();
       } else {
-        e?.Disable();
+        entity?.Disable();
       }
     }
   }

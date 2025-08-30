@@ -1,6 +1,6 @@
 using System.Numerics;
 using DotTiled;
-using Dwarf.EntityComponentSystemRewrite;
+using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
 using Dwarf.Hammer;
 using Dwarf.Hammer.Models;
@@ -132,7 +132,7 @@ public class HammerBodyWrapper : IPhysicsBody2D {
   }
 
   public static (Rigidbody2D?, Rigidbody2D?) GetCollisionData(BodyId body1, BodyId body2) {
-    var entities = Application.Instance.NewEntities.Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody2D>());
+    var entities = Application.Instance.Entities.Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody2D>());
     var first = entities.Where(x => (BodyId)x.GetRigidbody2D()!.PhysicsBody2D.BodyId == body1).FirstOrDefault()?.GetRigidbody2D();
     var second = entities.Where(x => (BodyId)x.GetRigidbody2D()!.PhysicsBody2D.BodyId == body2).FirstOrDefault()?.GetRigidbody2D();
 
@@ -140,7 +140,7 @@ public class HammerBodyWrapper : IPhysicsBody2D {
   }
 
   public static Rigidbody2D? GetCollisionData(BodyId body1) {
-    var entity = Application.Instance.NewEntities
+    var entity = Application.Instance.Entities
       .Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody2D>())
       .Where(x => (BodyId)x.GetRigidbody2D()!.PhysicsBody2D.BodyId == body1)
       .SingleOrDefault()?

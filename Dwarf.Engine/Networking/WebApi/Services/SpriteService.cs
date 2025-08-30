@@ -1,3 +1,4 @@
+using Dwarf.EntityComponentSystem;
 using Dwarf.Networking.WebApi.Interfaces;
 using Dwarf.Rendering.Renderer2D.Components;
 using Microsoft.Extensions.Logging;
@@ -15,10 +16,10 @@ public class SpriteService : ISpriteService {
 
   public byte[] GetSpriteImage(Guid entityId) {
     var targetEntity = _app.GetEntitiesEnumerable()
-      .Where(x => x.EntityID == entityId)
+      .Where(x => x.Id == entityId)
       .Single();
 
-    var spriteRenderer = targetEntity.TryGetComponent<SpriteRenderer>();
+    var spriteRenderer = targetEntity.GetDrawable2D() as SpriteRenderer;
     var sprite = spriteRenderer?.SpriteSheet[spriteRenderer.CurrentSprite];
 
     return sprite?.TextureData ?? [];

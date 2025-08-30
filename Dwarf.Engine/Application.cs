@@ -516,7 +516,7 @@ public partial class Application {
       ReadOnlySpan<Entity> entities = Entities.ToArray();
 
       if (Systems.PointLightSystem != null) {
-        Systems.PointLightSystem.Update(entities, out var pointLights);
+        Systems.PointLightSystem.Update(Lights.Values.ToArray(), out var pointLights);
         if (pointLights.Length > 1) {
           _ubo->PointLightsLength = pointLights.Length;
           fixed (PointLight* pPointLights = pointLights) {
