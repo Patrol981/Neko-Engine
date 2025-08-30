@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Physics;
+using Dwarf.Procedural;
 using Dwarf.Rendering.Renderer2D.Components;
 using Dwarf.Rendering.Renderer2D.Interfaces;
 using Dwarf.Rendering.Renderer3D;
@@ -20,6 +21,7 @@ public partial class Application {
   internal ConcurrentDictionary<Guid, MaterialComponent> Materials = [];
   internal ConcurrentDictionary<Guid, AnimationController> AnimationControllers = [];
   internal ConcurrentDictionary<Guid, Rigidbody> Rigidbodies = [];
+  internal ConcurrentDictionary<Guid, Terrain3D> TerrainMeshes = [];
 
   internal ConcurrentDictionary<Guid, PointLightComponent> Lights = [];
 

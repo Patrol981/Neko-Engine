@@ -44,6 +44,7 @@ public static class Frustum {
     nodes = [];
 
     foreach (var entity in entities) {
+      if (entity.Owner.CanBeDisposed) continue;
       nodes.AddRange([.. entity.MeshedNodes]);
     }
   }
