@@ -233,16 +233,13 @@ public static class EntityExtensions {
 
   public static Camera? GetCamera(this Entity entity) {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
-    if (entity.Components.TryGetValue(typeof(Camera), out _)) {
-      var result = Application.Instance.CameraComponent;
-      return result;
-    } else {
-      return null;
-    }
+    var result = Application.Instance.CameraComponent;
+    return result;
   }
 
   public static void AddCamera(this Entity entity, Camera camera) {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+    Application.Instance.CameraEntity = entity;
     Application.Instance.CameraComponent = camera;
   }
 
