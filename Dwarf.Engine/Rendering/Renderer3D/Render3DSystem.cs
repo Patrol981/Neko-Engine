@@ -222,7 +222,9 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     // ---------- Animation update (main thread only) ----------
     for (int i = 0; i < nodeObjectsSkinned.Count; i++) {
       var n = nodeObjectsSkinned[i].Key;
-      n.ParentRenderer.Owner.GetAnimationController()?.Update(n);
+      var owner = n.ParentRenderer.Owner;
+      if (owner.CanBeDisposed) continue;
+      owner.GetAnimationController()?.Update(n);
     }
 
     // ---------- Single-pass outputs + group counts (no LINQ) ----------

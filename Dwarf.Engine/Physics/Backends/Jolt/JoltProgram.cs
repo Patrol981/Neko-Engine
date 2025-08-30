@@ -142,6 +142,7 @@ public class JoltProgram : IPhysicsProgram {
 
   public void Dispose() {
     foreach (var body in Bodies) {
+      if (body.Key.Collected) continue;
       body.Value.Dispose();
       body.Key.GetRigidbody()?.Dispose();
     }
