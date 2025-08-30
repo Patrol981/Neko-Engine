@@ -7,6 +7,7 @@ public class Entity {
   public string Name;
   public Guid Id;
   public Dictionary<Type, Guid> Components;
+  public Dictionary<Guid, Type> Scripts;
 
   public bool Active { get; set; }
   public bool CanBeDisposed { get; set; }
@@ -18,6 +19,7 @@ public class Entity {
     Name = name;
     Id = Guid.NewGuid();
     Components = [];
+    Scripts = [];
     CanBeDisposed = false;
     IsImportant = false;
     Active = true;

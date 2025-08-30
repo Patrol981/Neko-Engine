@@ -23,6 +23,19 @@ public static class TransformComponentExtensions {
     transform.Rotation.X = pitch;
   }
 
+  public static Vector3 LookAt(Vector3 position, TransformComponent transform) {
+    var rotation = Vector3.Zero;
+    var direction = position - transform.Position;
+    direction = Vector3.Normalize(direction);
+    var yaw = MathF.Atan2(-direction.X, -direction.Z);
+    yaw = Converter.RadiansToDegrees(yaw);
+    var pitch = MathF.Asin(direction.Y);
+    pitch = -Converter.RadiansToDegrees(pitch);
+    rotation.Y = yaw;
+    rotation.X = pitch;
+    return rotation;
+  }
+
   /// <summary>
   /// Sets Transform euler angle to given position only by Y axis
   /// </summary>

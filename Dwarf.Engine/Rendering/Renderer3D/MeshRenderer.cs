@@ -471,4 +471,6 @@ public class MeshRenderer : IRender3DElement, ICollision {
     }
   }
   public float Radius { get; private set; }
+
+  List<Animation> IRender3DElement.Animations => Animations;
 }
