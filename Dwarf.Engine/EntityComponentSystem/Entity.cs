@@ -1,5 +1,9 @@
+using Dwarf.Extensions.Logging;
 using Dwarf.Physics;
+using Dwarf.Procedural;
 using Dwarf.Rendering.Renderer2D.Interfaces;
+using Dwarf.Rendering.Renderer3D;
+using Dwarf.Rendering.Renderer3D.Animations;
 
 namespace Dwarf.EntityComponentSystem;
 
@@ -7,7 +11,6 @@ public class Entity {
   public string Name;
   public Guid Id;
   public Dictionary<Type, Guid> Components;
-  public Dictionary<Guid, Type> Scripts;
 
   public bool Active { get; set; }
   public bool CanBeDisposed { get; set; }
@@ -19,7 +22,6 @@ public class Entity {
     Name = name;
     Id = Guid.NewGuid();
     Components = [];
-    Scripts = [];
     CanBeDisposed = false;
     IsImportant = false;
     Active = true;
@@ -32,10 +34,13 @@ public class Entity {
       Type key = comp.Key;
       Guid id = comp.Value;
 
-      if (key == typeof(DwarfScript)) {
+      Logger.Warn($"[ENTITY] {key}");
+
+      if (typeof(DwarfScript).IsAssignableFrom(key)) {
         if (app.Scripts.TryGetValue(id, out var dwarfScript)) {
           dwarfScript.Dispose();
           app.Scripts.Remove(id, out _);
+          Logger.Warn($"[ENTITY] Removing {dwarfScript.GetType().Name}");
         }
       } else if (key == typeof(TransformComponent)) {
         if (app.TransformComponents.TryGetValue(id, out _)) {
@@ -55,6 +60,33 @@ public class Entity {
         if (app.DebugMeshes.TryGetValue(id, out var colliderMesh)) {
           colliderMesh.Dispose();
           app.DebugMeshes.Remove(id, out _);
+        }
+      } else if (key == typeof(IRender3DElement)) {
+        if (app.Drawables3D.TryGetValue(id, out var renderable)) {
+          renderable.Dispose();
+          app.Drawables3D.Remove(id, out _);
+          // Logger.Warn($"[ENTITY] REMOVING MESH");
+        }
+      } else if (key == typeof(MaterialComponent)) {
+        if (app.Materials.TryGetValue(id, out var material)) {
+          app.Materials.Remove(id, out _);
+        }
+      } else if (key == typeof(AnimationController)) {
+        if (app.AnimationControllers.TryGetValue(id, out var animationController)) {
+          app.AnimationControllers.Remove(id, out _);
+        }
+      } else if (key == typeof(Rigidbody)) {
+        if (app.Rigidbodies.TryGetValue(id, out var rigidbody)) {
+          rigidbody.Dispose();
+          app.Rigidbodies.Remove(id, out _);
+        }
+      } else if (key == typeof(Terrain3D)) {
+        if (app.TerrainMeshes.TryGetValue(id, out var terrain)) {
+          app.TerrainMeshes.Remove(id, out _);
+        }
+      } else if (key == typeof(PointLightComponent)) {
+        if (app.Lights.TryGetValue(id, out var light)) {
+          app.Lights.Remove(id, out _);
         }
       }
     }
