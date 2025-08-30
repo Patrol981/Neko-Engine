@@ -103,7 +103,7 @@ public class SystemCollection : IDisposable {
     }
 
     if (_render2DSystem != null) {
-      var spriteEntities = app.Sprites.Values.ToArray();
+      var spriteEntities = app.Entities.FlattenDrawable2D();
       if (spriteEntities.Length < 1) return;
       var sizes = _render2DSystem.CheckSizes(spriteEntities);
       // var textures = _render2DSystem.CheckTextures(spriteEntities);
