@@ -2,6 +2,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 
 using Dwarf.AbstractionLayer;
+using Dwarf.EntityComponentSystem;
 using Dwarf.Vulkan;
 
 using Vortice.Vulkan;
@@ -222,7 +223,7 @@ public class Skybox : IDisposable {
     1.0f
   ];
   private readonly SkyboxMesh _mesh;
-  private readonly Transform _transform;
+  private readonly TransformComponent _transform;
   private readonly MaterialComponent _material;
 
   private VkPipelineConfigInfo _pipelineConfigInfo = null!;
@@ -308,7 +309,7 @@ public class Skybox : IDisposable {
     );
 
     var pushConstantData = new SkyboxBufferObject {
-      SkyboxMatrix = _transform.Matrix4,
+      SkyboxMatrix = _transform.Matrix(),
       SkyboxColor = _material.Color
     };
 

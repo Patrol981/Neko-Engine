@@ -16,8 +16,8 @@ public class PathRequestManager : DwarfScript {
 
   public override void Awake() {
     Instance = this;
-    _pathfinder = Owner!.GetComponent<Pathfinder>()!;
-    _grid = Owner!.GetComponent<Grid>();
+    // _pathfinder = Owner!.GetComponent<Pathfinder>()!;
+    // _grid = Owner!.GetComponent<Grid>();
   }
 
   public void PaintGuizmos() {

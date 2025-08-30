@@ -8,7 +8,7 @@ public class RenderTarget {
 
   public RenderTarget() {
     _entities = [];
-    _renderTargetCamera = new Camera(50, 1);
+    _renderTargetCamera = new Camera(null!, 50, 1);
   }
 
   public void AddRenderTarget(Entity entity) {

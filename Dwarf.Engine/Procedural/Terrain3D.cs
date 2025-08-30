@@ -7,7 +7,7 @@ using Dwarf.Rendering.Renderer3D;
 
 namespace Dwarf.Procedural;
 
-public class Terrain3D : Component {
+public class Terrain3D {
   const int HEIGHT = 512;
   const int WIDTH = 512;
 
@@ -35,10 +35,10 @@ public class Terrain3D : Component {
     _texturePath = texturePath != null ? texturePath : "./Resources/Textures/base/no_texture.png";
     var mesh = Generate(_app);
     SetupTexture(_app);
-    Owner!.AddComponent(new MeshRenderer(_app.Device, _app.Renderer));
-    Owner!.GetComponent<MeshRenderer>().AddLinearNode(new Node() { Mesh = mesh, });
-    Owner!.GetComponent<MeshRenderer>().Init();
-    Owner!.GetComponent<MeshRenderer>().BindToTexture(_app.TextureManager, _texturePath);
+    // Owner!.AddComponent(new MeshRenderer(_app.Device, _app.Renderer));
+    // Owner!.GetComponent<MeshRenderer>().AddLinearNode(new Node() { Mesh = mesh, });
+    // Owner!.GetComponent<MeshRenderer>().Init();
+    // Owner!.GetComponent<MeshRenderer>().BindToTexture(_app.TextureManager, _texturePath);
   }
 
   private Mesh Generate(Application app) {

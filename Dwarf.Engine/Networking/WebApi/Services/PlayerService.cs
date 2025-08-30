@@ -13,7 +13,7 @@ public class PlayerService : IPlayerService {
   }
 
   public Guid[] ListEntityIndices() {
-    return [.. _app.GetEntitiesEnumerable().Select(x => x.EntityID)];
+    return [.. _app.GetEntitiesEnumerable().Select(x => x.Id)];
   }
 
   public Task AddEntity() {

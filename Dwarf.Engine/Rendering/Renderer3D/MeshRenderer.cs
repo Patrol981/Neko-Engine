@@ -12,33 +12,47 @@ using Vortice.Vulkan;
 
 namespace Dwarf.Rendering.Renderer3D;
 
-public class MeshRenderer : Component, IRender3DElement, ICollision {
+public class MeshRenderer : IRender3DElement, ICollision {
   private readonly IDevice _device = null!;
   private readonly IRenderer _renderer = null!;
   private readonly AABB _mergedAABB = new();
 
   private VkDescriptorSet _skinDescriptor = VkDescriptorSet.Null;
 
-  public MeshRenderer() { }
+  public Entity Owner { get; internal set; }
 
-  public MeshRenderer(IDevice device, IRenderer renderer) {
+  public MeshRenderer(Entity owner) {
+    Owner = owner;
+  }
+
+  public MeshRenderer(Entity owner, IDevice device, IRenderer renderer) {
+    Owner = owner;
     _device = device;
     _renderer = renderer;
   }
 
-  public MeshRenderer(IDevice device, IRenderer renderer, Node[] nodes, Node[] linearNodes) {
+  public MeshRenderer(
+    Entity owner,
+    IDevice device,
+    IRenderer renderer,
+    Node[] nodes,
+    Node[] linearNodes
+  ) {
+    Owner = owner;
     _device = device;
     _renderer = renderer;
     Init(nodes, linearNodes);
   }
 
   public MeshRenderer(
+    Entity owner,
     IDevice device,
     IRenderer renderer,
     Node[] nodes,
     Node[] linearNodes,
     string fileName
   ) {
+    Owner = owner;
     _device = device;
     _renderer = renderer;
     FileName = fileName;
@@ -103,7 +117,7 @@ public class MeshRenderer : Component, IRender3DElement, ICollision {
   }
 
   public async void AddModelToTargetNode(string path, int idx, NodeInfo overrideInfo) {
-    var modelToAdd = await GLTFLoaderKHR.LoadGLTF(Application.Instance, path);
+    var modelToAdd = await GLTFLoaderKHR.LoadGLTF(Owner, Application.Instance, path);
     var target = NodeFromIndex(idx);
 
     var newLinear = LinearNodes.ToList();
@@ -437,7 +451,6 @@ public class MeshRenderer : Component, IRender3DElement, ICollision {
 
   public bool FilterMeInShader { get; set; }
 
-  public Entity GetOwner() => Owner!;
   public IRenderer Renderer => _renderer;
   public AABB[] AABBArray { get; private set; } = [];
 
@@ -451,8 +464,8 @@ public class MeshRenderer : Component, IRender3DElement, ICollision {
     // get => _mergedAABB;
     get {
       _mergedAABB.CalculateOnFly(
-        colliderMesh: Owner!.GetComponent<ColliderMesh>(),
-        transform: Owner!.GetComponent<Transform>()
+        colliderMesh: Owner.GetColliderMesh()!,
+        transform: Owner.GetTransform()!
       );
       return _mergedAABB;
     }

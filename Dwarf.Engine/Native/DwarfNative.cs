@@ -117,7 +117,7 @@ public static partial class DwarfNativeInterop {
 
     ImGui.Begin("Camera");
 
-    ImGui.Text($"Position {CameraState.GetCameraEntity()?.TryGetComponent<Transform>()?.Position}");
+    // ImGui.Text($"Position {CameraState.GetCameraEntity()?.TryGetComponent<Transform>()?.Position}");
     ImGui.Text($"Yaw {CameraState.GetCamera()?.Yaw}");
     ImGui.Text($"Pitch {CameraState.GetCamera()?.Pitch}");
 
@@ -171,11 +171,11 @@ public static partial class DwarfNativeInterop {
   ) {
     unsafe {
       Entity* entity = (Entity*)pEntity;
-      entity->AddTransform(
-        new(position.x, position.y, position.z),
-        new(rotation.x, rotation.y, rotation.z),
-        new(scale.x, scale.y, scale.z)
-      );
+      // entity->AddTransform(
+      //   new(position.x, position.y, position.z),
+      //   new(rotation.x, rotation.y, rotation.z),
+      //   new(scale.x, scale.y, scale.z)
+      // );
     }
   }
 
@@ -185,7 +185,7 @@ public static partial class DwarfNativeInterop {
   ) {
     unsafe {
       Entity* entity = (Entity*)pEntity;
-      entity->AddMaterial();
+      // entity->AddMaterial();
     }
   }
 
@@ -198,7 +198,7 @@ public static partial class DwarfNativeInterop {
     unsafe {
       string texturePath = Marshal.PtrToStringAnsi(pTexturePath) ?? "";
       Entity* entity = (Entity*)pEntity;
-      entity->AddPrimitive(texturePath, (PrimitiveType)primitiveType);
+      // entity->AddPrimitive(texturePath, (PrimitiveType)primitiveType);
     }
   }
 

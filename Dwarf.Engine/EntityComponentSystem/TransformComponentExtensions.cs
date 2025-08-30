@@ -90,7 +90,7 @@ public static class TransformComponentExtensions {
     transform.Rotation.Y = Clamp.ClampToClosestAngle(transform.Rotation.Y);
   }
 
-  public static Vector3 MoveTowards(Vector3 current, Vector3 target, float maxDistanceDelta) {
+  public static Vector3 MoveTowards(this TransformComponent transform, Vector3 current, Vector3 target, float maxDistanceDelta) {
     // Calculate the vector from current to target
     Vector3 toTarget = target - current;
 
@@ -106,7 +106,7 @@ public static class TransformComponentExtensions {
     return current + toTarget / distanceToTarget * maxDistanceDelta;
   }
 
-  public static Vector2 MoveTowards(Vector2 current, Vector2 target, float maxDistanceDelta) {
+  public static Vector2 MoveTowards(this TransformComponent transform, Vector2 current, Vector2 target, float maxDistanceDelta) {
     var toTarget = target - current;
     var distanceToTarget = toTarget.Length();
 
@@ -207,5 +207,57 @@ public static class TransformComponentExtensions {
     var right = new Vector3(modelMatrix[2, 0], modelMatrix[2, 1], modelMatrix[2, 2]);
     right = Vector3.Normalize(right);
     return right;
+  }
+
+  public static TransformComponent IncreasePosition(this TransformComponent transform, Vector3 position) {
+    transform.Position.X += position.X;
+    transform.Position.Y += position.Y;
+    transform.Position.Z += position.Z;
+    return transform;
+  }
+
+  public static TransformComponent IncreaseRotation(this TransformComponent transform, Vector3 rotation) {
+    transform.Rotation.X += rotation.X;
+    transform.Rotation.Y += rotation.Y;
+    transform.Rotation.Z += rotation.Z;
+
+    if (transform.Rotation.X > 360) {
+      var offset = transform.Rotation.X - 360;
+      transform.Rotation.X = 0 + offset;
+    }
+
+    if (transform.Rotation.Y > 360) {
+      var offset = transform.Rotation.Y - 360;
+      transform.Rotation.Y = 0 + offset;
+    }
+
+    if (transform.Rotation.Z > 360) {
+      var offset = transform.Rotation.Z - 360;
+      transform.Rotation.Z = 0 + offset;
+    }
+
+    return transform;
+  }
+
+  public static TransformComponent IncreaseRotationX(this TransformComponent transform, float value) {
+    transform.Rotation.X += value;
+
+    if (transform.Rotation.X > 360) {
+      var offset = transform.Rotation.X - 360;
+      transform.Rotation.X = 0 + offset;
+    }
+
+    return transform;
+  }
+
+  public static TransformComponent IncreaseRotationY(this TransformComponent transform, float value) {
+    transform.Rotation.Y += value;
+
+    if (transform.Rotation.Y > 360) {
+      var offset = transform.Rotation.Y - 360;
+      transform.Rotation.Y = 0 + offset;
+    }
+
+    return transform;
   }
 }

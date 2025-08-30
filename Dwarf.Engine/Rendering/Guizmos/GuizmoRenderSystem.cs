@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using Dwarf.AbstractionLayer;
+using Dwarf.EntityComponentSystem;
 using Dwarf.Globals;
 using Dwarf.Utils;
 using Dwarf.Vulkan;
@@ -76,7 +77,7 @@ public class GuizmoRenderSystem : SystemBase {
     for (int i = 0; i < tmp?.Length; i++) {
       unsafe {
         var color = tmp[i]?.Color ?? Vector3.One;
-        _bufferObject->ModelMatrix = tmp[i]?.Transform.Matrix4 ?? Matrix4x4.Identity;
+        _bufferObject->ModelMatrix = tmp[i]?.Transform.Matrix() ?? Matrix4x4.Identity;
         _bufferObject->GuizmoType = (int)GuizmoType.Circular;
         _bufferObject->ColorX = color.X;
         _bufferObject->ColorY = color.Y;

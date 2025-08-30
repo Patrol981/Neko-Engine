@@ -103,8 +103,7 @@ public static class EntityExtensions {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
     var app = Application.Instance;
     try {
-      var tilemap = TiledLoader.LoadTilemap(app, tmxPath);
-      tilemap.Entity = entity;
+      var tilemap = TiledLoader.LoadTilemap(entity, app, tmxPath);
       entity.AddDrawable2D(tilemap);
     } catch {
       throw;
@@ -112,9 +111,9 @@ public static class EntityExtensions {
   }
 
 
-  public static T? GetScript<T>(this Entity entity) where T : EntityComponentSystem.DwarfScript {
+  public static T? GetScript<T>(this Entity entity) where T : DwarfScript {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
-    if (entity.Components.TryGetValue(typeof(EntityComponentSystem.DwarfScript), out var guid)) {
+    if (entity.Components.TryGetValue(typeof(DwarfScript), out var guid)) {
       var result = Application.Instance.Scripts[guid];
       return (T?)result;
     } else {
@@ -136,15 +135,15 @@ public static class EntityExtensions {
       .ToArray();
   }
 
-  public static void AddScript(this Entity entity, EntityComponentSystem.DwarfScript script) {
+  public static void AddScript(this Entity entity, DwarfScript script) {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
     var guid = Guid.NewGuid();
     try {
-      entity.Components.TryAdd(typeof(EntityComponentSystem.DwarfScript), guid);
+      entity.Components.TryAdd(typeof(DwarfScript), guid);
       if (!Application.Instance.Scripts.TryAdd(guid, script)) {
         throw new Exception("Cannot add transform to list");
       }
-      script.OwnerNew = entity;
+      script.Owner = entity;
     } catch {
       throw;
     }
@@ -222,6 +221,16 @@ public static class EntityExtensions {
     }
   }
 
+  public static ColliderMesh? GetColliderMesh(this Entity entity) {
+    if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+    if (entity.Components.TryGetValue(typeof(ColliderMesh), out var guid)) {
+      var result = Application.Instance.DebugMeshes[guid];
+      return result;
+    } else {
+      return null;
+    }
+  }
+
   public static Camera? GetCamera(this Entity entity) {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
     if (entity.Components.TryGetValue(typeof(Camera), out _)) {
@@ -230,6 +239,11 @@ public static class EntityExtensions {
     } else {
       return null;
     }
+  }
+
+  public static void AddCamera(this Entity entity, Camera camera) {
+    if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+    Application.Instance.CameraComponent = camera;
   }
 
   public static MaterialComponent? GetMaterial(this Entity entity) {

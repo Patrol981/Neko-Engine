@@ -1,4 +1,4 @@
-using Dwarf.EntityComponentSystemRewrite;
+using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
 using Dwarf.Hammer;

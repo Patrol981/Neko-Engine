@@ -41,7 +41,7 @@ public class CollisionFile(List<CollisionFileInfo>? collisions) : IDisposable {
   public static List<CollisionFileInfo> FromRigidbodies(List<Entity> entities) {
     var rigid = entities
       .Where(x => x.HasComponent<Rigidbody>())
-      .Select(x => x.GetComponent<Rigidbody>())
+      .Select(x => x.GetRigidbody())
       .ToArray();
     var collInfo = new List<CollisionFileInfo>();
     foreach (var r in rigid) {
@@ -51,13 +51,14 @@ public class CollisionFile(List<CollisionFileInfo>? collisions) : IDisposable {
   }
 
   public static ReadOnlySpan<Entity> BuildRigidbodies(string yaml) {
-    var collBuilder = new EntityBuilder.CollisionBuilder();
-    var collInfo = Deserialize(yaml);
-    foreach (var coll in collInfo.Collisions) {
-      collBuilder.AddCollision(coll.Size, coll.Offset);
-    }
-    var colls = collBuilder.Build();
-    return colls;
+    // var collBuilder = new EntityBuilder.CollisionBuilder();
+    // var collInfo = Deserialize(yaml);
+    // foreach (var coll in collInfo.Collisions) {
+    //   collBuilder.AddCollision(coll.Size, coll.Offset);
+    // }
+    // var colls = collBuilder.Build();
+    // return colls;
+    return [];
   }
 
   public static void SaveToFile(string path, string data) {

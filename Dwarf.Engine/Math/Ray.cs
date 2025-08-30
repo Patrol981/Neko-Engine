@@ -125,9 +125,9 @@ public class Ray {
     var result = new Dictionary<Entity, RaycastHitResult>();
 
     foreach (var entity in entities.Where(x => !x.CanBeDisposed)) {
-      var enTransform = entity.TryGetComponent<Transform>();
+      var enTransform = entity.GetTransform();
       var enDistance = Vector3.Distance(
-        CameraState.GetCameraEntity().GetComponent<Transform>().Position,
+        CameraState.GetCameraEntity().GetTransform()!.Position,
         enTransform != null ? enTransform.Position : Vector3.Zero
       );
 
@@ -149,9 +149,9 @@ public class Ray {
 
     for (int i = 0; i < entities.Length; i++) {
       if (entities[i].CanBeDisposed) continue;
-      var enTransform = entities[i].TryGetComponent<Transform>();
+      var enTransform = entities[i].GetTransform();
       var enDistance = Vector3.Distance(
-        CameraState.GetCameraEntity().GetComponent<Transform>().Position,
+        CameraState.GetCameraEntity().GetTransform()!.Position,
         enTransform != null ? enTransform.Position : Vector3.Zero
       );
 
@@ -172,8 +172,8 @@ public class Ray {
 
     var rayData = GetRayInfo(camera, new(screenSize.Width, screenSize.Height));
 
-    var transform = entity.GetComponent<Transform>();
-    var model = entity.GetComponent<MeshRenderer>();
+    var transform = entity.GetTransform();
+    var model = entity.GetDrawable3D() as MeshRenderer;
 
     var collisionPoint = Vector3.Zero;
     var hitResult = new RaycastHitResult {
@@ -184,7 +184,7 @@ public class Ray {
     if (model == null || transform == null) return hitResult;
     if (model.AABBFilter != aabbFilter && model.AABBFilter != AABBFilter.None) return hitResult;
 
-    var modelMatrix = transform.Matrix4;
+    var modelMatrix = transform.Matrix();
     var positionWorldspace = new Vector3(modelMatrix[3, 0], modelMatrix[3, 1], modelMatrix[3, 2]);
     var delta = positionWorldspace - rayData.RayOrigin;
 

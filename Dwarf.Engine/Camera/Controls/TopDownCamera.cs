@@ -10,23 +10,23 @@ public class TopDownCamera : DwarfScript {
   }
   public unsafe void MoveByPC() {
     if (Input.GetKey(Scancode.D)) {
-      Owner!.GetComponent<Transform>().Position += Owner!.GetComponent<Camera>().Right * CameraState.GetCameraSpeed() * Time.DeltaTime;
+      Owner.GetTransform()!.Position += Owner.GetCamera()!.Right * CameraState.GetCameraSpeed() * Time.DeltaTime;
     }
     if (Input.GetKey(Scancode.A)) {
-      Owner!.GetComponent<Transform>().Position -= Owner!.GetComponent<Camera>().Right * CameraState.GetCameraSpeed() * Time.DeltaTime;
+      Owner.GetTransform()!.Position -= Owner.GetCamera()!.Right * CameraState.GetCameraSpeed() * Time.DeltaTime;
     }
     if (Input.GetKey(Scancode.W)) {
-      Owner!.GetComponent<Transform>().Position -= Owner!.GetComponent<Camera>().Up * CameraState.GetCameraSpeed() * Time.DeltaTime;
+      Owner.GetTransform()!.Position -= Owner.GetCamera()!.Up * CameraState.GetCameraSpeed() * Time.DeltaTime;
     }
     if (Input.GetKey(Scancode.S)) {
-      Owner!.GetComponent<Transform>().Position += Owner!.GetComponent<Camera>().Up * CameraState.GetCameraSpeed() * Time.DeltaTime;
+      Owner.GetTransform()!.Position += Owner.GetCamera()!.Up * CameraState.GetCameraSpeed() * Time.DeltaTime;
     }
 
     if (Input.GetKey(Scancode.E)) {
-      Owner!.GetComponent<Transform>().Position -= Owner!.GetComponent<Camera>().Front * CameraState.GetCameraSpeed() * Time.DeltaTime;
+      Owner.GetTransform()!.Position -= Owner.GetCamera()!.Front * CameraState.GetCameraSpeed() * Time.DeltaTime;
     }
     if (Input.GetKey(Scancode.Q)) {
-      Owner!.GetComponent<Transform>().Position += Owner!.GetComponent<Camera>().Front * CameraState.GetCameraSpeed() * Time.DeltaTime;
+      Owner.GetTransform()!.Position += Owner.GetCamera()!.Front * CameraState.GetCameraSpeed() * Time.DeltaTime;
     }
   }
 }

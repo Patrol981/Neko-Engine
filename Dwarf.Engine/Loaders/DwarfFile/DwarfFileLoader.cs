@@ -1,14 +1,15 @@
 using System.Text;
 using System.Text.Json;
+using Dwarf.EntityComponentSystem;
 using Dwarf.Rendering.Renderer3D;
 using Dwarf.Vulkan;
 
 namespace Dwarf.Loaders;
 
 public static class DwarfFileLoader {
-  public static MeshRenderer LoadMesh(Application app, string path) {
+  public static MeshRenderer LoadMesh(Entity entity, Application app, string path) {
     var dwarfFile = Load(path);
-    var meshRenderer = new MeshRenderer(app.Device, app.Renderer);
+    var meshRenderer = new MeshRenderer(entity, app.Device, app.Renderer);
 
     // Load Textures From binary file
     var stream = new FileStream($"./Resources/{dwarfFile.BinaryDataRef}", FileMode.Open);

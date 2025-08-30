@@ -14,28 +14,28 @@ public static class Frustum {
     Outside,
     Intersecting
   }
-  public static List<T> FilterObjectsByPlanes<T>(in Plane[] planes, Span<T> objects) where T : IRender3DElement {
-    var filteredObjects = new List<T>();
+  public static List<IRender3DElement> FilterObjectsByPlanes(in Plane[] planes, Span<IRender3DElement> objects) {
+    var filteredObjects = new List<IRender3DElement>();
 
-    foreach (var obj in objects) {
-      // var aabb = obj.GetOwner().GetComponent<MeshRenderer>().AABB;
-      // if (IsInAABBFrustum(
-      //     planes,
-      //     aabb.Min,
-      //     aabb.Max
-      //   )
-      // ) {
-      //   filteredObjects.Add(obj);
-      // }
-      if (IsInSphereFrustumOG(
-        planes,
-        obj.GetOwner().GetComponent<Transform>().Position,
-        obj.GetOwner().GetComponent<MeshRenderer>().Radius
-        )
-      ) {
-        filteredObjects.Add(obj);
-      }
-    }
+    // foreach (var obj in objects) {
+    //   // var aabb = obj.GetOwner().GetComponent<MeshRenderer>().AABB;
+    //   // if (IsInAABBFrustum(
+    //   //     planes,
+    //   //     aabb.Min,
+    //   //     aabb.Max
+    //   //   )
+    //   // ) {
+    //   //   filteredObjects.Add(obj);
+    //   // }
+    //   if (IsInSphereFrustumOG(
+    //     planes,
+    //     obj.Owner.GetComponent<Transform>().Position,
+    //     obj.
+    //     )
+    //   ) {
+    //     filteredObjects.Add(obj);
+    //   }
+    // }
 
     return filteredObjects;
   }
@@ -50,52 +50,52 @@ public static class Frustum {
 
   public static void FilterNodesByPlanes(in Plane[] planes, in List<Node> inNodes, out List<Node> outNodes) {
     outNodes = [];
-    Guizmos.Clear();
-    foreach (var node in inNodes) {
-      var owner = node.ParentRenderer.Owner;
-      if (owner.CanBeDisposed) continue;
-      var transform = owner.TryGetComponent<Transform>();
-      Debug.Assert(transform != null);
+    // Guizmos.Clear();
+    // foreach (var node in inNodes) {
+    //   var owner = node.ParentRenderer.Owner;
+    //   if (owner.CanBeDisposed) continue;
+    //   var transform = owner.TryGetComponent<Transform>();
+    //   Debug.Assert(transform != null);
 
-      // var globalScale = node.Scale;
-      // var transformedCenter = Vector4.Transform(new Vector4(node.Center, 1f), node.GetMatrix());
-      // var globalCenter = new Vector3(transformedCenter.X, transformedCenter.Y, transformedCenter.Z);
+    //   // var globalScale = node.Scale;
+    //   // var transformedCenter = Vector4.Transform(new Vector4(node.Center, 1f), node.GetMatrix());
+    //   // var globalCenter = new Vector3(transformedCenter.X, transformedCenter.Y, transformedCenter.Z);
 
-      var position = (-node.GetMatrix().Translation + transform.Position) - node.Center * 2;
+    //   var position = (-node.GetMatrix().Translation + transform.Position) - node.Center * 2;
 
-      // float maxScale = MathF.Max(MathF.Max(globalScale.X, globalScale.Y), globalScale.Z);
+    //   // float maxScale = MathF.Max(MathF.Max(globalScale.X, globalScale.Y), globalScale.Z);
 
-      if (node.Radius < 10) {
-        // Guizmos.AddCircular(position, new(node.Radius * 2), new(0, 0.7f, 0));
-      }
+    //   if (node.Radius < 10) {
+    //     // Guizmos.AddCircular(position, new(node.Radius * 2), new(0, 0.7f, 0));
+    //   }
 
 
-      // var result =
-      //   IsOnOrForwardPlane(planes[5], position, node.Radius);
-      // // IsOnOrForwardPlane(planes[4], globalCenter, node.Radius * (maxScale * 0.5f));
-      // // IsOnOrForwardPlane(planes[2], globalCenter, node.Radius * (maxScale * 0.5f)) &&
-      // // IsOnOrForwardPlane(planes[3], globalCenter, node.Radius * (maxScale * 0.5f)) &&
-      // // IsOnOrForwardPlane(planes[4], globalCenter, node.Radius * (maxScale * 0.5f)) &&
-      // // IsOnOrForwardPlane(planes[5], globalCenter, node.Radius * (maxScale * 0.5f));
+    //   // var result =
+    //   //   IsOnOrForwardPlane(planes[5], position, node.Radius);
+    //   // // IsOnOrForwardPlane(planes[4], globalCenter, node.Radius * (maxScale * 0.5f));
+    //   // // IsOnOrForwardPlane(planes[2], globalCenter, node.Radius * (maxScale * 0.5f)) &&
+    //   // // IsOnOrForwardPlane(planes[3], globalCenter, node.Radius * (maxScale * 0.5f)) &&
+    //   // // IsOnOrForwardPlane(planes[4], globalCenter, node.Radius * (maxScale * 0.5f)) &&
+    //   // // IsOnOrForwardPlane(planes[5], globalCenter, node.Radius * (maxScale * 0.5f));
 
-      // if (result) {
-      //   outNodes.Add(node);
-      // }
+    //   // if (result) {
+    //   //   outNodes.Add(node);
+    //   // }
 
-      var result = IsInSphereFrustum(planes, position, node.Radius * 2);
-      if (result == FrustumItersectionInfo.Inside || result == FrustumItersectionInfo.Intersecting) {
-        outNodes.Add(node);
-      }
-      // if (IsBoundingSphereInFrustum(planes, node.Center + transform.Position, node.Radius)) {
-      //   outNodes.Add(node);
-      // }
-      // if (IsInSphereFrustum(planes, position, node.Radius)) {
-      //   outNodes.Add(node);
-      // }
-      // if (IsInAABBFrustum(planes, node.BoundingVolume.Min * node.GetMatrix().Translation, node.BoundingVolume.Max * node.GetMatrix().Translation)) {
-      //   outNodes.Add(node);
-      // }
-    }
+    //   var result = IsInSphereFrustum(planes, position, node.Radius * 2);
+    //   if (result == FrustumItersectionInfo.Inside || result == FrustumItersectionInfo.Intersecting) {
+    //     outNodes.Add(node);
+    //   }
+    //   // if (IsBoundingSphereInFrustum(planes, node.Center + transform.Position, node.Radius)) {
+    //   //   outNodes.Add(node);
+    //   // }
+    //   // if (IsInSphereFrustum(planes, position, node.Radius)) {
+    //   //   outNodes.Add(node);
+    //   // }
+    //   // if (IsInAABBFrustum(planes, node.BoundingVolume.Min * node.GetMatrix().Translation, node.BoundingVolume.Max * node.GetMatrix().Translation)) {
+    //   //   outNodes.Add(node);
+    //   // }
+    // }
   }
 
   public static void FilterNodesByFog(in List<Node> inNodes, out List<Node> outNodes) {
@@ -106,9 +106,9 @@ public static class Frustum {
     foreach (var node in inNodes) {
       var owner = node.ParentRenderer.Owner;
       if (owner.CanBeDisposed) continue;
-      var transform = owner.TryGetComponent<Transform>();
+      var transform = owner.GetTransform();
       Debug.Assert(transform != null);
-      var matrix = node.GetMatrix() * transform.RotationMatrix * transform.PositionMatrix * transform.ScaleMatrix;
+      var matrix = node.GetMatrix() * transform.Rotation() * transform.Position() * transform.Scale();
       var position = matrix.Translation;
       if (Vector2.Distance(new(position.X, position.Z), new(iep.X, iep.Z)) <= fogValue + (node.Radius * 4)) {
         outNodes.Add(node);
@@ -191,7 +191,7 @@ public static class Frustum {
   public static void GetFrustrumBruh(out Plane[] planes) {
     var camera = CameraState.GetCamera();
     var viewProjection = camera.GetProjectionMatrix() * camera.GetViewMatrix();
-    var camPos = CameraState.GetCameraEntity().GetComponent<Transform>().Position;
+    var camPos = CameraState.GetCameraEntity().GetTransform()!.Position;
     var vertical = camera.Far * MathF.Atan(camera.Fov * 0.5f);
     var horizontal = vertical * camera.Aspect;
     var multiplier = camera.Far * camera.Front;
@@ -414,7 +414,7 @@ public static class Frustum {
         viewProjection.M44 - viewProjection.M43
     );
 
-    var camPos = CameraState.GetCameraEntity().GetComponent<Transform>().Position;
+    var camPos = CameraState.GetCameraEntity().GetTransform()!.Position;
     Guizmos.Clear();
 
     // Guizmos.AddCircular(camPos - (planes[5].Normal * planes[5].D), default, new(1, 0, 1));

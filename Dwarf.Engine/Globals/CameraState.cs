@@ -35,14 +35,14 @@ public static class CameraState {
 
   public static Camera GetCamera() {
     if (_camera == null) {
-      _camera = new Camera(float.NaN, float.NaN);
+      _camera = new Camera(null!, float.NaN, float.NaN);
     }
     return _camera;
   }
 
   public static Entity GetCameraEntity() {
     if (_cameraEntity == null) {
-      _cameraEntity = new Entity();
+      _cameraEntity = new Entity("camera");
     }
     return _cameraEntity;
   }

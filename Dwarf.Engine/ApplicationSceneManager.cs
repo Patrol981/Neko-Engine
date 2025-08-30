@@ -23,7 +23,7 @@ public partial class Application {
 
     Guizmos.Clear();
     Guizmos.Free();
-    foreach (var e in _entities) {
+    foreach (var e in Entities) {
       e.CanBeDisposed = true;
     }
 
@@ -35,8 +35,8 @@ public partial class Application {
     //   _entities = [];
     // }
 
-    Logger.Info($"Waiting for entities to dispose... [{_entities.Count}]");
-    if (_entities.Count > 0) {
+    Logger.Info($"Waiting for entities to dispose... [{Entities.Count}]");
+    if (Entities.Count > 0) {
       return;
     }
 
@@ -105,7 +105,7 @@ public partial class Application {
 
     await LoadEntities();
 
-    Logger.Info($"Loaded entities: {_entities?.Count}");
+    Logger.Info($"Loaded entities: {Entities?.Count}");
     Logger.Info($"Loaded textures: {_textureManager?.PerSceneLoadedTextures?.Count}");
 
     return Task.CompletedTask;

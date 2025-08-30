@@ -7,8 +7,10 @@ using Dwarf.Windowing;
 using OpenTK.Mathematics;
 
 namespace Dwarf;
+
 public class ThirdPersonCamera : DwarfScript {
   private Camera _camera;
+  private TransformComponent _transform = null!;
   private float _distanceFromTarget = 2.5f;
   private float _angleAroundTarget = 0f;
 
@@ -22,7 +24,8 @@ public class ThirdPersonCamera : DwarfScript {
   }
 
   public override void Awake() {
-    _camera = Owner!.GetComponent<Camera>();
+    _camera = Owner!.GetCamera()!;
+    _transform = Owner.GetTransform()!;
   }
 
   public override void Update() {
@@ -58,14 +61,13 @@ public class ThirdPersonCamera : DwarfScript {
     float offectX = (float)(horizontal * MathF.Sin(MathHelper.DegreesToRadians(theta)));
     float offsetZ = (float)(horizontal * MathF.Cos(MathHelper.DegreesToRadians(theta)));
 
-    var transform = Owner!.GetComponent<Transform>();
-    var targetPos = FollowTarget.GetComponent<Transform>().Position;
+    var targetPos = FollowTarget.GetTransform()!.Position;
 
     // Owner!.GetComponent<Transform>().Position.X = FollowTarget.GetComponent<Transform>().Position.X - offectX;
     // Owner!.GetComponent<Transform>().Position.Z = FollowTarget.GetComponent<Transform>().Position.Z - offsetZ;
     // Owner!.GetComponent<Transform>().Position.Y = FollowTarget.GetComponent<Transform>().Position.Y - vertical - 1.3f;
 
-    transform.Position = new(targetPos.X - offectX, targetPos.Y - vertical - 1.3f, targetPos.Z - offsetZ);
+    _transform.Position = new(targetPos.X - offectX, targetPos.Y - vertical - 1.3f, targetPos.Z - offsetZ);
   }
 
   private unsafe void HandleMovement() {

@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Dwarf.AbstractionLayer;
+using Dwarf.EntityComponentSystem;
 using Dwarf.Rendering.Renderer3D;
 using Dwarf.Utils;
 using Dwarf.Vulkan;
@@ -13,7 +14,7 @@ public class ShadowRenderSystem : SystemBase {
   public readonly Application _application;
 
   private Mesh _shadowMesh = null!;
-  private List<Transform> _positions = [];
+  private List<TransformComponent> _positions = [];
   private readonly unsafe ShadowPushConstant* _shadowPushConstant =
     (ShadowPushConstant*)Marshal.AllocHGlobal(Unsafe.SizeOf<ShadowPushConstant>());
 
@@ -51,7 +52,7 @@ public class ShadowRenderSystem : SystemBase {
   public void Update(Span<IRender3DElement> i3D) {
     _positions.Clear();
     for (int i = 0; i < i3D.Length; i++) {
-      _positions.Add(i3D[i].GetOwner().GetComponent<Transform>());
+      _positions.Add(i3D[i].Owner.GetTransform()!);
     }
   }
 
@@ -76,7 +77,7 @@ public class ShadowRenderSystem : SystemBase {
     }
 
     for (int i = 0; i < _positions.Count; i++) {
-      _shadowPushConstant->Transform = _positions[i].PositionMatrix;
+      _shadowPushConstant->Transform = _positions[i].Position();
       _shadowPushConstant->Radius = 1;
 
       vkCmdPushConstants(

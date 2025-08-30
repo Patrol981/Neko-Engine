@@ -4,7 +4,6 @@ using System.Runtime.InteropServices;
 
 using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
-using Dwarf.EntityComponentSystem.Lightning;
 using Dwarf.Utils;
 
 using Vortice.Vulkan;
@@ -14,7 +13,7 @@ using static Vortice.Vulkan.Vulkan;
 namespace Dwarf.Rendering.Lightning;
 
 public class PointLightSystem : SystemBase {
-  private Entity[] _lightsCache = [];
+  private PointLightComponent[] _lightsCache = [];
   private readonly unsafe PointLightPushConstant* _lightPushConstant =
     (PointLightPushConstant*)Marshal.AllocHGlobal(Unsafe.SizeOf<PointLightPushConstant>());
 
@@ -43,9 +42,7 @@ public class PointLightSystem : SystemBase {
     _device.WaitQueue();
   }
 
-  public unsafe void Update(ReadOnlySpan<Entity> entities, out PointLight[] lightData) {
-    var lights = entities.DistinctReadOnlySpan<PointLightComponent>();
-
+  public unsafe void Update(ReadOnlySpan<PointLightComponent> lights, out PointLight[] lightData) {
     if (lights.Length > 0) {
       _lightsCache = lights.ToArray();
     } else {
@@ -57,9 +54,9 @@ public class PointLightSystem : SystemBase {
     lightData = new PointLight[lights.Length];
 
     for (int i = 0; i < lights.Length; i++) {
-      var pos = lights[i].GetComponent<Transform>();
-      lightData[i].LightPosition = new Vector4(pos.Position, 1.0f);
-      lightData[i].LightColor = lights[i].GetComponent<PointLightComponent>().Color;
+      var pos = lights[i].Owner.GetTransform();
+      lightData[i].LightPosition = new Vector4(pos!.Position, 1.0f);
+      lightData[i].LightColor = lights[i].Color;
     }
   }
 
@@ -79,11 +76,10 @@ public class PointLightSystem : SystemBase {
     }
 
     for (int i = 0; i < _lightsCache.Length; i++) {
-      var light = _lightsCache[i].GetComponent<PointLightComponent>();
-      var pos = _lightsCache[i].GetComponent<Transform>();
+      var pos = _lightsCache[i].Owner.GetTransform();
       unsafe {
-        _lightPushConstant->Color = light.Color;
-        _lightPushConstant->Position = new Vector4(pos.Position, 1.0f);
+        _lightPushConstant->Color = _lightsCache[i].Color;
+        _lightPushConstant->Position = new Vector4(pos!.Position, 1.0f);
         _lightPushConstant->Radius = pos.Scale.X / 10;
 
         vkCmdPushConstants(

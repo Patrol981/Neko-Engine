@@ -80,7 +80,7 @@ public class Grid : DwarfScript {
     GridData = new Node[_gridSizeX, _gridSizeY];
     GridGuizmos = new Guizmo[_gridSizeX, _gridSizeY];
     var worldBottomLeft =
-      Owner!.GetComponent<Transform>().Position -
+      Owner!.GetTransform()!.Position -
       Vector3.UnitX * GridSizeWorld.X / 2 -
       Vector3.UnitZ * GridSizeWorld.Y / 2;
 
