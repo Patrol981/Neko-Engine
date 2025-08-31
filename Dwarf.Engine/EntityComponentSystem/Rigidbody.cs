@@ -1,18 +1,10 @@
 using System.Numerics;
 using Dwarf.AbstractionLayer;
-using Dwarf.EntityComponentSystem;
-using Dwarf.Extensions.Logging;
-using Dwarf.Globals;
 using Dwarf.Math;
+using Dwarf.Physics;
 using Dwarf.Rendering;
-using Dwarf.Rendering.Renderer3D;
-using Dwarf.Vulkan;
 
-using JoltPhysicsSharp;
-using Vortice.Vulkan;
-using static Dwarf.Physics.JoltConfig;
-
-namespace Dwarf.Physics;
+namespace Dwarf.EntityComponentSystem;
 
 public class Rigidbody : IDisposable {
   private readonly IDevice _device = null!;

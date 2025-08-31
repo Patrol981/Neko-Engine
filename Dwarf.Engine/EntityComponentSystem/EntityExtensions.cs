@@ -342,6 +342,16 @@ public static class EntityExtensions {
     return entity.Components.ContainsKey(typeof(T));
   }
 
+  public static bool HasAndImplementComponent<T1, T2>(
+    this Entity entity, T2? data
+  ) where T1 : class {
+    if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+    if (typeof(T2).IsAssignableFrom(typeof(T1))) {
+      return data is T1;
+    }
+    return false;
+  }
+
   public static void AddComponent<T>(this Entity entity, T data) {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
     var guid = Guid.NewGuid();
