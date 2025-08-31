@@ -1,18 +1,12 @@
 using System.Numerics;
-using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
-using Dwarf.Hammer.Models;
 using Dwarf.Math;
+using Dwarf.Physics;
 using Dwarf.Physics.Interfaces;
 using Dwarf.Rendering;
-using Dwarf.Rendering.Renderer2D.Components;
-using Dwarf.Rendering.Renderer2D.Helpers;
-using Dwarf.Rendering.Renderer2D.Interfaces;
-using Dwarf.Utils;
-using Vortice.Vulkan;
 
-namespace Dwarf.Physics;
+namespace Dwarf.EntityComponentSystem;
 
 public class Rigidbody2D : IDisposable, ICloneable {
   private readonly Application _app;

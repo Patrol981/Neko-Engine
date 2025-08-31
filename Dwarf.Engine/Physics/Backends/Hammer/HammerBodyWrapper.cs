@@ -8,6 +8,8 @@ using Dwarf.Physics.Interfaces;
 using Dwarf.Rendering;
 using Dwarf.Rendering.Renderer2D.Components;
 using Dwarf.Rendering.Renderer2D.Helpers;
+using Dwarf.Rendering.Renderer2D.Interfaces;
+using Dwarf.Rendering.Renderer3D;
 
 namespace Dwarf.Physics.Backends.Hammer;
 
@@ -70,7 +72,8 @@ public class HammerBodyWrapper : IPhysicsBody2D {
     object userData;
     Dwarf.Hammer.Enums.ObjectType objectType = Dwarf.Hammer.Enums.ObjectType.Sprite;
 
-    if (entity.HasComponent<Tilemap>()) {
+    var drawable = entity.GetDrawable2D();
+    if (entity.HasAndImplementComponent<Tilemap, IDrawable2D>(drawable)) {
       // var edges = tilemap.ExtractEgdges();
       // var hammerEdges = new List<Dwarf.Hammer.Structs.Edge>();
       // foreach (var edge in edges) {
@@ -81,7 +84,7 @@ public class HammerBodyWrapper : IPhysicsBody2D {
       //   });
       // }
 
-      var tilemap = entity.GetDrawable2D() as Tilemap;
+      var tilemap = drawable as Tilemap;
       var aabbs = tilemap!.ExtractAABBs();
 
       userData = aabbs;
