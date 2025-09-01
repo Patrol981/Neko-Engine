@@ -34,13 +34,10 @@ public class Entity {
       Type key = comp.Key;
       Guid id = comp.Value;
 
-      Logger.Warn($"[ENTITY] {key}");
-
       if (typeof(DwarfScript).IsAssignableFrom(key)) {
         if (app.Scripts.TryGetValue(id, out var dwarfScript)) {
           dwarfScript.Dispose();
           app.Scripts.Remove(id, out _);
-          Logger.Warn($"[ENTITY] Removing {dwarfScript.GetType().Name}");
         }
       } else if (key == typeof(TransformComponent)) {
         if (app.TransformComponents.TryGetValue(id, out _)) {
@@ -65,7 +62,6 @@ public class Entity {
         if (app.Drawables3D.TryGetValue(id, out var renderable)) {
           renderable.Dispose();
           app.Drawables3D.Remove(id, out _);
-          // Logger.Warn($"[ENTITY] REMOVING MESH");
         }
       } else if (key == typeof(MaterialComponent)) {
         if (app.Materials.TryGetValue(id, out var material)) {

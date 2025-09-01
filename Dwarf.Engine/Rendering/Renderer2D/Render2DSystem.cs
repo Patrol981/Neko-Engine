@@ -26,13 +26,14 @@ public class Render2DSystem : SystemBase {
   public int LastKnownElemCount { get; private set; } = 0;
 
   public Render2DSystem(
+    Application app,
     nint allocator,
     IDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     IPipelineConfigInfo configInfo = null!
-  ) : base(allocator, device, renderer, textureManager, configInfo) {
+  ) : base(app, allocator, device, renderer, textureManager, configInfo) {
     IDescriptorSetLayout[] descriptorSetLayouts = [
       externalLayouts["Global"],
       externalLayouts["SpriteData"],

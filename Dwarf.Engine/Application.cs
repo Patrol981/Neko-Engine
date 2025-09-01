@@ -537,30 +537,9 @@ public partial class Application {
 
       if (Systems.Render3DSystem != null) {
         Systems.Render3DSystem.Update(
-          i3D,
-          out var objectData,
-          out var skinnedObjects,
-          out var flatJoints
+          FrameInfo,
+          i3D
         );
-
-        fixed (ObjectData* pObjectData = objectData) {
-          StorageCollection.WriteBuffer(
-            "ObjectStorage",
-            frameIndex,
-            (nint)pObjectData,
-            (ulong)Unsafe.SizeOf<ObjectData>() * (ulong)objectData.Length
-          );
-        }
-
-        ReadOnlySpan<Matrix4x4> flatArray = [.. flatJoints];
-        fixed (Matrix4x4* pMatrices = flatArray) {
-          StorageCollection.WriteBuffer(
-            "JointsStorage",
-            frameIndex,
-            (nint)pMatrices,
-            (ulong)Unsafe.SizeOf<Matrix4x4>() * (ulong)flatArray.Length
-          );
-        }
       }
 
       if (Systems.Render2DSystem != null) {
