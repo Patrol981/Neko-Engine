@@ -77,46 +77,6 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
     }
   }
 
-  public void DrawNode(IntPtr commandBuffer, int vertexOffset, uint firstInstance = 0) {
-    if (!HasMesh || !Enabled) return;
-
-    if (Mesh!.HasIndexBuffer) {
-      ParentRenderer.Renderer.CommandList.DrawIndexed(commandBuffer, Mesh!.IndexCount, 1, 0, vertexOffset, firstInstance);
-    } else {
-      ParentRenderer.Renderer.CommandList.Draw(commandBuffer, Mesh!.VertexCount, 1, 0, firstInstance);
-    }
-  }
-
-  public void DrawNode(IntPtr commandBuffer, uint firstInstance = 0) {
-    if (!HasMesh || !Enabled) return;
-
-    if (Mesh!.HasIndexBuffer) {
-      ParentRenderer.Renderer.CommandList.DrawIndexed(commandBuffer, Mesh!.IndexCount, 1, 0, 0, firstInstance);
-    } else {
-      ParentRenderer.Renderer.CommandList.Draw(commandBuffer, Mesh!.VertexCount, 1, 0, firstInstance);
-    }
-  }
-
-  public void BindNode(IntPtr commandBuffer) {
-    if (!HasMesh || !Enabled) return;
-
-    ParentRenderer.Renderer.CommandList.BindVertex(commandBuffer, Mesh!.VertexBuffer!, 0);
-
-    if (Mesh!.HasIndexBuffer) {
-      ParentRenderer.Renderer.CommandList.BindIndex(commandBuffer, Mesh!.IndexBuffer!);
-    }
-  }
-
-  public void BindNode(IntPtr commandBuffer, DwarfBuffer vertexBuffer, DwarfBuffer indexBuffer, ulong vertexOffset, ulong indexOffset) {
-    if (!HasMesh || !Enabled) return;
-
-    ParentRenderer.Renderer.CommandList.BindVertex(commandBuffer, vertexBuffer, vertexOffset);
-
-    if (Mesh!.HasIndexBuffer) {
-      ParentRenderer.Renderer.CommandList.BindIndex(commandBuffer, indexBuffer, indexOffset);
-    }
-  }
-
   public void Update() {
     UseCachedMatrix = false;
     if (Mesh != null) {

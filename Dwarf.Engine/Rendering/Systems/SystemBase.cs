@@ -49,6 +49,8 @@ public class PipelineInputData {
 public abstract class SystemBase {
   public const string DefaultPipelineName = "main";
 
+  protected readonly Application _application;
+
   protected readonly IDevice _device = null!;
   protected readonly nint _allocator = IntPtr.Zero;
   protected readonly IRenderer _renderer = null!;
@@ -65,12 +67,15 @@ public abstract class SystemBase {
   protected int _texturesCount = 0;
 
   public SystemBase(
+    Application app,
     nint allocator,
     IDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     IPipelineConfigInfo configInfo = null!
   ) {
+    _application = app;
+
     _allocator = allocator;
     _device = device;
     _renderer = renderer;

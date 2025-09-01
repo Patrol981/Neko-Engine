@@ -49,6 +49,15 @@ public static class Frustum {
     }
   }
 
+  public static void FlattenNodes<T>(T[] entities, out List<Node> nodes) where T : IRender3DElement {
+    nodes = [];
+
+    foreach (var entity in entities) {
+      if (entity.Owner.CanBeDisposed) continue;
+      nodes.AddRange([.. entity.MeshedNodes]);
+    }
+  }
+
   public static void FilterNodesByPlanes(in Plane[] planes, in List<Node> inNodes, out List<Node> outNodes) {
     outNodes = [];
     // Guizmos.Clear();

@@ -19,6 +19,7 @@ public class ShadowRenderSystem : SystemBase {
     (ShadowPushConstant*)Marshal.AllocHGlobal(Unsafe.SizeOf<ShadowPushConstant>());
 
   public ShadowRenderSystem(
+    Application app,
     nint allocator,
     IDevice device,
     IRenderer renderer,
@@ -26,7 +27,7 @@ public class ShadowRenderSystem : SystemBase {
     SystemConfiguration systemConfiguration,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     IPipelineConfigInfo configInfo = null!
-  ) : base(allocator, device, renderer, textureManager, configInfo) {
+  ) : base(app, allocator, device, renderer, textureManager, configInfo) {
     _application = Application.Instance;
 
     IDescriptorSetLayout[] layouts = [

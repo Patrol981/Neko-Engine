@@ -23,7 +23,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   public const string HatchTextureName = "./Resources/T_crossHatching13_D.png";
   public static float HatchScale = 1;
 
-  public int LastElemRenderedCount => _notSkinnedNodesCache.Length + _skinnedNodesCache.Length;
+  public int LastElemRenderedCount => NotSkinnedNodesCache.Length + SkinnedNodesCache.Length;
   public int LastKnownElemCount { get; private set; } = 0;
   public ulong LastKnownElemSize { get; private set; } = 0;
   public ulong LastKnownSkinnedElemCount { get; private set; }
@@ -42,8 +42,11 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   private uint _instanceIndexSimple = 0;
   private uint _instanceIndexComplex = 0;
 
-  private Node[] _notSkinnedNodesCache = [];
-  private Node[] _skinnedNodesCache = [];
+  public Node[] NotSkinnedNodesCache { get; private set; } = [];
+  public Node[] SkinnedNodesCache { get; private set; } = [];
+  private ObjectData[] _objectDataCache = [];
+  private Node[] _flatNodesCache = [];
+  private IRender3DElement[] _renderablesCache = [];
 
   private List<(string, int)> _skinnedGroups = [];
   private List<(string, int)> _notSkinnedGroups = [];
@@ -57,19 +60,26 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   private List<VertexBinding> _vertexComplexBindings = [];
   private bool _cacheMatch = false;
 
-  public Node[] CachedNodes => [.. _notSkinnedNodesCache, .. _skinnedNodesCache];
-
   private Node[] _simpleBufferNodes = [];
   private Node[] _complexBufferNodes = [];
 
+
+  private readonly Dictionary<string, float> _texIndexCache = new(StringComparer.Ordinal);
+  private ObjectData[] _objectDataScratch = Array.Empty<ObjectData>();
+  private Matrix4x4[] _jointsScratch = Array.Empty<Matrix4x4>();
+  private int _totalJointCount = 0;
+  private readonly Dictionary<Node, int> _nodeToObjIndex = new();
+  private readonly Dictionary<Node, int> _nodeToJointsOffset = new();
+
   public Render3DSystem(
+    Application app,
     nint allocator,
     IDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
     IPipelineConfigInfo configInfo = null!
-  ) : base(allocator, device, renderer, textureManager, configInfo) {
+  ) : base(app, allocator, device, renderer, textureManager, configInfo) {
     _jointDescriptorLayout = new VulkanDescriptorSetLayout.Builder(_device)
       .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
       .Build();
@@ -147,18 +157,104 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     //. CreateIndirectBuffer();
   }
 
-  public void Update(
-    Span<IRender3DElement> entities,
-    out ObjectData[] objectData,
-    out ObjectData[] skinnedObjects,
-    out List<Matrix4x4> flatJoints
+  public void Update(FrameInfo frameInfo, Span<IRender3DElement> _) {
+    // if caches not ready, there's nothing to write this frame
+    if (_objectDataScratch.Length == 0)
+      return;
+
+    // 2) fill ObjectData (no allocations)
+    // non-skinned first
+    for (int i = 0; i < NotSkinnedNodesCache.Length; i++) {
+      var node = NotSkinnedNodesCache[i];
+      var owner = node.ParentRenderer.Owner;
+      var transform = owner.GetTransform();
+      var material = owner.GetMaterial();
+      var mesh = node.Mesh!;
+      var texKey = mesh.TextureIdReference.ToString();
+
+      if (!_texIndexCache.TryGetValue(texKey, out float texId)) {
+        var targetTexture = _textureManager.GetTextureLocal(mesh.TextureIdReference);
+        texId = GetIndexOfMyTexture(targetTexture.TextureName);
+        _texIndexCache[texKey] = texId;
+      }
+
+      var idx = _nodeToObjIndex[node];
+      _objectDataScratch[idx] = new ObjectData {
+        ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity,
+        NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity,
+        NodeMatrix = mesh.Matrix,
+        JointsBufferOffset = Vector4.Zero,
+        ColorAndFilterFlag = new Vector4(material?.Color ?? Vector3.Zero, node.FilterMeInShader ? 1f : 0f),
+        AmbientAndTexId0 = new Vector4(material?.Ambient ?? Vector3.Zero, texId),
+        DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId),
+        SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f),
+      };
+    }
+
+    // skinned (writes ObjectData and joints into the pre-sized array)
+    for (int i = 0; i < SkinnedNodesCache.Length; i++) {
+      var node = SkinnedNodesCache[i];
+      var owner = node.ParentRenderer.Owner;
+      var transform = owner.GetTransform();
+      var material = owner.GetMaterial();
+      var mesh = node.Mesh!;
+      var texKey = mesh.TextureIdReference.ToString();
+
+      if (!_texIndexCache.TryGetValue(texKey, out float texId)) {
+        var targetTexture = _textureManager.GetTextureLocal(mesh.TextureIdReference);
+        texId = GetIndexOfMyTexture(targetTexture.TextureName);
+        _texIndexCache[texKey] = texId;
+      }
+
+      var objIdx = _nodeToObjIndex[node];
+      var jointsOffset = _nodeToJointsOffset[node];
+
+      _objectDataScratch[objIdx] = new ObjectData {
+        ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity,
+        NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity,
+        NodeMatrix = mesh.Matrix,
+        JointsBufferOffset = new Vector4(jointsOffset, 0, 0, 0),
+        ColorAndFilterFlag = new Vector4(material?.Color ?? Vector3.Zero, node.FilterMeInShader ? 1f : 0f),
+        AmbientAndTexId0 = new Vector4(material?.Ambient ?? Vector3.Zero, texId),
+        DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId),
+        SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f),
+      };
+
+      // copy current joints into the pre-allocated joints array
+      var joints = node.Skin!.OutputNodeMatrices;
+      Array.Copy(joints, 0, _jointsScratch, jointsOffset, joints.Length);
+    }
+
+    // 3) upload to GPU (exact same calls you had, but with persistent arrays)
+    unsafe {
+      fixed (ObjectData* pObjectData = _objectDataScratch) {
+        _application.StorageCollection.WriteBuffer(
+          "ObjectStorage",
+          frameInfo.FrameIndex,
+          (nint)pObjectData,
+          (ulong)Unsafe.SizeOf<ObjectData>() * (ulong)_objectDataScratch.Length
+        );
+      }
+      fixed (Matrix4x4* pMatrices = _jointsScratch) {
+        _application.StorageCollection.WriteBuffer(
+          "JointsStorage",
+          frameInfo.FrameIndex,
+          (nint)pMatrices,
+          (ulong)Unsafe.SizeOf<Matrix4x4>() * (ulong)_totalJointCount
+        );
+      }
+    }
+  }
+
+  public void Update__(
+    FrameInfo frameInfo,
+    Span<IRender3DElement> entities
 ) {
-    objectData = Array.Empty<ObjectData>();
-    skinnedObjects = Array.Empty<ObjectData>();
-    flatJoints = new List<Matrix4x4>(64); // small default to avoid immediate growth
+    var objectData = Array.Empty<ObjectData>();
+    var flatJoints = new List<Matrix4x4>(64); // small default to avoid immediate growth
 
     PerfMonitor.ComunnalStopwatch.Restart();
-    Frustum.GetFrustrum(out var planes);
+    // Frustum.GetFrustrum(out var planes);
     // entities = Frustum.FilterObjectsByPlanes(in planes, entities).ToArray();
     Frustum.FlattenNodes(entities, out var flattenNodes);
     // Frustum.FilterNodesByPlanes(planes, flattenNodes, out var frustumNodes);
@@ -231,11 +327,10 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     int skinnedCount = nodeObjectsSkinned.Count;
     int notCount = nodeObjectsNotSkinned.Count;
 
-    _skinnedNodesCache = new Node[skinnedCount];
-    _notSkinnedNodesCache = new Node[notCount];
+    SkinnedNodesCache = new Node[skinnedCount];
+    NotSkinnedNodesCache = new Node[notCount];
 
     objectData = new ObjectData[notCount + skinnedCount];
-    skinnedObjects = new ObjectData[skinnedCount];
 
     // Using dictionaries is far cheaper than GroupBy allocations.
     var skinnedCounts = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -246,7 +341,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       var kv = nodeObjectsNotSkinned[i];
       var node = kv.Key;
 
-      _notSkinnedNodesCache[i] = node;
+      NotSkinnedNodesCache[i] = node;
       objectData[i] = kv.Value;
 
       var name = node.Name;
@@ -259,8 +354,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       var kv = nodeObjectsSkinned[i];
       var node = kv.Key;
 
-      _skinnedNodesCache[i] = node;
-      skinnedObjects[i] = kv.Value;
+      SkinnedNodesCache[i] = node;
       objectData[notCount + i] = kv.Value;
 
       var name = node.Name;
@@ -268,16 +362,26 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       skinnedCounts[name] = c + 1;
     }
 
-    // Materialize groups (order by key for stable output; drop OrderBy if not needed)
-    _skinnedGroups = skinnedCounts
-        .Select(static kv => (Key: kv.Key, Count: kv.Value))
-        .OrderBy(static t => t.Key)
-        .ToList();
+    unsafe {
+      fixed (ObjectData* pObjectData = objectData) {
+        _application.StorageCollection.WriteBuffer(
+          "ObjectStorage",
+          frameInfo.FrameIndex,
+          (nint)pObjectData,
+          (ulong)Unsafe.SizeOf<ObjectData>() * (ulong)objectData.Length
+        );
+      }
 
-    _notSkinnedGroups = notSkinnedCounts
-        .Select(static kv => (Key: kv.Key, Count: kv.Value))
-        .OrderBy(static t => t.Key)
-        .ToList();
+      ReadOnlySpan<Matrix4x4> flatArray = [.. flatJoints];
+      fixed (Matrix4x4* pMatrices = flatArray) {
+        _application.StorageCollection.WriteBuffer(
+          "JointsStorage",
+          frameInfo.FrameIndex,
+          (nint)pMatrices,
+          (ulong)Unsafe.SizeOf<Matrix4x4>() * (ulong)flatArray.Length
+        );
+      }
+    }
   }
 
 
@@ -384,11 +488,11 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   //   PerfMonitor.Render3DComputeTime = PerfMonitor.ComunnalStopwatch.ElapsedMilliseconds;
   // }
 
-  public void Render(FrameInfo frameInfo, bool indirect = true) {
+  public void Render(IRender3DElement[] renderables, FrameInfo frameInfo, bool indirect = true) {
 
     PerfMonitor.Clear3DRendererInfo();
     PerfMonitor.NumberOfObjectsRenderedIn3DRenderer = (uint)LastElemRenderedCount;
-    CreateOrUpdateBuffers();
+    CreateOrUpdateBuffers(renderables);
 
     if (indirect) {
       if (_simpleBufferNodes.Length > 0) {
@@ -643,10 +747,10 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   }
 
   private bool CacheMatch(in IRender3DElement[] drawables) {
-    var cachedSimpleBatchIndices = _notSkinnedNodesCache
+    var cachedSimpleBatchIndices = NotSkinnedNodesCache
       .Select(x => x.BatchId)
       .ToArray();
-    var cachedSkinnedBatchIndices = _skinnedNodesCache
+    var cachedSkinnedBatchIndices = SkinnedNodesCache
       .Select(x => x.BatchId)
       .ToArray();
     Guid[] cachedBatchIndices = [.. cachedSimpleBatchIndices, .. cachedSkinnedBatchIndices];
@@ -663,8 +767,86 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     return false;
   }
 
-  private void CreateOrUpdateBuffers() {
-    _cacheMatch = _simpleBufferNodes.SequenceEqual(_notSkinnedNodesCache) && _complexBufferNodes.SequenceEqual(_skinnedNodesCache);
+  private void CreateOrUpdateBuffers(IRender3DElement[] renderables) {
+    // short-circuit if renderables identical and pools already present
+    _cacheMatch = _renderablesCache.SequenceEqual(renderables);
+    if (_cacheMatch && _complexBufferPool != null && _simpleBufferPool != null)
+      return;
+
+    _instanceIndexSimple = 0;
+    _instanceIndexComplex = 0;
+
+    // flatten once (no need to do it in Update anymore)
+    Frustum.FlattenNodes(renderables, out var flatNodes);
+    _flatNodesCache = [.. flatNodes];
+
+    // split/skinned ordering + deterministic sorting
+    var nodeObjectsSkinned = new List<Node>(flatNodes.Count / 2);
+    var nodeObjectsNotSkinned = new List<Node>(flatNodes.Count / 2);
+
+    foreach (var node in flatNodes) {
+      if (!node.Enabled || node.Mesh is null) continue;
+      if (node.HasSkin) nodeObjectsSkinned.Add(node);
+      else nodeObjectsNotSkinned.Add(node);
+    }
+
+    nodeObjectsSkinned.Sort(static (a, b) => a.CompareTo(b));
+    nodeObjectsNotSkinned.Sort(static (a, b) => a.CompareTo(b));
+
+    NotSkinnedNodesCache = nodeObjectsNotSkinned.ToArray();
+    SkinnedNodesCache = nodeObjectsSkinned.ToArray();
+
+    // allocate once: object data array (non-skinned first, then skinned)
+    int notCount = NotSkinnedNodesCache.Length;
+    int skinCount = SkinnedNodesCache.Length;
+    int totalObjs = notCount + skinCount;
+
+    _objectDataScratch = (totalObjs == 0) ? Array.Empty<ObjectData>() : new ObjectData[totalObjs];
+
+    // build index map for fast writes in Update()
+    _nodeToObjIndex.Clear();
+    for (int i = 0; i < notCount; i++)
+      _nodeToObjIndex[NotSkinnedNodesCache[i]] = i;
+    for (int i = 0; i < skinCount; i++)
+      _nodeToObjIndex[SkinnedNodesCache[i]] = notCount + i;
+
+    // build joints layout (stable offsets) and allocate once
+    _nodeToJointsOffset.Clear();
+    int jointsOffset = 0;
+    for (int i = 0; i < skinCount; i++) {
+      var n = SkinnedNodesCache[i];
+      int len = n.Skin!.OutputNodeMatrices.Length;
+      _nodeToJointsOffset[n] = jointsOffset;
+      jointsOffset += len;
+    }
+    _totalJointCount = jointsOffset;
+    _jointsScratch = (_totalJointCount == 0) ? Array.Empty<Matrix4x4>() : new Matrix4x4[_totalJointCount];
+
+    // (optional) reset/trim texture id cache if topology changed a lot
+    // _texIndexCache.Clear();
+
+    // --- GPU buffers that depend on topology/order only ---
+    Logger.Info("[RENDER 3D] Recreating Buffers");
+    if (notCount > 0) {
+      CreateSimpleVertexBuffer(NotSkinnedNodesCache);
+      CreateSimpleIndexBuffer(NotSkinnedNodesCache);
+    }
+    if (skinCount > 0) {
+      CreateComplexVertexBuffer(SkinnedNodesCache);
+      CreateComplexIndexBuffer(SkinnedNodesCache);
+    }
+
+    CreateIndirectBuffer(ref _indirectSimples, ref _indirectSimpleBuffers);
+    CreateIndirectBuffer(ref _indirectComplexes, ref _indirectComplexBuffers);
+
+    // remember the inputs we built for
+    _renderablesCache = (IRender3DElement[])renderables.Clone();
+    _cacheMatch = true;
+  }
+
+  private void CreateOrUpdateBuffers_(IRender3DElement[] renderables) {
+    // _cacheMatch = _simpleBufferNodes.SequenceEqual(_notSkinnedNodesCache) && _complexBufferNodes.SequenceEqual(_skinnedNodesCache);
+    _cacheMatch = _renderablesCache.SequenceEqual(renderables);
 
     if (_cacheMatch && _complexBufferPool != null && _simpleBufferPool != null) return;
 
@@ -673,14 +855,19 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     _instanceIndexSimple = 0;
     _instanceIndexComplex = 0;
 
+    Frustum.FlattenNodes(renderables, out var flatNodes);
+    _flatNodesCache = [.. flatNodes];
+
+
+
     Logger.Info("[RENDER 3D] Recreating Buffers");
-    if (_notSkinnedNodesCache.Length > 0) {
-      CreateSimpleVertexBuffer(_notSkinnedNodesCache);
-      CreateSimpleIndexBuffer(_notSkinnedNodesCache);
+    if (NotSkinnedNodesCache.Length > 0) {
+      CreateSimpleVertexBuffer(NotSkinnedNodesCache);
+      CreateSimpleIndexBuffer(NotSkinnedNodesCache);
     }
-    if (_skinnedNodesCache.Length > 0) {
-      CreateComplexVertexBuffer(_skinnedNodesCache);
-      CreateComplexIndexBuffer(_skinnedNodesCache);
+    if (SkinnedNodesCache.Length > 0) {
+      CreateComplexVertexBuffer(SkinnedNodesCache);
+      CreateComplexIndexBuffer(SkinnedNodesCache);
     }
 
 
@@ -1055,8 +1242,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     LastKnownSkinnedElemJointsCount = 0;
     _instanceIndexSimple = 0;
     _instanceIndexComplex = 0;
-    _skinnedNodesCache = [];
-    _notSkinnedNodesCache = [];
+    SkinnedNodesCache = [];
+    NotSkinnedNodesCache = [];
     _cacheMatch = false;
     _skinnedGroups = [];
     _notSkinnedGroups = [];
