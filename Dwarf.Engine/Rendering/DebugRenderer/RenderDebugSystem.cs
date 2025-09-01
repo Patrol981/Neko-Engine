@@ -16,13 +16,14 @@ namespace Dwarf.Rendering.DebugRenderer;
 
 public class RenderDebugSystem : SystemBase, IRenderSystem {
   public RenderDebugSystem(
+    Application app,
     nint allocator,
     IDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
     IPipelineConfigInfo configInfo = null!
-  ) : base(allocator, device, renderer, textureManager, configInfo) {
+  ) : base(app, allocator, device, renderer, textureManager, configInfo) {
 
     IDescriptorSetLayout[] descriptorSetLayouts = [
       globalSetLayout,

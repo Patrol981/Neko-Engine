@@ -24,13 +24,14 @@ public class GuizmoRenderSystem : SystemBase {
     (GuizmoBufferObject*)Marshal.AllocHGlobal(Unsafe.SizeOf<GuizmoBufferObject>());
 
   public GuizmoRenderSystem(
+    Application app,
     nint allocator,
     IDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
     IPipelineConfigInfo configInfo = null!
-  ) : base(allocator, device, renderer, textureManager, configInfo) {
+  ) : base(app, allocator, device, renderer, textureManager, configInfo) {
     IDescriptorSetLayout[] descriptorSetLayouts = [
       globalSetLayout,
     ];

@@ -111,7 +111,7 @@ public class AnimationController {
   }
 
   public void Update(Node node) {
-    if (node == null) return;
+    if (node == null || node.Skin == null) return;
     if (_activeAnimations.Count < 1) return;
     List<(Animation Animation, float Weight)> clone = [.. _activeAnimations];
 

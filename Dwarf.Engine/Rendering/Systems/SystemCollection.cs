@@ -1,4 +1,5 @@
 using Dwarf.AbstractionLayer;
+using Dwarf.Animations;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Networking;
 using Dwarf.Physics;
@@ -15,6 +16,7 @@ using Dwarf.Rendering.Shadows;
 using Dwarf.Vulkan;
 
 using Vortice.Vulkan;
+using ZLinq;
 using Entity = Dwarf.EntityComponentSystem.Entity;
 
 namespace Dwarf.Rendering;
@@ -30,6 +32,7 @@ public class SystemCollection : IDisposable {
   private GuizmoRenderSystem? _guizmoRenderSystem;
   private ParticleSystem? _particleSystem;
   private ShadowRenderSystem? _shadowRenderSystem;
+  private AnimationSystem? _animationSystem;
 
   private PostProcessingSystem? _postProcessingSystem;
 
@@ -46,8 +49,11 @@ public class SystemCollection : IDisposable {
   public bool ReloadParticleSystem = false;
 
   public void UpdateSystems(Application app, FrameInfo frameInfo) {
-    _render3DSystem?.Render(frameInfo);
-    _render2DSystem?.Render(frameInfo, app.Sprites.Values.ToArray());
+    _render3DSystem?.Render(app.Drawables3D.Values.AsValueEnumerable().ToArray(), frameInfo);
+    _render2DSystem?.Render(frameInfo, app.Sprites.Values.AsValueEnumerable().ToArray());
+
+    _animationSystem?.Update(_render3DSystem!.SkinnedNodesCache.AsValueEnumerable());
+
     _shadowRenderSystem?.Render(frameInfo);
     _directionaLightSystem?.Render(frameInfo);
     _pointLightSystem?.Render(frameInfo);
@@ -91,6 +97,7 @@ public class SystemCollection : IDisposable {
       if (!sizes || !textures || Reload3DRenderSystem) {
         Reload3DRenderSystem = false;
         Reload3DRenderer(
+          app,
           allocator,
           device,
           renderer,
@@ -110,6 +117,7 @@ public class SystemCollection : IDisposable {
       if (!sizes || Reload2DRenderSystem) {
         Reload2DRenderSystem = false;
         Reload2DRenderer(
+          app,
           allocator,
           device,
           renderer,
@@ -135,7 +143,7 @@ public class SystemCollection : IDisposable {
       var particles = _particleSystem.Validate();
       if (!particles || ReloadParticleSystem) {
         ReloadParticleSystem = false;
-        ReloadParticleRenderer(allocator, device, renderer, layouts["Global"], ref textureManager, new ParticlePipelineConfigInfo());
+        ReloadParticleRenderer(app, allocator, device, renderer, layouts["Global"], ref textureManager, new ParticlePipelineConfigInfo());
       }
     }
   }
@@ -152,6 +160,7 @@ public class SystemCollection : IDisposable {
     ref TextureManager textureManager
   ) {
     SystemCreator.CreateSystems(
+      app,
       app.Systems,
       creationFlags,
       systemConfiguration,
@@ -183,6 +192,7 @@ public class SystemCollection : IDisposable {
     SystemConfiguration systemConfiguration
   ) {
     SystemCreator.CreateSystems(
+      app,
       app.Systems,
       creationFlags,
       systemConfiguration,
@@ -196,6 +206,7 @@ public class SystemCollection : IDisposable {
   }
 
   public void Reload3DRenderer(
+    Application app,
     nint allocator,
     IDevice device,
     IRenderer renderer,
@@ -206,6 +217,7 @@ public class SystemCollection : IDisposable {
   ) {
     _render3DSystem?.Dispose();
     _render3DSystem = new Render3DSystem(
+      app,
       allocator,
       device,
       renderer,
@@ -217,6 +229,7 @@ public class SystemCollection : IDisposable {
   }
 
   public void Reload2DRenderer(
+    Application app,
     nint allocator,
     IDevice device,
     IRenderer renderer,
@@ -237,6 +250,7 @@ public class SystemCollection : IDisposable {
   }
 
   public void ReloadUIRenderer(
+    Application app,
     nint allocator,
     IDevice device,
     IRenderer renderer,
@@ -246,6 +260,7 @@ public class SystemCollection : IDisposable {
   ) {
     _renderUISystem?.Dispose();
     _renderUISystem = new RenderUISystem(
+      app,
       allocator,
       (VulkanDevice)device,
       renderer,
@@ -257,6 +272,7 @@ public class SystemCollection : IDisposable {
   }
 
   public void ReloadParticleRenderer(
+    Application app,
     nint allocator,
     IDevice device,
     IRenderer renderer,
@@ -266,6 +282,7 @@ public class SystemCollection : IDisposable {
   ) {
     _particleSystem?.Dispose();
     _particleSystem = new ParticleSystem(
+      app,
       allocator,
       device,
       renderer,
@@ -279,6 +296,11 @@ public class SystemCollection : IDisposable {
   public Render3DSystem Render3DSystem {
     get { return _render3DSystem ?? null!; }
     set { _render3DSystem = value; }
+  }
+
+  public AnimationSystem AnimationSystem {
+    get => _animationSystem ?? null!;
+    set => _animationSystem = value;
   }
 
   public Render2DSystem Render2DSystem {
