@@ -23,11 +23,12 @@ public static partial class GLTFLoaderKHR {
     LoadTextures(app, path, gltf, glb, textureSamplers, flip, out var textureIds);
     LoadMaterials(gltf, out var materials);
 
-    var meshRenderer = new MeshRenderer(targetEntity, app.Device, app.Renderer);
+    var meshRenderer = new MeshRenderer(targetEntity, app, app.Device, app.Renderer);
     var scene = gltf.Scenes[gltf.Scene.HasValue ? gltf.Scene.Value : 0];
     for (int i = 0; i < scene.Nodes.Length; i++) {
       var node = gltf.Nodes[scene.Nodes[i]];
       LoadNode(
+        app,
         app.Allocator,
         app.Device,
         null!,
@@ -45,11 +46,12 @@ public static partial class GLTFLoaderKHR {
       LoadAnimations(gltf, glb, meshRenderer);
     }
 
-    LoadSkins(gltf, glb, meshRenderer);
+    LoadSkins(app, gltf, glb, meshRenderer, out var skinsLocal);
 
     foreach (var node in meshRenderer.LinearNodes) {
       if (node.SkinIndex > -1) {
-        node.Skin = meshRenderer.Skins[node.SkinIndex];
+        // node.Skin = meshRenderer.Skins[node.SkinIndex];
+        node.SkinGuid = skinsLocal[node.SkinIndex].Item1;
         // node.CreateBuffer();
       }
 
@@ -283,7 +285,14 @@ public static partial class GLTFLoaderKHR {
     }
   }
 
-  private static void LoadSkins(Gltf gltf, byte[] globalBuffer, MeshRenderer meshRenderer) {
+  private static void LoadSkins(
+    Application app,
+    Gltf gltf,
+    byte[] globalBuffer,
+    MeshRenderer meshRenderer,
+    out List<(Guid, Dwarf.Rendering.Renderer3D.Animations.Skin)> skins
+  ) {
+    skins = [];
     if (gltf.Skins == null) return;
 
     foreach (var source in gltf.Skins) {
@@ -317,7 +326,13 @@ public static partial class GLTFLoaderKHR {
         newSkin.InverseBindMatrices = [.. floats.ToMatrix4x4Array()];
       }
 
-      meshRenderer.Skins.Add(newSkin);
+      var guid = Guid.NewGuid();
+      if (!app.Skins.TryAdd(guid, newSkin)) {
+        throw new Exception("Faied to add skin to skin table");
+      } else {
+        skins.Add((guid, newSkin));
+      }
+      // meshRenderer.Skins.Add(newSkin);
     }
   }
 
@@ -356,6 +371,7 @@ public static partial class GLTFLoaderKHR {
   }
 
   private static void LoadNode(
+    Application app,
     nint allocator,
     IDevice device,
     Dwarf.Rendering.Renderer3D.Node parent,
@@ -367,7 +383,7 @@ public static partial class GLTFLoaderKHR {
     ref MeshRenderer meshRenderer,
     ref List<EntityComponentSystem.Material> materials
   ) {
-    Dwarf.Rendering.Renderer3D.Node newNode = new() {
+    Dwarf.Rendering.Renderer3D.Node newNode = new(app) {
       Index = nodeIdx,
       Name = node.Name,
       SkinIndex = node.Skin.HasValue ? node.Skin.Value : -1,
@@ -401,6 +417,7 @@ public static partial class GLTFLoaderKHR {
     if (node.Children?.Length > 0) {
       for (int i = 0; i < node.Children.Length; i++) {
         LoadNode(
+          app,
           allocator,
           device,
           newNode,

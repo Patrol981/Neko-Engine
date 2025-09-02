@@ -21,7 +21,8 @@ public class AnimationController {
     if (mr != null) {
       _meshRenderer = mr;
     } else {
-      _meshRenderer = new MeshRenderer(owner);
+      throw new ArgumentException("mesh renderer is empty");
+      // _meshRenderer = new MeshRenderer(owner);
     }
     _tickRate = 1.0f / Application.Instance.Window.RefreshRate;
   }
@@ -111,7 +112,7 @@ public class AnimationController {
   }
 
   public void Update(Node node) {
-    if (node == null || node.Skin == null) return;
+    if (node == null) return;
     if (_activeAnimations.Count < 1) return;
     List<(Animation Animation, float Weight)> clone = [.. _activeAnimations];
 
