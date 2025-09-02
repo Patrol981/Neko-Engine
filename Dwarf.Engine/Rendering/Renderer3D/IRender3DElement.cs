@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Numerics;
 
 using Dwarf.AbstractionLayer;
@@ -10,14 +11,15 @@ using Vortice.Vulkan;
 
 namespace Dwarf.Rendering.Renderer3D;
 
-public interface IRender3DElement : IDrawable {
+public interface IRender3DElement : IDisposable {
   void AddLinearNode(Node node);
   void BindToTexture(
     TextureManager textureManager,
     string texturePath,
+    in ConcurrentDictionary<Guid, Mesh> meshes,
     int modelPart = 0
   );
-  void Init(AABBFilter aabbFilter = AABBFilter.None);
+  void Init(in ConcurrentDictionary<Guid, Mesh> meshes, AABBFilter aabbFilter = AABBFilter.None);
   void EnableNode(Func<Node, bool> predicate, bool enabled);
 
   int NodesCount { get; }
@@ -35,8 +37,8 @@ public interface IRender3DElement : IDrawable {
   VkDescriptorSet SkinDescriptor { get; }
   void BuildDescriptors(IDescriptorSetLayout descriptorSetLayout, IDescriptorPool descriptorPool);
   Entity Owner { get; }
-  Guid GetTextureIdReference(int index = 0);
-  float CalculateHeightOfAnModel();
+  Guid GetTextureIdReference(in ConcurrentDictionary<Guid, Mesh> meshes, int index = 0);
+  float CalculateHeightOfAnModel(in ConcurrentDictionary<Guid, Mesh> meshes);
   AABB AABB { get; }
   AABBFilter AABBFilter { get; }
   bool FilterMeInShader { get; }

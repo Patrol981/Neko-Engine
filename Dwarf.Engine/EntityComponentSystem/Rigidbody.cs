@@ -169,7 +169,7 @@ public class Rigidbody : IDisposable {
       case PrimitiveType.Convex:
         if (mesh == null) {
           var target = (Owner?.GetDrawable3D()) ?? throw new ArgumentException(nameof(mesh));
-          _collisionShape = Primitives.CreateConvex(target!.MeshedNodes, Flipped);
+          _collisionShape = Primitives.CreateConvex(Application.Instance, target!.MeshedNodes, Flipped);
         } else {
           _collisionShape = Primitives.CreateConvex(mesh, Flipped);
         }

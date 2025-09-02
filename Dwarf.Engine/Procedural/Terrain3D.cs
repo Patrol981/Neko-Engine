@@ -38,12 +38,14 @@ public class Terrain3D {
     _repY = repY;
     _texturePath = texturePath != null ? texturePath : "./Resources/Textures/base/no_texture.png";
     var mesh = Generate(_app);
+    var guid = Guid.NewGuid();
+    _app.Meshes.TryAdd(guid, mesh);
     SetupTexture(_app);
 
     Owner.AddDrawable3D(new MeshRenderer(Owner, _app, _app.Device, _app.Renderer));
-    Owner.GetDrawable3D()?.AddLinearNode(new Node(_app) { Mesh = mesh, });
-    Owner.GetDrawable3D()?.Init();
-    Owner.GetDrawable3D()?.BindToTexture(_app.TextureManager, _texturePath);
+    Owner.GetDrawable3D()?.AddLinearNode(new Node(_app) { MeshGuid = guid });
+    Owner.GetDrawable3D()?.Init(_app.Meshes);
+    Owner.GetDrawable3D()?.BindToTexture(_app.TextureManager, _texturePath, _app.Meshes);
 
     // Owner!.AddComponent(new MeshRenderer(_app.Device, _app.Renderer));
     // Owner!.GetComponent<MeshRenderer>().AddLinearNode(new Node() { Mesh = mesh, });

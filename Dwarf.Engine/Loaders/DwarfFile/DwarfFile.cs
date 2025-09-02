@@ -142,7 +142,7 @@ public class FileNode {
     // }
 
     if (node.HasMesh) {
-      fileNode.Mesh = FileMesh.ToFileMesh(node.Mesh!);
+      // fileNode.Mesh = FileMesh.ToFileMesh(node.Mesh!);
     }
 
     return fileNode;
@@ -165,7 +165,7 @@ public class FileNode {
     }
 
     if (fileNode.Mesh != null) {
-      node.Mesh = FileMesh.FromFileMesh(fileNode.Mesh!);
+      // node.Mesh = FileMesh.FromFileMesh(fileNode.Mesh!);
     }
 
     return node;
