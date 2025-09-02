@@ -18,7 +18,7 @@ public struct NodeInfo {
 }
 
 public class Node : ICloneable, IDisposable, IComparable<Node> {
-  public const int MAX_NUM_JOINTS = 128;
+  private readonly Application _app;
 
   public Node? Parent;
   public int Index = 0;
@@ -26,7 +26,9 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
   public Matrix4x4 NodeMatrix = Matrix4x4.Identity;
   public string Name = string.Empty;
   public Mesh? Mesh;
-  public Skin? Skin;
+  public Guid MeshGuid = Guid.Empty;
+  // public Skin? Skin;
+  public Guid SkinGuid = Guid.Empty;
   public int SkinIndex = -1;
   public Vector3 Translation = Vector3.Zero;
   public Quaternion Rotation = Quaternion.Identity;
@@ -49,6 +51,10 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
 
   public float AnimationTimer = 0.0f;
   public Guid BatchId { get; init; } = Guid.NewGuid();
+
+  public Node(Application app) {
+    _app = app;
+  }
 
   public Matrix4x4 GetLocalMatrix() {
     if (!UseCachedMatrix) {
@@ -81,16 +87,20 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
     UseCachedMatrix = false;
     if (Mesh != null) {
       Matrix4x4 m = GetMatrix();
-      if (Skin != null) {
+      Skin? skin = null;
+      try {
+        _app.Skins.TryGetValue(SkinGuid, out skin);
+      } catch { }
+      if (skin != null) {
         Mesh.Matrix = m;
         Matrix4x4.Invert(m, out var inTransform);
-        int numJoints = (int)MathF.Min(Skin.Joints.Count, MAX_NUM_JOINTS);
+        int numJoints = (int)MathF.Min(skin.Joints.Count, CommonConstants.MAX_NUM_JOINTS);
         for (int i = 0; i < numJoints; i++) {
-          var jointNode = Skin.Joints[i];
-          var jointMat = Skin.InverseBindMatrices[i] * inTransform * jointNode.GetMatrix();
-          Skin.OutputNodeMatrices[i] = jointMat;
+          var jointNode = skin.Joints[i];
+          var jointMat = skin.InverseBindMatrices[i] * inTransform * jointNode.GetMatrix();
+          skin.OutputNodeMatrices[i] = jointMat;
         }
-        Skin.JointsCount = numJoints;
+        skin.JointsCount = numJoints;
       } else {
         Mesh.Matrix = m;
       }
@@ -114,9 +124,12 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
   }
 
   public bool HasMesh => Mesh != null;
-  public bool HasSkin => Skin != null;
+  public bool HasSkin => SkinGuid != Guid.Empty;
   public void Dispose() {
-    Skin?.Dispose();
+    try {
+      _app.Skins.TryGetValue(SkinGuid, out var skin);
+      skin?.Dispose();
+    } catch { }
     Mesh?.Dispose();
     GC.SuppressFinalize(this);
   }
@@ -128,7 +141,7 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
   }
 
   public object Clone() {
-    var clone = new Node {
+    var clone = new Node(_app) {
       Parent = null,
       Index = Index,
       NodeMatrix = NodeMatrix,

@@ -167,6 +167,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     for (int i = 0; i < NotSkinnedNodesCache.Length; i++) {
       var node = NotSkinnedNodesCache[i];
       var owner = node.ParentRenderer.Owner;
+      if (owner.CanBeDisposed) continue;
       var transform = owner.GetTransform();
       var material = owner.GetMaterial();
       var mesh = node.Mesh!;
@@ -195,6 +196,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     for (int i = 0; i < SkinnedNodesCache.Length; i++) {
       var node = SkinnedNodesCache[i];
       var owner = node.ParentRenderer.Owner;
+      if (owner.CanBeDisposed) continue;
       var transform = owner.GetTransform();
       var material = owner.GetMaterial();
       var mesh = node.Mesh!;
@@ -221,7 +223,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       };
 
       // copy current joints into the pre-allocated joints array
-      var joints = node.Skin!.OutputNodeMatrices;
+      var skin = _application.Skins[node.SkinGuid];
+      var joints = skin.OutputNodeMatrices;
       Array.Copy(joints, 0, _jointsScratch, jointsOffset, joints.Length);
     }
 
@@ -303,7 +306,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       if (node.HasSkin) {
         nodeObjectsSkinned.Add(new(node, data));
 
-        var joints = node.Skin!.OutputNodeMatrices;
+        var skin = _application.Skins[node.SkinGuid];
+        var joints = skin.OutputNodeMatrices;
         flatJoints.AddRange(joints);
         offset += joints.Length;
       } else {
@@ -732,14 +736,15 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     return texturePair.Value.TextureManagerIndex;
   }
 
-  private static (int len, int joints) CalculateNodesLengthWithSkin(ReadOnlySpan<IRender3DElement> renderables) {
+  private (int len, int joints) CalculateNodesLengthWithSkin(ReadOnlySpan<IRender3DElement> renderables) {
     int len = 0;
     int joints = 0;
     foreach (var renderable in renderables) {
       foreach (var mNode in renderable.MeshedNodes) {
         if (mNode.HasSkin) {
           len += 1;
-          joints += mNode.Skin!.OutputNodeMatrices.Length;
+          var skin = _application.Skins[mNode.SkinGuid];
+          joints += skin.OutputNodeMatrices.Length;
         }
       }
     }
@@ -815,7 +820,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     int jointsOffset = 0;
     for (int i = 0; i < skinCount; i++) {
       var n = SkinnedNodesCache[i];
-      int len = n.Skin!.OutputNodeMatrices.Length;
+      var skin = _application.Skins[n.SkinGuid];
+      int len = skin.OutputNodeMatrices.Length;
       _nodeToJointsOffset[n] = jointsOffset;
       jointsOffset += len;
     }

@@ -137,9 +137,9 @@ public class FileNode {
       }
     }
 
-    if (node.HasSkin) {
-      fileNode.Skin = FileSkin.ToFileSkin(node.Skin!);
-    }
+    // if (node.HasSkin) {
+    //   fileNode.Skin = FileSkin.ToFileSkin(node.Skin!);
+    // }
 
     if (node.HasMesh) {
       fileNode.Mesh = FileMesh.ToFileMesh(node.Mesh!);
@@ -151,7 +151,7 @@ public class FileNode {
   public static Node FromFileNode(FileNode fileNode, Node parent = null!) {
     if (fileNode == null) return null!;
 
-    var node = new Node {
+    var node = new Node(Application.Instance) {
       Index = fileNode.Index,
       SkinIndex = fileNode.SkinIndex,
       Translation = fileNode.Translation != null ? FileVector3.ParseFileVector3(fileNode.Translation) : Vector3.Zero,
@@ -483,7 +483,7 @@ public class DwarfFile {
       MeshedNodes = FileNode.ToFileNodes([.. meshRenderer.MeshedNodes]),
 
       Animations = FileAnimation.ToFileAnimations(meshRenderer.Animations),
-      Skins = FileSkin.ToFileSkins(meshRenderer.Skins),
+      // Skins = FileSkin.ToFileSkins(meshRenderer.Skins),
       InverseMatrices = FileMatrix4x4.GetFileMatrices([.. meshRenderer.InverseMatrices])
     };
   }

@@ -13,6 +13,7 @@ using Vortice.Vulkan;
 namespace Dwarf.Rendering.Renderer3D;
 
 public class MeshRenderer : IRender3DElement, ICollision {
+  private readonly Application _app;
   private readonly IDevice _device = null!;
   private readonly IRenderer _renderer = null!;
   private readonly AABB _mergedAABB = new();
@@ -21,24 +22,28 @@ public class MeshRenderer : IRender3DElement, ICollision {
 
   public Entity Owner { get; internal set; }
 
-  public MeshRenderer(Entity owner) {
+  public MeshRenderer(Entity owner, Application app) {
+    _app = app;
     Owner = owner;
   }
 
-  public MeshRenderer(Entity owner, IDevice device, IRenderer renderer) {
+  public MeshRenderer(Entity owner, Application app, IDevice device, IRenderer renderer) {
     Owner = owner;
+    _app = app;
     _device = device;
     _renderer = renderer;
   }
 
   public MeshRenderer(
     Entity owner,
+    Application app,
     IDevice device,
     IRenderer renderer,
     Node[] nodes,
     Node[] linearNodes
   ) {
     Owner = owner;
+    _app = app;
     _device = device;
     _renderer = renderer;
     Init(nodes, linearNodes);
@@ -159,7 +164,11 @@ public class MeshRenderer : IRender3DElement, ICollision {
     ulong currentBufferSize = 0;
     foreach (var node in MeshedNodes) {
       if (node.HasSkin) {
-        currentBufferSize += ((ulong)node.Skin!.OutputNodeMatrices.Length * baseSize);
+        Skin? skin = null;
+        try {
+          _app.Skins.TryGetValue(node.SkinGuid, out skin);
+          currentBufferSize += ((ulong)skin!.OutputNodeMatrices.Length * baseSize);
+        } catch { }
       }
     }
     return currentBufferSize;
@@ -308,7 +317,7 @@ public class MeshRenderer : IRender3DElement, ICollision {
     otherMeshRenderer.LinearNodes = new Node[LinearNodesCount];
 
     otherMeshRenderer.Nodes = Nodes.Select(x => (Node)x.Clone()).ToArray();
-    otherMeshRenderer.Skins = Skins.Select(x => (Skin)x.Clone()).ToList();
+    // otherMeshRenderer.Skins = Skins.Select(x => (Skin)x.Clone()).ToList();
     var tmpLinear = new Node[LinearNodesCount];
     // otherMeshRenderer.LinearNodes = LinearNodes.Select(x => (Node)x.Clone()).ToArray();
     // otherMeshRenderer.MeshedNodes = MeshedNodes.Select(x => (Node)x.Clone()).ToArray();
@@ -329,7 +338,7 @@ public class MeshRenderer : IRender3DElement, ICollision {
       foreach (var node in otherMeshRenderer.LinearNodes) {
         node.ParentRenderer = otherMeshRenderer;
         if (node.HasSkin) {
-          node.Skin = otherMeshRenderer.Skins[node.SkinIndex];
+          // node.Skin = otherMeshRenderer.Skins[node.SkinIndex];
           node.Update();
         }
       }
@@ -374,7 +383,7 @@ public class MeshRenderer : IRender3DElement, ICollision {
   public Dictionary<Node, Node> AddedNodes { get; private set; } = [];
 
   public List<Animation> Animations = [];
-  public List<Skin> Skins = [];
+  // public List<Skin> Skins = [];
 
   public DwarfBuffer Ssbo { get; set; } = null!;
   public Matrix4x4[] InverseMatrices { get; set; } = [];
@@ -403,7 +412,7 @@ public class MeshRenderer : IRender3DElement, ICollision {
   public void AddJoint(Node[] jointsToAdd, int nodeIdx, int jointIdx) {
     // node.ParentRenderer = this;
     var targetNode = NodeFromIndex(nodeIdx);
-    var joints = targetNode?.Skin?.Joints;
+    // var joints = targetNode?.Skin?.Joints;
     // targetNode.Skin.Joints.Where(x => x.Index == jointIdx).First().
   }
 

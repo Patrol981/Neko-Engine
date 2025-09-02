@@ -3,6 +3,7 @@ using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Physics;
 using Dwarf.Procedural;
+using Dwarf.Rendering;
 using Dwarf.Rendering.Renderer2D.Components;
 using Dwarf.Rendering.Renderer2D.Interfaces;
 using Dwarf.Rendering.Renderer3D;
@@ -26,6 +27,9 @@ public partial class Application {
   internal ConcurrentDictionary<Guid, PointLightComponent> Lights = [];
 
   // internal ConcurrentDictionary<Guid, Camera> Cameras = [];
+
+  internal ConcurrentDictionary<Guid, Mesh> Meshes = [];
+  internal ConcurrentDictionary<Guid, Skin> Skins = [];
 
   private readonly Queue<Entity> _entitiesQueue = new();
   private readonly Queue<MeshRenderer> _reloadQueue = new();
