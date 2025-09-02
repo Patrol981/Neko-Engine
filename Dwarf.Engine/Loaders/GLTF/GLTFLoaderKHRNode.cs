@@ -55,21 +55,21 @@ public static partial class GLTFLoaderKHR {
         // node.CreateBuffer();
       }
 
-      if (node.Mesh != null) {
-        var material = node.Mesh.Material;
+      if (node.HasMesh) {
+        // var material = node.Mesh.Material;
 
         node.Update();
       }
     }
 
-    meshRenderer.Init();
+    meshRenderer.Init(app.Meshes);
 
     // meshRenderer.BindToTexture(app.TextureManager, textureIds[0], 0);
     // meshRenderer.BindToTexture(app.TextureManager, textureIds[5], 1);
     // meshRenderer.BindToTexture(app.TextureManager, textureIds[1], 2);
 
     for (int i = 0; i < meshRenderer.MeshedNodesCount; i++) {
-      meshRenderer.BindToTextureMaterial(app.TextureManager, textureIds, i);
+      meshRenderer.BindToTextureMaterial(app.TextureManager, textureIds, app.Meshes, i);
     }
 
     // if (meshRenderer.MeshedNodes.Length == textureIds.Count) {
@@ -507,7 +507,11 @@ public static partial class GLTFLoaderKHR {
       newMesh.Indices = [.. indices];
       material ??= new EntityComponentSystem.Material();
       newMesh.Material = material;
-      newNode.Mesh = newMesh;
+
+      var guid = Guid.NewGuid();
+      app.Meshes.TryAdd(guid, newMesh);
+
+      newNode.MeshGuid = guid;
     }
 
     if (parent != null) {

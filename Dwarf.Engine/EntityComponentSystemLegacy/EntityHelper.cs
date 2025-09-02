@@ -43,16 +43,16 @@ public static class EntityHelper {
     return entities.Where(e => !e.CanBeDisposed && e.IsDrawable<T>()).ToArray();
   }
 
-  public static Span<IRender3DElement> DistinctI3D(this Entity[] entities) {
-    var drawables3D = new List<IRender3DElement>();
-    for (int i = 0; i < entities.Length; i++) {
-      if (entities[i].CanBeDisposed) continue;
-      if (entities[i].GetDrawable<IRender3DElement>() is IRender3DElement target) {
-        drawables3D.Add(target);
-      }
-    }
-    return drawables3D.ToArray();
-  }
+  // public static Span<IRender3DElement> DistinctI3D(this Entity[] entities) {
+  //   var drawables3D = new List<IRender3DElement>();
+  //   for (int i = 0; i < entities.Length; i++) {
+  //     if (entities[i].CanBeDisposed) continue;
+  //     if (entities[i].GetDrawable<IRender3DElement>() is IRender3DElement target) {
+  //       drawables3D.Add(target);
+  //     }
+  //   }
+  //   return drawables3D.ToArray();
+  // }
 
   public static Span<IDrawable2D> DistinctI2D(this Entity[] entities) {
     var buffer = new List<IDrawable2D>();

@@ -49,7 +49,7 @@ public class SystemCollection : IDisposable {
   public bool ReloadParticleSystem = false;
 
   public void UpdateSystems(Application app, FrameInfo frameInfo) {
-    _render3DSystem?.Render(app.Drawables3D.Values.AsValueEnumerable().ToArray(), frameInfo);
+    _render3DSystem?.Render(app.Drawables3D.Values.AsValueEnumerable().ToArray(), app.Meshes, frameInfo);
     _render2DSystem?.Render(frameInfo, app.Sprites.Values.AsValueEnumerable().ToArray());
 
     _animationSystem?.Update(_render3DSystem!.SkinnedNodesCache.AsValueEnumerable());

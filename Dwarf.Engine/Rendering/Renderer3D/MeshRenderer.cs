@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Numerics;
 
 using Dwarf.AbstractionLayer;
@@ -40,41 +41,53 @@ public class MeshRenderer : IRender3DElement, ICollision {
     IDevice device,
     IRenderer renderer,
     Node[] nodes,
-    Node[] linearNodes
+    Node[] linearNodes,
+    ref ConcurrentDictionary<Guid, Mesh> meshes
   ) {
     Owner = owner;
     _app = app;
     _device = device;
     _renderer = renderer;
-    Init(nodes, linearNodes);
+    Init(nodes, linearNodes, ref meshes);
   }
 
   public MeshRenderer(
     Entity owner,
+    Application app,
     IDevice device,
     IRenderer renderer,
     Node[] nodes,
     Node[] linearNodes,
+    ref ConcurrentDictionary<Guid, Mesh> meshes,
     string fileName
   ) {
     Owner = owner;
+    _app = app;
     _device = device;
     _renderer = renderer;
     FileName = fileName;
-    Init(nodes, linearNodes);
+    Init(nodes, linearNodes, ref meshes);
   }
 
-  public void Init(AABBFilter aabbFilter = AABBFilter.None) {
+  public void Init(
+    in ConcurrentDictionary<Guid, Mesh> meshes,
+    AABBFilter aabbFilter = AABBFilter.None
+  ) {
     NodesCount = Nodes.Length;
     MeshedNodesCount = LinearNodes.Where(x => x.HasMesh).Count();
     LinearNodesCount = LinearNodes.Length;
 
     MeshedNodes = LinearNodes.Where(x => x.HasMesh).ToArray();
 
-    InitBase(aabbFilter);
+    InitBase(meshes, aabbFilter);
   }
 
-  protected void Init(Node[] nodes, Node[] linearNodes, AABBFilter aabbFilter = AABBFilter.None) {
+  protected void Init(
+    Node[] nodes,
+    Node[] linearNodes,
+    in ConcurrentDictionary<Guid, Mesh> meshes,
+    AABBFilter aabbFilter = AABBFilter.None
+  ) {
     NodesCount = nodes.Length;
     MeshedNodesCount = linearNodes.Where(x => x.HasMesh).Count();
     LinearNodesCount = linearNodes.Length;
@@ -83,10 +96,13 @@ public class MeshRenderer : IRender3DElement, ICollision {
     LinearNodes = linearNodes;
     MeshedNodes = LinearNodes.Where(x => x.HasMesh).ToArray();
 
-    InitBase(aabbFilter);
+    InitBase(meshes, aabbFilter);
   }
 
-  private void InitBase(AABBFilter aabbFilter = AABBFilter.None) {
+  private void InitBase(
+    in ConcurrentDictionary<Guid, Mesh> meshes,
+    AABBFilter aabbFilter = AABBFilter.None
+  ) {
     AABBFilter = aabbFilter;
     AABBArray = new AABB[MeshedNodesCount];
 
@@ -96,11 +112,12 @@ public class MeshRenderer : IRender3DElement, ICollision {
 
     for (int i = 0; i < MeshedNodes.Length; i++) {
       if (MeshedNodes[i].HasMesh) {
-        createTasks.Add(MeshedNodes[i].Mesh!.CreateVertexBuffer());
-        createTasks.Add(MeshedNodes[i].Mesh!.CreateIndexBuffer());
+        var mesh = meshes[MeshedNodes[i].MeshGuid];
+        createTasks.Add(mesh.CreateVertexBuffer());
+        createTasks.Add(mesh.CreateIndexBuffer());
 
         AABBArray[i] = new();
-        AABBArray[i].Update(MeshedNodes[i].Mesh!);
+        AABBArray[i].Update(mesh);
 
         _mergedAABB.GetBounds(MeshedNodes[i].GetMatrix());
       }
@@ -108,7 +125,7 @@ public class MeshRenderer : IRender3DElement, ICollision {
 
     var bb = new BoundingBox(float.MaxValue, float.MinValue);
     for (int i = 0; i < MeshedNodesCount; i++) {
-      CalculateBoundingBox(ref MeshedNodes[i], ref bb);
+      CalculateBoundingBox(ref MeshedNodes[i], ref bb, meshes);
     }
 
     var x = MathF.Abs(MathF.Abs(bb.Min.X) + MathF.Abs(bb.Max.X));
@@ -179,67 +196,57 @@ public class MeshRenderer : IRender3DElement, ICollision {
     FinishedInitialization = true;
   }
 
-  public Task Bind(IntPtr commandBuffer, uint index) {
-    var node = LinearNodes[index];
-    if (!node.HasMesh) return Task.CompletedTask;
-
-    _renderer.CommandList.BindVertex(commandBuffer, node.Mesh!.VertexBuffer!, 0);
-
-    if (node.Mesh!.HasIndexBuffer) {
-      _renderer.CommandList.BindIndex(commandBuffer, node.Mesh!.IndexBuffer!);
-    }
-
-    return Task.CompletedTask;
-  }
-
-  public Task Draw(IntPtr commandBuffer, uint index, uint firstInstance = 0) {
-    var node = LinearNodes[index];
-    if (!node.HasMesh) return Task.CompletedTask;
-
-    if (node.Mesh!.HasIndexBuffer) {
-      _renderer.CommandList.DrawIndexed(commandBuffer, node.Mesh!.IndexCount, 1, 0, 0, firstInstance);
-    } else {
-      _renderer.CommandList.Draw(commandBuffer, node.Mesh!.VertexCount, 1, 0, firstInstance);
-    }
-    return Task.CompletedTask;
-  }
-
   public void BindToTextureMaterial(
     TextureManager textureManager,
     in List<(Guid id, ITexture texture)> inputTextures,
+    in ConcurrentDictionary<Guid, Mesh> meshes,
     int modelPart = 0
   ) {
-    var material = MeshedNodes[modelPart]?.Mesh?.Material;
+    var mesh = meshes[MeshedNodes[modelPart].MeshGuid];
+    var material = mesh?.Material;
     // var targetTexture = textureManager.GetTexture(material!.BaseColorTextureIndex);
     var targetTexture = inputTextures.Where(x => x.texture?.TextureIndex == material?.BaseColorTextureIndex).SingleOrDefault();
     if (targetTexture.texture == null) return;
-    MeshedNodes[modelPart]?.Mesh?.BindToTexture(textureManager, targetTexture.id);
+    mesh?.BindToTexture(textureManager, targetTexture.id);
   }
 
   public void BindToTexture(
     TextureManager textureManager,
     string texturePath,
+    in ConcurrentDictionary<Guid, Mesh> meshes,
     int modelPart = 0
   ) {
-    MeshedNodes[modelPart]?.Mesh?.BindToTexture(textureManager, texturePath);
+    var mesh = meshes[MeshedNodes[modelPart].MeshGuid];
+    mesh?.BindToTexture(textureManager, texturePath);
   }
 
-  public void BindToTexture(TextureManager textureManager, Guid textureId, int modelPart = 0) {
-    MeshedNodes[modelPart]?.Mesh?.BindToTexture(textureManager, textureId);
+  public void BindToTexture(
+    TextureManager textureManager,
+    Guid textureId,
+    in ConcurrentDictionary<Guid, Mesh> meshes,
+    int modelPart = 0
+  ) {
+    var mesh = meshes[MeshedNodes[modelPart].MeshGuid];
+    mesh?.BindToTexture(textureManager, textureId);
   }
 
-  public void BindMultipleModelPartsToTexture(TextureManager textureManager, string path) {
+  public void BindMultipleModelPartsToTexture(
+    in ConcurrentDictionary<Guid, Mesh> meshes,
+    TextureManager textureManager,
+    string path
+  ) {
     for (int i = 0; i < MeshedNodesCount; i++) {
-      BindToTexture(textureManager, path, i);
+      BindToTexture(textureManager, path, meshes, i);
     }
   }
 
   public void BindMultipleModelPartsToTextures(
+    in ConcurrentDictionary<Guid, Mesh> meshes,
     TextureManager textureManager,
     ReadOnlySpan<string> paths
   ) {
     for (int i = 0; i < LinearNodesCount; i++) {
-      BindToTexture(textureManager, paths[i], i);
+      BindToTexture(textureManager, paths[i], meshes, i);
     }
   }
 
@@ -254,8 +261,13 @@ public class MeshRenderer : IRender3DElement, ICollision {
     }
   }
 
-  public void CalculateBoundingBox(ref Node meshNode, ref BoundingBox boundingBox) {
-    var bb = BoundingBox.GetBoundingBox(meshNode.Mesh?.Vertices);
+  public void CalculateBoundingBox(
+    ref Node meshNode,
+    ref BoundingBox boundingBox,
+    in ConcurrentDictionary<Guid, Mesh> meshes
+  ) {
+    var mesh = meshes[meshNode.MeshGuid];
+    var bb = BoundingBox.GetBoundingBox(mesh?.Vertices);
 
     if (bb.HasValue) {
       meshNode.BoundingVolume = bb.Value;
@@ -272,12 +284,17 @@ public class MeshRenderer : IRender3DElement, ICollision {
     }
   }
 
-  public void CalculateBoundingBox(Node node, Node parent) {
+  public void CalculateBoundingBox(
+    in ConcurrentDictionary<Guid, Mesh> meshes,
+    Node node,
+    Node parent
+  ) {
     BoundingBox parentBB = parent != null ? parent.BoundingVolume : new BoundingBox(float.MaxValue, -float.MaxValue);
 
     if (node.HasMesh) {
-      if (!node.Mesh!.BoundingBox.IsValid) {
-        node.AABB = node.Mesh!.BoundingBox.GetBoundingBox(node.GetMatrix());
+      var mesh = meshes[node.MeshGuid];
+      if (!mesh.BoundingBox.IsValid) {
+        node.AABB = mesh.BoundingBox.GetBoundingBox(node.GetMatrix());
         if (node.Children?.Count > 0) {
           node.BoundingVolume.Min = node.AABB.Min;
           node.BoundingVolume.Max = node.AABB.Max;
@@ -293,7 +310,7 @@ public class MeshRenderer : IRender3DElement, ICollision {
     if (node.Children?.Count < 1) return;
 
     foreach (var child in node.Children!) {
-      CalculateBoundingBox(child, node);
+      CalculateBoundingBox(meshes, child, node);
     }
   }
 
@@ -307,7 +324,10 @@ public class MeshRenderer : IRender3DElement, ICollision {
     }
   }
 
-  public void CopyTo(ref MeshRenderer otherMeshRenderer) {
+  public void CopyTo(
+    in ConcurrentDictionary<Guid, Mesh> meshes,
+    ref MeshRenderer otherMeshRenderer
+  ) {
     otherMeshRenderer.NodesCount = NodesCount;
     otherMeshRenderer.MeshedNodesCount = MeshedNodesCount;
     otherMeshRenderer.LinearNodesCount = LinearNodesCount;
@@ -357,7 +377,7 @@ public class MeshRenderer : IRender3DElement, ICollision {
     otherMeshRenderer.FileName = FileName;
     otherMeshRenderer.TextureFlipped = TextureFlipped;
 
-    otherMeshRenderer.InitBase();
+    otherMeshRenderer.InitBase(meshes);
   }
 
   public unsafe void Dispose() {
@@ -439,15 +459,16 @@ public class MeshRenderer : IRender3DElement, ICollision {
     }
     return found;
   }
-  public float CalculateHeightOfAnModel() {
+  public float CalculateHeightOfAnModel(in ConcurrentDictionary<Guid, Mesh> meshes) {
     var height = 0.0f;
     foreach (var n in LinearNodes) {
-      height += n.Mesh?.Height != null ? n.Mesh.Height : 0;
+      var mesh = meshes[n.MeshGuid];
+      height += mesh?.Height != null ? mesh.Height : 0;
     }
     return height;
   }
-  public Guid GetTextureIdReference(int index = 0) {
-    return MeshedNodes[index].Mesh != null ? MeshedNodes[index].Mesh!.TextureIdReference : Guid.Empty;
+  public Guid GetTextureIdReference(in ConcurrentDictionary<Guid, Mesh> meshes, int index = 0) {
+    return MeshedNodes[index].HasMesh ? meshes[MeshedNodes[index].MeshGuid].TextureIdReference : Guid.Empty;
   }
   public bool FinishedInitialization { get; private set; } = false;
 
