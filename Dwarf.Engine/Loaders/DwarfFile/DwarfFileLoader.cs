@@ -141,7 +141,7 @@ public static class DwarfFileLoader {
         texture.Dispose();
       }
 
-      newNode.Mesh!.BindToTexture(app.TextureManager, id);
+      // newNode.Mesh!.BindToTexture(app.TextureManager, id);
     }
 
     // if (fileNode.Skin != null) {

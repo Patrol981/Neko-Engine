@@ -532,13 +532,12 @@ public partial class Application {
         }
       }
 
-      var i3D = Drawables3D.Values.ToArray();
       var i2D = Entities.FlattenDrawable2D();
 
       if (Systems.Render3DSystem != null) {
         Systems.Render3DSystem.Update(
           FrameInfo,
-          i3D
+          Meshes
         );
       }
 
@@ -555,7 +554,7 @@ public partial class Application {
         }
       }
 
-      Systems.ShadowRenderSystem?.Update(i3D);
+      // Systems.ShadowRenderSystem?.Update(i3D);
 
       StorageCollection.WriteBuffer(
         "GlobalStorage",
@@ -600,7 +599,7 @@ public partial class Application {
       while (_reloadQueue.Count > 0) {
         var item = _reloadQueue.Dequeue();
         item.Dispose();
-        item.Init(item.AABBFilter);
+        item.Init(Meshes, item.AABBFilter);
       }
     }
 

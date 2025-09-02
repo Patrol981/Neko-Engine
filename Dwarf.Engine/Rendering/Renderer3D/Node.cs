@@ -25,7 +25,7 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
   public List<Node> Children = [];
   public Matrix4x4 NodeMatrix = Matrix4x4.Identity;
   public string Name = string.Empty;
-  public Mesh? Mesh;
+  // public Mesh? Mesh;
   public Guid MeshGuid = Guid.Empty;
   // public Skin? Skin;
   public Guid SkinGuid = Guid.Empty;
@@ -85,14 +85,17 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
 
   public void Update() {
     UseCachedMatrix = false;
-    if (Mesh != null) {
+    if (MeshGuid != Guid.Empty) {
       Matrix4x4 m = GetMatrix();
       Skin? skin = null;
+      Mesh? mesh = null;
       try {
         _app.Skins.TryGetValue(SkinGuid, out skin);
+        _app.Meshes.TryGetValue(MeshGuid, out mesh);
+
+        mesh!.Matrix = m;
       } catch { }
       if (skin != null) {
-        Mesh.Matrix = m;
         Matrix4x4.Invert(m, out var inTransform);
         int numJoints = (int)MathF.Min(skin.Joints.Count, CommonConstants.MAX_NUM_JOINTS);
         for (int i = 0; i < numJoints; i++) {
@@ -101,8 +104,6 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
           skin.OutputNodeMatrices[i] = jointMat;
         }
         skin.JointsCount = numJoints;
-      } else {
-        Mesh.Matrix = m;
       }
     }
 
@@ -115,22 +116,29 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
     if (!HasMesh) return;
 
     var sum = Vector3.Zero;
+    Mesh? mesh = null;
+    try {
+      _app.Meshes.TryGetValue(MeshGuid, out mesh);
+    } catch { }
 
-    foreach (var vtx in Mesh!.Vertices) {
+    foreach (var vtx in mesh!.Vertices) {
       sum += vtx.Position;
     }
 
-    Center = sum / Mesh.VertexCount;
+    Center = sum / mesh.VertexCount;
   }
 
-  public bool HasMesh => Mesh != null;
+  public bool HasMesh => MeshGuid != Guid.Empty;
   public bool HasSkin => SkinGuid != Guid.Empty;
   public void Dispose() {
     try {
       _app.Skins.TryGetValue(SkinGuid, out var skin);
       skin?.Dispose();
     } catch { }
-    Mesh?.Dispose();
+    try {
+      _app.Meshes.TryGetValue(MeshGuid, out var mesh);
+      mesh?.Dispose();
+    } catch { }
     GC.SuppressFinalize(this);
   }
 
@@ -146,7 +154,7 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
       Index = Index,
       NodeMatrix = NodeMatrix,
       Name = Name,
-      Mesh = (Mesh)Mesh?.Clone()! ?? null!,
+      // Mesh = (Mesh)Mesh?.Clone()! ?? null!,
       // Skin = (Skin)Skin?.Clone()! ?? null!,
       // Skin = Skin,
       SkinIndex = SkinIndex,

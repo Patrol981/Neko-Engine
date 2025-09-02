@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -157,7 +158,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     //. CreateIndirectBuffer();
   }
 
-  public void Update(FrameInfo frameInfo, Span<IRender3DElement> _) {
+  public void Update(FrameInfo frameInfo, ConcurrentDictionary<Guid, Mesh> meshes) {
     // if caches not ready, there's nothing to write this frame
     if (_objectDataScratch.Length == 0)
       return;
@@ -170,7 +171,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       if (owner.CanBeDisposed) continue;
       var transform = owner.GetTransform();
       var material = owner.GetMaterial();
-      var mesh = node.Mesh!;
+      var mesh = meshes[node.MeshGuid];
       var texKey = mesh.TextureIdReference.ToString();
 
       if (!_texIndexCache.TryGetValue(texKey, out float texId)) {
@@ -199,7 +200,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       if (owner.CanBeDisposed) continue;
       var transform = owner.GetTransform();
       var material = owner.GetMaterial();
-      var mesh = node.Mesh!;
+      var mesh = meshes[node.MeshGuid];
       var texKey = mesh.TextureIdReference.ToString();
 
       if (!_texIndexCache.TryGetValue(texKey, out float texId)) {
@@ -249,144 +250,144 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     }
   }
 
-  public void Update__(
-    FrameInfo frameInfo,
-    Span<IRender3DElement> entities
-) {
-    var objectData = Array.Empty<ObjectData>();
-    var flatJoints = new List<Matrix4x4>(64); // small default to avoid immediate growth
+  //   public void Update__(
+  //     FrameInfo frameInfo,
+  //     Span<IRender3DElement> entities
+  // ) {
+  //     var objectData = Array.Empty<ObjectData>();
+  //     var flatJoints = new List<Matrix4x4>(64); // small default to avoid immediate growth
 
-    PerfMonitor.ComunnalStopwatch.Restart();
-    // Frustum.GetFrustrum(out var planes);
-    // entities = Frustum.FilterObjectsByPlanes(in planes, entities).ToArray();
-    Frustum.FlattenNodes(entities, out var flattenNodes);
-    // Frustum.FilterNodesByPlanes(planes, flattenNodes, out var frustumNodes);
-    // Frustum.FilterNodesByFog(flattenNodes, out var frustumNodes);
+  //     PerfMonitor.ComunnalStopwatch.Restart();
+  //     // Frustum.GetFrustrum(out var planes);
+  //     // entities = Frustum.FilterObjectsByPlanes(in planes, entities).ToArray();
+  //     Frustum.FlattenNodes(entities, out var flattenNodes);
+  //     // Frustum.FilterNodesByPlanes(planes, flattenNodes, out var frustumNodes);
+  //     // Frustum.FilterNodesByFog(flattenNodes, out var frustumNodes);
 
-    // Pre-size lists to cut reallocations (roughly half/half; adjust if you know typical ratios)
-    var expected = flattenNodes.Count;
-    var nodeObjectsSkinned = new List<KeyValuePair<Node, ObjectData>>(expected / 2);
-    var nodeObjectsNotSkinned = new List<KeyValuePair<Node, ObjectData>>(expected / 2);
+  //     // Pre-size lists to cut reallocations (roughly half/half; adjust if you know typical ratios)
+  //     var expected = flattenNodes.Count;
+  //     var nodeObjectsSkinned = new List<KeyValuePair<Node, ObjectData>>(expected / 2);
+  //     var nodeObjectsNotSkinned = new List<KeyValuePair<Node, ObjectData>>(expected / 2);
 
-    int offset = 0;
-    // Cache texture index by id; NOTE: if TextureIdReference isn't a string, use that type directly to avoid ToString allocs.
-    var texIndexCache = new Dictionary<string, float>(StringComparer.Ordinal);
+  //     int offset = 0;
+  //     // Cache texture index by id; NOTE: if TextureIdReference isn't a string, use that type directly to avoid ToString allocs.
+  //     var texIndexCache = new Dictionary<string, float>(StringComparer.Ordinal);
 
-    // ---------- Build phase (main thread; touches engine objects) ----------
-    foreach (var node in flattenNodes) {
-      if (!node.Enabled || node.Mesh is null)
-        continue;
+  //     // ---------- Build phase (main thread; touches engine objects) ----------
+  //     foreach (var node in flattenNodes) {
+  //       if (!node.Enabled || !node.HasMesh)
+  //         continue;
 
-      var mesh = node.Mesh;
-      var owner = node.ParentRenderer.Owner;
-      var transform = owner.GetTransform();
-      var material = owner.GetMaterial();
+  //       var mesh = node.Mesh;
+  //       var owner = node.ParentRenderer.Owner;
+  //       var transform = owner.GetTransform();
+  //       var material = owner.GetMaterial();
 
-      // Avoid ToString() churn if TextureIdReference is already a string/value type
-      var texKey = mesh.TextureIdReference.ToString();
-      if (!texIndexCache.TryGetValue(texKey, out float texId)) {
-        var targetTexture = _textureManager.GetTextureLocal(mesh.TextureIdReference);
-        texId = GetIndexOfMyTexture(targetTexture.TextureName);
-        texIndexCache[texKey] = texId;
-      }
+  //       // Avoid ToString() churn if TextureIdReference is already a string/value type
+  //       var texKey = mesh.TextureIdReference.ToString();
+  //       if (!texIndexCache.TryGetValue(texKey, out float texId)) {
+  //         var targetTexture = _textureManager.GetTextureLocal(mesh.TextureIdReference);
+  //         texId = GetIndexOfMyTexture(targetTexture.TextureName);
+  //         texIndexCache[texKey] = texId;
+  //       }
 
-      var filterFlag = (node.FilterMeInShader == true) ? 1f : 0f;
+  //       var filterFlag = (node.FilterMeInShader == true) ? 1f : 0f;
 
-      var data = new ObjectData {
-        ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity,
-        NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity,
-        NodeMatrix = mesh.Matrix,
-        JointsBufferOffset = node.HasSkin ? new Vector4(offset, 0, 0, 0) : Vector4.Zero,
-        ColorAndFilterFlag = new Vector4(material?.Color ?? Vector3.Zero, filterFlag),
-        AmbientAndTexId0 = new Vector4(material?.Ambient ?? Vector3.Zero, texId),
-        DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId),
-        SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f),
-      };
+  //       var data = new ObjectData {
+  //         ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity,
+  //         NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity,
+  //         NodeMatrix = mesh.Matrix,
+  //         JointsBufferOffset = node.HasSkin ? new Vector4(offset, 0, 0, 0) : Vector4.Zero,
+  //         ColorAndFilterFlag = new Vector4(material?.Color ?? Vector3.Zero, filterFlag),
+  //         AmbientAndTexId0 = new Vector4(material?.Ambient ?? Vector3.Zero, texId),
+  //         DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId),
+  //         SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f),
+  //       };
 
-      if (node.HasSkin) {
-        nodeObjectsSkinned.Add(new(node, data));
+  //       if (node.HasSkin) {
+  //         nodeObjectsSkinned.Add(new(node, data));
 
-        var skin = _application.Skins[node.SkinGuid];
-        var joints = skin.OutputNodeMatrices;
-        flatJoints.AddRange(joints);
-        offset += joints.Length;
-      } else {
-        nodeObjectsNotSkinned.Add(new(node, data));
-      }
-    }
+  //         var skin = _application.Skins[node.SkinGuid];
+  //         var joints = skin.OutputNodeMatrices;
+  //         flatJoints.AddRange(joints);
+  //         offset += joints.Length;
+  //       } else {
+  //         nodeObjectsNotSkinned.Add(new(node, data));
+  //       }
+  //     }
 
-    // ---------- Sort (keep deterministic order) ----------
-    nodeObjectsSkinned.Sort(static (x, y) => x.Key.CompareTo(y.Key));
-    nodeObjectsNotSkinned.Sort(static (x, y) => x.Key.CompareTo(y.Key));
+  //     // ---------- Sort (keep deterministic order) ----------
+  //     nodeObjectsSkinned.Sort(static (x, y) => x.Key.CompareTo(y.Key));
+  //     nodeObjectsNotSkinned.Sort(static (x, y) => x.Key.CompareTo(y.Key));
 
-    // ---------- Animation update (main thread only) ----------
-    for (int i = 0; i < nodeObjectsSkinned.Count; i++) {
-      var n = nodeObjectsSkinned[i].Key;
-      var owner = n.ParentRenderer.Owner;
-      if (owner.CanBeDisposed) continue;
-      owner.GetAnimationController()?.Update(n);
-    }
+  //     // ---------- Animation update (main thread only) ----------
+  //     for (int i = 0; i < nodeObjectsSkinned.Count; i++) {
+  //       var n = nodeObjectsSkinned[i].Key;
+  //       var owner = n.ParentRenderer.Owner;
+  //       if (owner.CanBeDisposed) continue;
+  //       owner.GetAnimationController()?.Update(n);
+  //     }
 
-    // ---------- Single-pass outputs + group counts (no LINQ) ----------
-    int skinnedCount = nodeObjectsSkinned.Count;
-    int notCount = nodeObjectsNotSkinned.Count;
+  //     // ---------- Single-pass outputs + group counts (no LINQ) ----------
+  //     int skinnedCount = nodeObjectsSkinned.Count;
+  //     int notCount = nodeObjectsNotSkinned.Count;
 
-    SkinnedNodesCache = new Node[skinnedCount];
-    NotSkinnedNodesCache = new Node[notCount];
+  //     SkinnedNodesCache = new Node[skinnedCount];
+  //     NotSkinnedNodesCache = new Node[notCount];
 
-    objectData = new ObjectData[notCount + skinnedCount];
+  //     objectData = new ObjectData[notCount + skinnedCount];
 
-    // Using dictionaries is far cheaper than GroupBy allocations.
-    var skinnedCounts = new Dictionary<string, int>(StringComparer.Ordinal);
-    var notSkinnedCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+  //     // Using dictionaries is far cheaper than GroupBy allocations.
+  //     var skinnedCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+  //     var notSkinnedCounts = new Dictionary<string, int>(StringComparer.Ordinal);
 
-    // Not skinned block
-    for (int i = 0; i < notCount; i++) {
-      var kv = nodeObjectsNotSkinned[i];
-      var node = kv.Key;
+  //     // Not skinned block
+  //     for (int i = 0; i < notCount; i++) {
+  //       var kv = nodeObjectsNotSkinned[i];
+  //       var node = kv.Key;
 
-      NotSkinnedNodesCache[i] = node;
-      objectData[i] = kv.Value;
+  //       NotSkinnedNodesCache[i] = node;
+  //       objectData[i] = kv.Value;
 
-      var name = node.Name;
-      notSkinnedCounts.TryGetValue(name, out int c);
-      notSkinnedCounts[name] = c + 1;
-    }
+  //       var name = node.Name;
+  //       notSkinnedCounts.TryGetValue(name, out int c);
+  //       notSkinnedCounts[name] = c + 1;
+  //     }
 
-    // Skinned block
-    for (int i = 0; i < skinnedCount; i++) {
-      var kv = nodeObjectsSkinned[i];
-      var node = kv.Key;
+  //     // Skinned block
+  //     for (int i = 0; i < skinnedCount; i++) {
+  //       var kv = nodeObjectsSkinned[i];
+  //       var node = kv.Key;
 
-      SkinnedNodesCache[i] = node;
-      objectData[notCount + i] = kv.Value;
+  //       SkinnedNodesCache[i] = node;
+  //       objectData[notCount + i] = kv.Value;
 
-      var name = node.Name;
-      skinnedCounts.TryGetValue(name, out int c);
-      skinnedCounts[name] = c + 1;
-    }
+  //       var name = node.Name;
+  //       skinnedCounts.TryGetValue(name, out int c);
+  //       skinnedCounts[name] = c + 1;
+  //     }
 
-    unsafe {
-      fixed (ObjectData* pObjectData = objectData) {
-        _application.StorageCollection.WriteBuffer(
-          "ObjectStorage",
-          frameInfo.FrameIndex,
-          (nint)pObjectData,
-          (ulong)Unsafe.SizeOf<ObjectData>() * (ulong)objectData.Length
-        );
-      }
+  //     unsafe {
+  //       fixed (ObjectData* pObjectData = objectData) {
+  //         _application.StorageCollection.WriteBuffer(
+  //           "ObjectStorage",
+  //           frameInfo.FrameIndex,
+  //           (nint)pObjectData,
+  //           (ulong)Unsafe.SizeOf<ObjectData>() * (ulong)objectData.Length
+  //         );
+  //       }
 
-      ReadOnlySpan<Matrix4x4> flatArray = [.. flatJoints];
-      fixed (Matrix4x4* pMatrices = flatArray) {
-        _application.StorageCollection.WriteBuffer(
-          "JointsStorage",
-          frameInfo.FrameIndex,
-          (nint)pMatrices,
-          (ulong)Unsafe.SizeOf<Matrix4x4>() * (ulong)flatArray.Length
-        );
-      }
-    }
-  }
+  //       ReadOnlySpan<Matrix4x4> flatArray = [.. flatJoints];
+  //       fixed (Matrix4x4* pMatrices = flatArray) {
+  //         _application.StorageCollection.WriteBuffer(
+  //           "JointsStorage",
+  //           frameInfo.FrameIndex,
+  //           (nint)pMatrices,
+  //           (ulong)Unsafe.SizeOf<Matrix4x4>() * (ulong)flatArray.Length
+  //         );
+  //       }
+  //     }
+  //   }
 
 
   // public void Update_(
@@ -492,11 +493,16 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   //   PerfMonitor.Render3DComputeTime = PerfMonitor.ComunnalStopwatch.ElapsedMilliseconds;
   // }
 
-  public void Render(IRender3DElement[] renderables, FrameInfo frameInfo, bool indirect = true) {
+  public void Render(
+    IRender3DElement[] renderables,
+    ConcurrentDictionary<Guid, Mesh> meshes,
+    FrameInfo frameInfo,
+    bool indirect = true
+  ) {
 
     PerfMonitor.Clear3DRendererInfo();
     PerfMonitor.NumberOfObjectsRenderedIn3DRenderer = (uint)LastElemRenderedCount;
-    CreateOrUpdateBuffers(renderables);
+    CreateOrUpdateBuffers(renderables, meshes);
 
     if (indirect) {
       if (_simpleBufferNodes.Length > 0) {
@@ -507,17 +513,21 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       }
     } else {
       if (_simpleBufferNodes.Length > 0) {
-        RenderSimple(frameInfo, _simpleBufferNodes);
+        RenderSimple(frameInfo, _simpleBufferNodes, meshes);
       }
       if (_complexBufferNodes.Length > 0) {
-        RenderComplex(frameInfo, _complexBufferNodes, _simpleBufferNodes.Length);
+        RenderComplex(frameInfo, _complexBufferNodes, meshes, _simpleBufferNodes.Length);
       }
     }
 
 
   }
 
-  public unsafe void RenderSimple(FrameInfo frameInfo, Span<Node> nodes) {
+  public unsafe void RenderSimple(
+    FrameInfo frameInfo,
+    Span<Node> nodes,
+    ConcurrentDictionary<Guid, Mesh> meshes
+  ) {
     BindPipeline(frameInfo.CommandBuffer, Simple3D);
 
     Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, _pipelines[Simple3D].PipelineLayout, 0, 1);
@@ -534,7 +544,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       if (nodes[i].ParentRenderer.Owner.CanBeDisposed || !nodes[i].ParentRenderer.Owner.Active) continue;
       if (!nodes[i].ParentRenderer.FinishedInitialization) continue;
 
-      uint thisCount = (uint)nodes[i].Mesh!.Indices.Length;
+      uint thisCount = (uint)meshes[nodes[i].MeshGuid].Indices.Length;
       var bindInfo = _vertexSimpleBindings[i];
 
       var buffer = _simpleBufferPool.GetVertexBuffer(bindInfo.BufferIndex);
@@ -558,7 +568,12 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     }
   }
 
-  public unsafe void RenderComplex(FrameInfo frameInfo, Span<Node> nodes, int offset) {
+  public unsafe void RenderComplex(
+    FrameInfo frameInfo,
+    Span<Node> nodes,
+    ConcurrentDictionary<Guid, Mesh> meshes,
+    int offset
+  ) {
     BindPipeline(frameInfo.CommandBuffer, Skinned3D);
 
     Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, _pipelines[Skinned3D].PipelineLayout, 0, 1);
@@ -573,9 +588,9 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalComplexIndexBuffer!, 0);
 
     for (int i = 0; i < nodes.Length; i++) {
-      uint thisCount = (uint)nodes[i].Mesh!.Indices.Length;
+      uint thisCount = (uint)meshes[nodes[i].MeshGuid].Indices.Length;
 
-      if (!nodes[i].ParentRenderer.Owner.Active || nodes[i].ParentRenderer.Owner.CanBeDisposed || nodes[i].Mesh?.IndexBuffer == null) {
+      if (!nodes[i].ParentRenderer.Owner.Active || nodes[i].ParentRenderer.Owner.CanBeDisposed || meshes[nodes[i].MeshGuid]?.IndexBuffer == null) {
         indexOffset += thisCount;
         continue;
       }
@@ -772,7 +787,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     return false;
   }
 
-  private void CreateOrUpdateBuffers(IRender3DElement[] renderables) {
+  private void CreateOrUpdateBuffers(IRender3DElement[] renderables, ConcurrentDictionary<Guid, Mesh> meshes) {
     // short-circuit if renderables identical and pools already present
     _cacheMatch = _renderablesCache.SequenceEqual(renderables);
     if (_cacheMatch && _complexBufferPool != null && _simpleBufferPool != null)
@@ -790,7 +805,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     var nodeObjectsNotSkinned = new List<Node>(flatNodes.Count / 2);
 
     foreach (var node in flatNodes) {
-      if (!node.Enabled || node.Mesh is null) continue;
+      if (!node.Enabled || !node.HasMesh) continue;
       if (node.HasSkin) nodeObjectsSkinned.Add(node);
       else nodeObjectsNotSkinned.Add(node);
     }
@@ -834,12 +849,12 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     // --- GPU buffers that depend on topology/order only ---
     Logger.Info("[RENDER 3D] Recreating Buffers");
     if (notCount > 0) {
-      CreateSimpleVertexBuffer(NotSkinnedNodesCache);
-      CreateSimpleIndexBuffer(NotSkinnedNodesCache);
+      CreateSimpleVertexBuffer(NotSkinnedNodesCache, meshes);
+      CreateSimpleIndexBuffer(NotSkinnedNodesCache, meshes);
     }
     if (skinCount > 0) {
-      CreateComplexVertexBuffer(SkinnedNodesCache);
-      CreateComplexIndexBuffer(SkinnedNodesCache);
+      CreateComplexVertexBuffer(SkinnedNodesCache, meshes);
+      CreateComplexIndexBuffer(SkinnedNodesCache, meshes);
     }
 
     CreateIndirectBuffer(ref _indirectSimples, ref _indirectSimpleBuffers);
@@ -850,41 +865,42 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     _cacheMatch = true;
   }
 
-  private void CreateOrUpdateBuffers_(IRender3DElement[] renderables) {
-    // _cacheMatch = _simpleBufferNodes.SequenceEqual(_notSkinnedNodesCache) && _complexBufferNodes.SequenceEqual(_skinnedNodesCache);
-    _cacheMatch = _renderablesCache.SequenceEqual(renderables);
+  // private void CreateOrUpdateBuffers_(IRender3DElement[] renderables) {
+  //   // _cacheMatch = _simpleBufferNodes.SequenceEqual(_notSkinnedNodesCache) && _complexBufferNodes.SequenceEqual(_skinnedNodesCache);
+  //   _cacheMatch = _renderablesCache.SequenceEqual(renderables);
 
-    if (_cacheMatch && _complexBufferPool != null && _simpleBufferPool != null) return;
+  //   if (_cacheMatch && _complexBufferPool != null && _simpleBufferPool != null) return;
 
-    // Node[] items = [.. _notSkinnedNodesCache, .. _skinnedNodesCache];
+  //   // Node[] items = [.. _notSkinnedNodesCache, .. _skinnedNodesCache];
 
-    _instanceIndexSimple = 0;
-    _instanceIndexComplex = 0;
+  //   _instanceIndexSimple = 0;
+  //   _instanceIndexComplex = 0;
 
-    Frustum.FlattenNodes(renderables, out var flatNodes);
-    _flatNodesCache = [.. flatNodes];
-
-
-
-    Logger.Info("[RENDER 3D] Recreating Buffers");
-    if (NotSkinnedNodesCache.Length > 0) {
-      CreateSimpleVertexBuffer(NotSkinnedNodesCache);
-      CreateSimpleIndexBuffer(NotSkinnedNodesCache);
-    }
-    if (SkinnedNodesCache.Length > 0) {
-      CreateComplexVertexBuffer(SkinnedNodesCache);
-      CreateComplexIndexBuffer(SkinnedNodesCache);
-    }
+  //   Frustum.FlattenNodes(renderables, out var flatNodes);
+  //   _flatNodesCache = [.. flatNodes];
 
 
-    // CreateIndirectCommands(items);
-    CreateIndirectBuffer(ref _indirectSimples, ref _indirectSimpleBuffers);
-    CreateIndirectBuffer(ref _indirectComplexes, ref _indirectComplexBuffers);
 
-    _cacheMatch = true;
-  }
+  //   Logger.Info("[RENDER 3D] Recreating Buffers");
+  //   if (NotSkinnedNodesCache.Length > 0) {
+  //     CreateSimpleVertexBuffer(NotSkinnedNodesCache, meshes);
+  //     CreateSimpleIndexBuffer(NotSkinnedNodesCache, meshes);
+  //   }
+  //   if (SkinnedNodesCache.Length > 0) {
+  //     CreateComplexVertexBuffer(SkinnedNodesCache, meshes);
+  //     CreateComplexIndexBuffer(SkinnedNodesCache, meshes);
+  //   }
+
+
+  //   // CreateIndirectCommands(items);
+  //   CreateIndirectBuffer(ref _indirectSimples, ref _indirectSimpleBuffers);
+  //   CreateIndirectBuffer(ref _indirectComplexes, ref _indirectComplexBuffers);
+
+  //   _cacheMatch = true;
+  // }
 
   private void AddIndirectCommand(
+    ConcurrentDictionary<Guid, Mesh> meshes,
     uint index,
     Node node,
     VertexBinding vertexBinding,
@@ -899,7 +915,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
     var data = pair[index];
 
-    var mesh = node.Mesh;
+    var mesh = meshes[node.MeshGuid];
     if (mesh?.IndexBuffer == null) throw new ArgumentNullException("mesh does not have index buffer", nameof(mesh));
 
     var cmd = new VkDrawIndexedIndirectCommand {
@@ -916,53 +932,53 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     data.CurrentIndexOffset += vertexBinding.FirstIndexOffset;
   }
 
-  private void CreateIndirectCommands(ReadOnlySpan<Node> nodes) {
-    _indirectDrawCommands.Clear();
-    uint indexOffset = 0;
-    uint i = 0;
+  // private void CreateIndirectCommands(ReadOnlySpan<Node> nodes) {
+  //   _indirectDrawCommands.Clear();
+  //   uint indexOffset = 0;
+  //   uint i = 0;
 
-    foreach (var node in nodes) {
-      var mesh = node.Mesh;
-      if (mesh?.IndexBuffer == null)
-        continue;
+  //   foreach (var node in nodes) {
+  //     var mesh = node.Mesh;
+  //     if (mesh?.IndexBuffer == null)
+  //       continue;
 
-      var cmd = new VkDrawIndexedIndirectCommand {
-        indexCount = (uint)mesh.Indices.Length,
-        instanceCount = 1,
-        firstIndex = indexOffset,
-        vertexOffset = 0,
-        firstInstance = (uint)i
-      };
+  //     var cmd = new VkDrawIndexedIndirectCommand {
+  //       indexCount = (uint)mesh.Indices.Length,
+  //       instanceCount = 1,
+  //       firstIndex = indexOffset,
+  //       vertexOffset = 0,
+  //       firstInstance = (uint)i
+  //     };
 
-      _indirectDrawCommands.Add(cmd);
-      indexOffset += (uint)mesh.Indices.Length;
-      i++;
-    }
-  }
+  //     _indirectDrawCommands.Add(cmd);
+  //     indexOffset += (uint)mesh.Indices.Length;
+  //     i++;
+  //   }
+  // }
 
-  private void CreateIndirectCommands(ReadOnlySpan<IRender3DElement> drawables) {
-    _indirectDrawCommands.Clear();
-    uint indexOffset = 0;
+  // private void CreateIndirectCommands(ReadOnlySpan<IRender3DElement> drawables) {
+  //   _indirectDrawCommands.Clear();
+  //   uint indexOffset = 0;
 
-    for (int i = 0; i < drawables.Length; i++) {
-      foreach (var node in drawables[i].MeshedNodes) {
-        var mesh = node.Mesh;
-        if (mesh?.IndexBuffer == null)
-          continue;
+  //   for (int i = 0; i < drawables.Length; i++) {
+  //     foreach (var node in drawables[i].MeshedNodes) {
+  //       var mesh = node.Mesh;
+  //       if (mesh?.IndexBuffer == null)
+  //         continue;
 
-        var cmd = new VkDrawIndexedIndirectCommand {
-          indexCount = (uint)mesh.Indices.Length,
-          instanceCount = 1,
-          firstIndex = indexOffset,
-          vertexOffset = 0,
-          firstInstance = (uint)i
-        };
+  //       var cmd = new VkDrawIndexedIndirectCommand {
+  //         indexCount = (uint)mesh.Indices.Length,
+  //         instanceCount = 1,
+  //         firstIndex = indexOffset,
+  //         vertexOffset = 0,
+  //         firstInstance = (uint)i
+  //       };
 
-        _indirectDrawCommands.Add(cmd);
-        indexOffset += (uint)mesh.Indices.Length;
-      }
-    }
-  }
+  //       _indirectDrawCommands.Add(cmd);
+  //       indexOffset += (uint)mesh.Indices.Length;
+  //     }
+  //   }
+  // }
 
   private unsafe void CreateIndirectBuffer(ref Dictionary<uint, IndirectData> pair, ref DwarfBuffer[] buffArray) {
     foreach (var buff in buffArray) {
@@ -1006,7 +1022,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     }
   }
 
-  private unsafe void CreateSimpleIndexBuffer(ReadOnlySpan<Node> nodes) {
+  private unsafe void CreateSimpleIndexBuffer(ReadOnlySpan<Node> nodes, ConcurrentDictionary<Guid, Mesh> meshes) {
     _globalSimpleIndexBuffer?.Dispose();
 
     var adjustedIndices = new List<uint>();
@@ -1014,7 +1030,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     uint indexOffset = 0;
 
     foreach (var node in nodes) {
-      var mesh = node.Mesh;
+      var mesh = meshes[node.MeshGuid];
       if (mesh?.IndexBuffer == null) continue;
 
       foreach (var idx in mesh.Indices) {
@@ -1060,7 +1076,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     stagingBuffer.Dispose();
   }
 
-  private unsafe void CreateComplexIndexBuffer(ReadOnlySpan<Node> nodes) {
+  private unsafe void CreateComplexIndexBuffer(ReadOnlySpan<Node> nodes, ConcurrentDictionary<Guid, Mesh> meshes) {
     _globalComplexIndexBuffer?.Dispose();
 
     var adjustedIndices = new List<uint>();
@@ -1068,7 +1084,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     uint indexOffset = 0;
 
     foreach (var node in nodes) {
-      var mesh = node.Mesh;
+      var mesh = meshes[node.MeshGuid];
       if (mesh?.IndexBuffer == null) continue;
 
       foreach (var idx in mesh.Indices) {
@@ -1113,7 +1129,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     );
     stagingBuffer.Dispose();
   }
-  private unsafe void CreateSimpleVertexBuffer(ReadOnlySpan<Node> nodes) {
+  private unsafe void CreateSimpleVertexBuffer(ReadOnlySpan<Node> nodes, ConcurrentDictionary<Guid, Mesh> meshes) {
     _vertexSimpleBindings.Clear();
     _simpleBufferPool.Dispose();
     _simpleBufferPool = new BufferPool(_device, _allocator);
@@ -1127,10 +1143,10 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
     _simpleBufferNodes = nodes.ToArray();
     foreach (var node in nodes) {
-      var verts = node.Mesh!.Vertices;
+      var verts = meshes[node.MeshGuid].Vertices;
       var byteSize = (ulong)verts.Length * (ulong)Unsafe.SizeOf<Vertex>();
 
-      var indices = node.Mesh!.Indices;
+      var indices = meshes[node.MeshGuid].Indices;
       var byteSizeIndices = (ulong)indices.Length * sizeof(uint);
 
 
@@ -1160,7 +1176,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
           FirstIndexOffset = indexOffset
         });
 
-        AddIndirectCommand(currentPool, node, _vertexSimpleBindings.Last(), ref _indirectSimples, ref _instanceIndexSimple);
+        AddIndirectCommand(meshes, currentPool, node, _vertexSimpleBindings.Last(), ref _indirectSimples, ref _instanceIndexSimple);
 
         indexOffset += (uint)indices.Length;
         vertexOffset += (uint)verts.Length;
@@ -1170,7 +1186,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     }
   }
 
-  private unsafe void CreateComplexVertexBuffer(ReadOnlySpan<Node> nodes) {
+  private unsafe void CreateComplexVertexBuffer(ReadOnlySpan<Node> nodes, ConcurrentDictionary<Guid, Mesh> meshes) {
     _vertexComplexBindings.Clear();
     _complexBufferPool.Dispose();
     _complexBufferPool = new BufferPool(_device, _allocator);
@@ -1184,10 +1200,10 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
     _complexBufferNodes = nodes.ToArray();
     foreach (var node in nodes) {
-      var verts = node.Mesh!.Vertices;
+      var verts = meshes[node.MeshGuid].Vertices;
       var byteSize = (ulong)verts.Length * (ulong)Unsafe.SizeOf<Vertex>();
 
-      var indices = node.Mesh!.Indices;
+      var indices = meshes[node.MeshGuid].Indices;
       var byteSizeIndices = (ulong)indices.Length * sizeof(uint);
 
 
@@ -1217,7 +1233,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
           FirstIndexOffset = indexOffset
         });
 
-        AddIndirectCommand(currentPool, node, _vertexComplexBindings.Last(), ref _indirectComplexes, ref _instanceIndexComplex, in _instanceIndexSimple);
+        AddIndirectCommand(meshes, currentPool, node, _vertexComplexBindings.Last(), ref _indirectComplexes, ref _instanceIndexComplex, in _instanceIndexSimple);
 
         indexOffset += (uint)indices.Length;
         vertexOffset += (uint)verts.Length;

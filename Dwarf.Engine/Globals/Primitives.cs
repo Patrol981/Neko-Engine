@@ -137,29 +137,30 @@ public static class Primitives {
   }
 
   public static Mesh? CreateConvex(Node[] inputMesh) {
-    return inputMesh[0].Mesh;
+    throw new NotImplementedException();
   }
 
-  public static Mesh CreateConvex(Node[] nodes, bool flip = false) {
+  public static Mesh CreateConvex(Application app, Node[] nodes, bool flip = false) {
     var vertices = new List<Vertex>();
     var indices = new List<uint>();
 
     uint vertexOffset = 0;
 
     foreach (var n in nodes) {
-      for (int vertexIndex = 0; vertexIndex < n.Mesh!.Vertices.Length; vertexIndex++) {
-        var vertex = n.Mesh!.Vertices[vertexIndex];
+      var mesh = app.Meshes[n.MeshGuid];
+      for (int vertexIndex = 0; vertexIndex < mesh.Vertices.Length; vertexIndex++) {
+        var vertex = mesh.Vertices[vertexIndex];
         Vector3 updatePos = flip ? new(vertex.Position.X, -vertex.Position.Y, vertex.Position.Z) : vertex.Position;
 
         vertex.Position = updatePos;
         vertices.Add(vertex);
       }
 
-      foreach (var index in n.Mesh!.Indices) {
+      foreach (var index in mesh.Indices) {
         indices.Add(index + vertexOffset);
       }
 
-      vertexOffset += (uint)n.Mesh!.Vertices.Length;
+      vertexOffset += (uint)mesh.Vertices.Length;
     }
 
     return new Mesh(Application.Instance.Allocator, Application.Instance.Device) {
