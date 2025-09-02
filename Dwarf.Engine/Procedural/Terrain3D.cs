@@ -40,8 +40,8 @@ public class Terrain3D {
     var mesh = Generate(_app);
     SetupTexture(_app);
 
-    Owner.AddDrawable3D(new MeshRenderer(Owner, _app.Device, _app.Renderer));
-    Owner.GetDrawable3D()?.AddLinearNode(new Node() { Mesh = mesh, });
+    Owner.AddDrawable3D(new MeshRenderer(Owner, _app, _app.Device, _app.Renderer));
+    Owner.GetDrawable3D()?.AddLinearNode(new Node(_app) { Mesh = mesh, });
     Owner.GetDrawable3D()?.Init();
     Owner.GetDrawable3D()?.BindToTexture(_app.TextureManager, _texturePath);
 

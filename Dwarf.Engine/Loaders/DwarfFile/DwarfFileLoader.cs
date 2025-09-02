@@ -9,63 +9,63 @@ namespace Dwarf.Loaders;
 public static class DwarfFileLoader {
   public static MeshRenderer LoadMesh(Entity entity, Application app, string path) {
     var dwarfFile = Load(path);
-    var meshRenderer = new MeshRenderer(entity, app.Device, app.Renderer);
+    var meshRenderer = new MeshRenderer(entity, app, app.Device, app.Renderer);
 
-    // Load Textures From binary file
-    var stream = new FileStream($"./Resources/{dwarfFile.BinaryDataRef}", FileMode.Open);
-    var reader = new BinaryReader(stream);
+    // // Load Textures From binary file
+    // var stream = new FileStream($"./Resources/{dwarfFile.BinaryDataRef}", FileMode.Open);
+    // var reader = new BinaryReader(stream);
 
-    if (dwarfFile.Animations?.Count != 0) {
-      meshRenderer.Animations = FileAnimation.FromFileAnimations(dwarfFile.Animations!);
-    }
+    // if (dwarfFile.Animations?.Count != 0) {
+    //   meshRenderer.Animations = FileAnimation.FromFileAnimations(dwarfFile.Animations!);
+    // }
 
-    if (dwarfFile.Skins?.Count != 0) {
-      meshRenderer.Skins = FileSkin.FromFileSkins(dwarfFile.Skins!);
-    }
+    // if (dwarfFile.Skins?.Count != 0) {
+    //   meshRenderer.Skins = FileSkin.FromFileSkins(dwarfFile.Skins!);
+    // }
 
-    if (dwarfFile.Skins != null && dwarfFile.Skins.Count > 0) {
-      for (int i = 0; i < meshRenderer.Skins.Count; i++) {
-        if (dwarfFile.Skins[i].JointIndices != null && dwarfFile.Skins[i].JointIndices!.Count > 0) {
-          for (int j = 0; j < dwarfFile.Skins[i]!.JointIndices!.Count; j++) {
-            var target = meshRenderer.NodeFromIndex(dwarfFile.Skins[i]!.JointIndices[j]!);
-            if (target != null) {
-              meshRenderer.Skins[i].Joints.Add(target);
-            }
-          }
-        }
-      }
-    }
+    // if (dwarfFile.Skins != null && dwarfFile.Skins.Count > 0) {
+    //   for (int i = 0; i < meshRenderer.Skins.Count; i++) {
+    //     if (dwarfFile.Skins[i].JointIndices != null && dwarfFile.Skins[i].JointIndices!.Count > 0) {
+    //       for (int j = 0; j < dwarfFile.Skins[i]!.JointIndices!.Count; j++) {
+    //         var target = meshRenderer.NodeFromIndex(dwarfFile.Skins[i]!.JointIndices[j]!);
+    //         if (target != null) {
+    //           meshRenderer.Skins[i].Joints.Add(target);
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
 
-    for (int i = 0; i < meshRenderer.Skins.Count; i++) {
-      try {
-        var node = meshRenderer.NodeFromIndex(dwarfFile.Skins![i].SkeletonRoot);
-        meshRenderer.Skins[i].SkeletonRoot = node!;
-      } catch {
-        meshRenderer.Skins[i].SkeletonRoot = null!;
-      }
-    }
+    // for (int i = 0; i < meshRenderer.Skins.Count; i++) {
+    //   try {
+    //     var node = meshRenderer.NodeFromIndex(dwarfFile.Skins![i].SkeletonRoot);
+    //     meshRenderer.Skins[i].SkeletonRoot = node!;
+    //   } catch {
+    //     meshRenderer.Skins[i].SkeletonRoot = null!;
+    //   }
+    // }
 
-    if (dwarfFile.Nodes?.Count == 0) {
-      throw new ArgumentException(nameof(dwarfFile.Nodes));
-    }
-    foreach (var node in dwarfFile.Nodes!) {
-      LoadNode(null!, node, ref meshRenderer, reader, app, in dwarfFile);
-    }
+    // if (dwarfFile.Nodes?.Count == 0) {
+    //   throw new ArgumentException(nameof(dwarfFile.Nodes));
+    // }
+    // foreach (var node in dwarfFile.Nodes!) {
+    //   LoadNode(null!, node, ref meshRenderer, reader, app, in dwarfFile);
+    // }
 
-    foreach (var node in meshRenderer.LinearNodes) {
-      if (node.SkinIndex > -1) {
-        node.Skin = meshRenderer.Skins[node.SkinIndex];
-        node.Skin.Init();
-      }
+    // foreach (var node in meshRenderer.LinearNodes) {
+    //   if (node.SkinIndex > -1) {
+    //     node.Skin = meshRenderer.Skins[node.SkinIndex];
+    //     node.Skin.Init();
+    //   }
 
-      if (node.Mesh != null) {
-        node.Update();
-      }
-    }
+    //   if (node.Mesh != null) {
+    //     node.Update();
+    //   }
+    // }
 
-    LoadAnimations(ref meshRenderer, in dwarfFile);
+    // LoadAnimations(ref meshRenderer, in dwarfFile);
 
-    meshRenderer.Init();
+    // meshRenderer.Init();
 
     return meshRenderer;
   }
@@ -144,9 +144,9 @@ public static class DwarfFileLoader {
       newNode.Mesh!.BindToTexture(app.TextureManager, id);
     }
 
-    if (fileNode.Skin != null) {
-      newNode.Skin = meshRenderer.Skins[newNode.SkinIndex];
-    }
+    // if (fileNode.Skin != null) {
+    //   newNode.Skin = meshRenderer.Skins[newNode.SkinIndex];
+    // }
 
     if (parentNode == null) {
       meshRenderer.AddNode(newNode);
