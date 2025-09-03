@@ -12,3 +12,4 @@ Shaders_backup/**
 *.sln
 *.user
 *.pubxml
+*.DS_Store

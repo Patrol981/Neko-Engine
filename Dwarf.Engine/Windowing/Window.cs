@@ -58,16 +58,18 @@ public class Window : IWindow {
 
     if (
       RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ||
-      RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+      RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ||
+      RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
     ) {
       if (!SDL_Vulkan_LoadLibrary()) {
         throw new Exception("Failed to initialize Vulkan");
       }
 
       windowFlags |= SDL_WindowFlags.Vulkan;
-    } else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
-      windowFlags |= SDL_WindowFlags.Metal;
     }
+    // } else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+    //   windowFlags |= SDL_WindowFlags.Metal;
+    // }
 
     if (fullscreen) {
       windowFlags |= SDL_WindowFlags.Fullscreen | SDL_WindowFlags.Borderless;

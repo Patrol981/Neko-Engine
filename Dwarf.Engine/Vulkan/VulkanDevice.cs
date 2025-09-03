@@ -404,7 +404,6 @@ public class VulkanDevice : IDevice {
   private unsafe void CreateInstance() {
     HashSet<VkUtf8String> availableInstanceLayers = [.. DeviceHelper.EnumerateInstanceLayers()];
     HashSet<VkUtf8String> availableInstanceExtensions = [.. DeviceHelper.GetInstanceExtensions()];
-
     var appInfo = new VkApplicationInfo {
       pApplicationName = AppName,
       applicationVersion = new(1, 0, 0),
@@ -418,9 +417,20 @@ public class VulkanDevice : IDevice {
     };
 
     List<VkUtf8String> instanceExtensions = [];
-    foreach (var ext in SDL_Vulkan_GetInstanceExtensions()) {
-      ReadOnlySpan<byte> sdlExtSpan = Encoding.UTF8.GetBytes(ext);
-      instanceExtensions.Add(sdlExtSpan);
+
+    if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+      foreach (var ext in SDL_Vulkan_GetInstanceExtensions()) {
+        ReadOnlySpan<byte> sdlExtSpan = Encoding.UTF8.GetBytes(ext);
+        instanceExtensions.Add(sdlExtSpan);
+      }
+    } else {
+      instanceExtensions.Add(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
+      instanceExtensions.Add(VK_KHR_SURFACE_EXTENSION_NAME);
+
+      // VK_EXT_metal_surface
+      // VK_KHR_surface
+      // VK_MVK_moltenvk
+      // VK_MVK_macos_surface
     }
 
     List<VkUtf8String> instanceLayers = new();
@@ -465,6 +475,10 @@ public class VulkanDevice : IDevice {
     // instanceExtensions.Add(VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME);
     // instanceExtensions.Add(VK_EXT_dynamic_rendering_unused_attachments)
 
+    // if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+    //   instanceExtensions.Add(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
+    // }
+
     if (s_EnableValidationLayers) {
       DeviceHelper.GetOptimalValidationLayers(availableInstanceLayers, instanceLayers);
     }
@@ -476,6 +490,7 @@ public class VulkanDevice : IDevice {
     createInfo.ppEnabledLayerNames = vkLayerNames;
     createInfo.enabledExtensionCount = vkInstanceExtensions.Length;
     createInfo.ppEnabledExtensionNames = vkInstanceExtensions;
+    createInfo.flags = VkInstanceCreateFlags.EnumeratePortabilityKHR;
 
     var debugCreateInfo = new VkDebugUtilsMessengerCreateInfoEXT();
 
@@ -584,6 +599,8 @@ public class VulkanDevice : IDevice {
       queueCreateInfos[queueCount++] = queueCreateInfo;
     }
 
+    var isOSX = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+
     VkPhysicalDeviceFeatures deviceFeatures = new() {
       samplerAnisotropy = true,
       fillModeNonSolid = true,
@@ -668,7 +685,7 @@ public class VulkanDevice : IDevice {
 
     VkDeviceCreateInfo createInfo = new() {
       queueCreateInfoCount = queueCount,
-      pNext = &deviceFeatures2
+      // pNext = &deviceFeatures2
     };
 
     fixed (VkDeviceQueueCreateInfo* ptr = queueCreateInfos) {
@@ -676,12 +693,16 @@ public class VulkanDevice : IDevice {
     }
 
     List<VkUtf8String> enabledExtensions;
-    enabledExtensions = [
+
+    enabledExtensions = isOSX ? [
+      VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+      VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
+    ] : [
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
       VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
       VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
       VK_KHR_PRESENT_WAIT_EXTENSION_NAME,
-      VK_KHR_PRESENT_ID_EXTENSION_NAME
+      VK_KHR_PRESENT_ID_EXTENSION_NAME,
       // VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME,
       // VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME
     ];
@@ -689,11 +710,11 @@ public class VulkanDevice : IDevice {
     using var deviceExtensionNames = new VkStringArray(enabledExtensions);
 
     // createInfo.pEnabledFeatures = &deviceFeatures;
-    createInfo.pNext = &deviceFeatures2;
+    createInfo.pNext = isOSX ? &vk14Features : &deviceFeatures2;
     createInfo.enabledExtensionCount = deviceExtensionNames.Length;
     createInfo.ppEnabledExtensionNames = deviceExtensionNames;
 
-    Features = deviceFeatures2.features;
+    Features = isOSX ? deviceFeatures : deviceFeatures2.features;
     DeviceExtensions = enabledExtensions;
 
     var result = vkCreateDevice(_physicalDevice, &createInfo, null, out _logicalDevice);
