@@ -490,7 +490,10 @@ public class VulkanDevice : IDevice {
     createInfo.ppEnabledLayerNames = vkLayerNames;
     createInfo.enabledExtensionCount = vkInstanceExtensions.Length;
     createInfo.ppEnabledExtensionNames = vkInstanceExtensions;
-    createInfo.flags = VkInstanceCreateFlags.EnumeratePortabilityKHR;
+
+    if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+      createInfo.flags = VkInstanceCreateFlags.EnumeratePortabilityKHR;
+    }
 
     var debugCreateInfo = new VkDebugUtilsMessengerCreateInfoEXT();
 
