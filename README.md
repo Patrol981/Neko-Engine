@@ -18,14 +18,13 @@ but do feel free to create any other game with it!
 | -------- | ------------------ |
 | Windows  | :white_check_mark: |
 | Linux    | :white_check_mark: |
-| MacOS    | :x:                |
+| MacOS    | :white_check_mark:                |
 | Android  | :x:                |
 | iOS      | :x:                |
 
-Engine supports for now only Windows and Linux platform, MacOS with Metal support
-will be there eventually but it's not the main priority
+Engine supports for now only Windows and Linux platform, MacOS is supported by MoltenVk.
 
-Android support is planned too along with iOS but not in the nearest future
+Android support is planned too along with iOS but not in the nearest future.
 
 # Scripting
 
