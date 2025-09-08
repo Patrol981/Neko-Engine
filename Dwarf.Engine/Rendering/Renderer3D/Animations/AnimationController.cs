@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
@@ -111,6 +112,7 @@ public class AnimationController {
     _activeAnimations.Add((animation, weight));
   }
 
+  [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public void Update(Node node) {
     if (node == null) return;
     if (_activeAnimations.Count < 1) return;
@@ -142,6 +144,8 @@ public class AnimationController {
       UpdateAnimation(animation, adjustedTimer, normalizedWeight);
     }
   }
+
+  [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public void UpdateAnimation(Animation animation, float time, float weight) {
     foreach (var channel in animation.Channels) {
       var sampler = animation.Samplers[channel.SamplerIndex];

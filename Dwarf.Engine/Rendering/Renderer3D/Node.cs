@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using Dwarf.AbstractionLayer;
 using Dwarf.Math;
 using Dwarf.Rendering.Renderer3D.Animations;
@@ -20,25 +21,32 @@ public struct NodeInfo {
 public class Node : ICloneable, IDisposable, IComparable<Node> {
   private readonly Application _app;
 
-  public Node? Parent;
+
   public int Index = 0;
-  public List<Node> Children = [];
-  public Matrix4x4 NodeMatrix = Matrix4x4.Identity;
   public string Name = string.Empty;
-  // public Mesh? Mesh;
+  public Node? Parent;
+  public List<Node> Children = [];
+
+  public Matrix4x4 NodeMatrix = Matrix4x4.Identity;
+
   public Guid MeshGuid = Guid.Empty;
-  // public Skin? Skin;
   public Guid SkinGuid = Guid.Empty;
-  public int SkinIndex = -1;
+  public Guid EntityGuid = Guid.Empty;
+
+  internal int SkinIndex = -1;
+
   public Vector3 Translation = Vector3.Zero;
   public Quaternion Rotation = Quaternion.Identity;
   public Vector3 Scale = Vector3.One;
+
   public Vector3 TranslationOffset = Vector3.Zero;
   public Quaternion RotationOffset = Quaternion.Identity;
   public Vector3 ScaleOffset = Vector3.One;
+
   public bool UseCachedMatrix = false;
   public Matrix4x4 CachedLocalMatrix = Matrix4x4.Identity;
   public Matrix4x4 CachedMatrix = Matrix4x4.Identity;
+
 
   public MeshRenderer ParentRenderer = null!;
   public BoundingBox BoundingVolume;
@@ -52,10 +60,15 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
   public float AnimationTimer = 0.0f;
   public Guid BatchId { get; init; } = Guid.NewGuid();
 
-  public Node(Application app) {
+  public Node(
+    Application app,
+    Guid entityId
+  ) {
     _app = app;
+    EntityGuid = entityId;
   }
 
+  [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public Matrix4x4 GetLocalMatrix() {
     if (!UseCachedMatrix) {
       CachedLocalMatrix =
@@ -67,6 +80,7 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
     return CachedLocalMatrix;
   }
 
+  [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public Matrix4x4 GetMatrix() {
     if (!UseCachedMatrix) {
       Matrix4x4 m = GetLocalMatrix();
@@ -83,6 +97,7 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
     }
   }
 
+  [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public void Update() {
     UseCachedMatrix = false;
     if (MeshGuid != Guid.Empty) {
@@ -136,8 +151,7 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
       skin?.Dispose();
     } catch { }
     try {
-      _app.Meshes.TryGetValue(MeshGuid, out var mesh);
-      mesh?.Dispose();
+      _app.Meshes.TryGetValue(MeshGuid, out var mesh); ;
     } catch { }
     GC.SuppressFinalize(this);
   }
@@ -149,7 +163,7 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
   }
 
   public object Clone() {
-    var clone = new Node(_app) {
+    var clone = new Node(_app, default) {
       Parent = null,
       Index = Index,
       NodeMatrix = NodeMatrix,
@@ -157,7 +171,7 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
       // Mesh = (Mesh)Mesh?.Clone()! ?? null!,
       // Skin = (Skin)Skin?.Clone()! ?? null!,
       // Skin = Skin,
-      SkinIndex = SkinIndex,
+      // SkinIndex = SkinIndex,
       Translation = Translation,
       Rotation = Rotation,
       Scale = Scale,

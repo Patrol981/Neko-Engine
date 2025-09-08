@@ -46,8 +46,6 @@ public class ShadowRenderSystem : SystemBase {
 
   public void Setup() {
     _shadowMesh = Primitives.CreatePlanePrimitive(1);
-    _shadowMesh.CreateVertexBuffer();
-    _shadowMesh.CreateIndexBuffer();
   }
 
   public void Update(Span<IRender3DElement> i3D) {
@@ -72,10 +70,10 @@ public class ShadowRenderSystem : SystemBase {
       );
     }
 
-    _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _shadowMesh.VertexBuffer!, 0);
-    if (_shadowMesh.HasIndexBuffer) {
-      _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _shadowMesh.IndexBuffer!);
-    }
+    // _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _shadowMesh.VertexBuffer!, 0);
+    // if (_shadowMesh.HasIndexBuffer) {
+    //   _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _shadowMesh.IndexBuffer!);
+    // }
 
     for (int i = 0; i < _positions.Count; i++) {
       _shadowPushConstant->Transform = _positions[i].Position();

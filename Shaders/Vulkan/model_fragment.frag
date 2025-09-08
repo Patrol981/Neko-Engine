@@ -36,6 +36,12 @@ layout(std140, set = 3, binding = 0) readonly buffer PointLightBuffer {
   PointLight pointLights[];
 } pointLightBuffer;
 
+void main_() {
+  float alpha = 1.0;
+  vec3 result = vec3(1,1,1);
+  vec4 texColor = texture(sampler2D(_texture[int(objectBuffer.objectData[id].ambientAndTexId0.w)], _sampler), texCoord).rgba;
+  outColor = texColor * vec4(result, alpha);
+}
 
 void main() {
   vec3 surfaceNormal = normalize(fragNormalWorld);

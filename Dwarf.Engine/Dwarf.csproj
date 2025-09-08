@@ -72,6 +72,8 @@
 	  <PackageReference Include="YamlDotNet" Version="16.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.8" />
     <PackageReference Include="ZLinq" Version="1.5.2" />
+    <PackageReference Include="Tracy-CSharp" Version="0.11.1" />
+    <PackageReference Include="TracyWrapper" Version="0.20.2" />
   </ItemGroup>
 
   <ItemGroup>

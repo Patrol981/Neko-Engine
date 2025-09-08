@@ -1,5 +1,6 @@
 using System.Numerics;
 using Dwarf.AbstractionLayer;
+using Dwarf.Animations;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
 using Dwarf.Math;
@@ -40,6 +41,19 @@ public static partial class GLTFLoaderKHR {
         ref meshRenderer,
         ref materials
       );
+      // LoadAnimationNode(
+      //   app,
+      //   app.Allocator,
+      //   app.Device,
+      //   default!,
+      //   node,
+      //   scene.Nodes[i],
+      //   gltf,
+      //   glb,
+      //   1.0f,
+      //   ref meshRenderer,
+      //   ref materials
+      // );
     }
 
     if (gltf.Animations != null && gltf.Animations.Length > 0) {
@@ -370,6 +384,162 @@ public static partial class GLTFLoaderKHR {
     throw new ArgumentException($"Unknown wrap mode {wrapMode}");
   }
 
+  private unsafe static void LoadAnimationNode(
+    Application app,
+    nint allocator,
+    IDevice device,
+    Dwarf.Animations.AnimationNode parent,
+    Node node,
+    int nodeIdx,
+    Gltf gltf,
+    byte[] globalBuffer,
+    float globalScale,
+    ref MeshRenderer meshRenderer,
+    ref List<EntityComponentSystem.Material> materials
+  ) {
+    Dwarf.Animations.AnimationNode newNode = new() {
+      Index = nodeIdx,
+      Name = node.Name,
+      SkinIndex = node.Skin.HasValue ? node.Skin.Value : -1,
+      NodeMatrix = Matrix4x4.Identity
+    };
+    if (parent.Name != CommonConstants.NODE_INIT_NAME_NOT_SET) {
+      newNode.Parent = &parent;
+    }
+
+    // Generate local node matrix
+    var translation = Vector3.Zero;
+    if (node.Translation.Length == 3) {
+      translation = node.Translation.ToVector3();
+      newNode.Translation = translation;
+    }
+    var rotation = Matrix4x4.Identity;
+    if (node.Rotation.Length == 4) {
+      var q = node.Rotation.ToQuat();
+      newNode.Rotation = q;
+    }
+    var scale = Vector3.One;
+    if (node.Scale.Length == 3) {
+      scale = node.Scale.ToVector3();
+      newNode.Scale = scale;
+    }
+    if (node.Matrix.Length == 16) {
+      newNode.NodeMatrix = node.Matrix.ToMatrix4x4();
+    }
+
+    // Node with children
+    if (node.Children?.Length > 0) {
+      for (int i = 0; i < node.Children.Length; i++) {
+        LoadAnimationNode(
+          app,
+          allocator,
+          device,
+          newNode,
+          gltf.Nodes[node.Children[i]],
+          node.Children[i],
+          gltf,
+          globalBuffer,
+          globalScale,
+          ref meshRenderer,
+          ref materials
+        );
+      }
+    }
+
+    // Node contains mesh data
+    if (node.Mesh.HasValue) {
+      var gltfMesh = gltf.Meshes[node.Mesh.Value];
+      var newMesh = new Rendering.Mesh(allocator, device, newNode.NodeMatrix);
+
+      var indices = new List<uint>();
+      var vertices = new List<Vertex>();
+      EntityComponentSystem.Material material = null!;
+
+      for (int j = 0; j < gltfMesh.Primitives.Length; j++) {
+        var primitive = gltfMesh.Primitives[j];
+
+        int materialIdx = primitive.Material.HasValue ? primitive.Material.Value : -1;
+        material = materialIdx >= 0 && materialIdx < materials.Count ? materials[materialIdx] : new EntityComponentSystem.Material();
+
+        Vector2[] textureCoords = [];
+        Vector3[] normals = [];
+        Vector4[] weights = [];
+        Vector4I[] joints = [];
+        Vector3[] positions = [];
+
+        // Vertices
+        {
+          if (primitive.Attributes.TryGetValue("TEXCOORD_0", out int coordIdx)) {
+            LoadAccessor<float>(gltf, globalBuffer, gltf.Accessors[coordIdx], out var texFloats);
+            textureCoords = texFloats.ToVector2Array();
+          }
+          if (primitive.Attributes.TryGetValue("POSITION", out int positionIdx)) {
+            LoadAccessor<float>(gltf, globalBuffer, gltf.Accessors[positionIdx], out var posFloats);
+            positions = posFloats.ToVector3Array();
+          }
+          if (primitive.Attributes.TryGetValue("NORMAL", out int normalIdx)) {
+            LoadAccessor<float>(gltf, globalBuffer, gltf.Accessors[normalIdx], out var normFloats);
+            normals = normFloats.ToVector3Array();
+          }
+          if (primitive.Attributes.TryGetValue("WEIGHTS_0", out int weightsIdx)) {
+            LoadAccessor<float>(gltf, globalBuffer, gltf.Accessors[weightsIdx], out var weightFLoats);
+            weights = weightFLoats.ToVector4Array();
+          }
+          if (primitive.Attributes.TryGetValue("JOINTS_0", out int jointsIdx)) {
+            try {
+              LoadAccessor<ushort>(gltf, globalBuffer, gltf.Accessors[jointsIdx], out var jointIndices);
+              joints = jointIndices.ToVec4IArray();
+            } catch {
+              LoadAccessor<byte>(gltf, globalBuffer, gltf.Accessors[jointsIdx], out var jointIndices);
+              joints = jointIndices.ToVec4IArray();
+            }
+          }
+
+          var vertex = new Vertex();
+          for (int v = 0; v < positions.Length; v++) {
+            vertex.Position = positions[v];
+            // vertex.Position = Vector3.Transform(positions[v], newNode.GetLocalMatrix());
+            vertex.Color = Vector3.One;
+            vertex.Normal = normals.Length > 0 ? normals[v] : new Vector3(1, 1, 1);
+            vertex.Uv = textureCoords.Length > 0 ? textureCoords[v] : new Vector2(0, 0);
+
+            vertex.JointWeights = weights.Length > 0 ? weights[v] : new Vector4(0, 0, 0, 0);
+            vertex.JointIndices = joints.Length > 0 ? joints[v] : new Vector4I(0, 0, 0, 0);
+
+            vertices.Add(vertex);
+          }
+        }
+
+        if (primitive.Indices.HasValue) {
+          var idx = primitive.Indices.Value;
+          var idc = GetIndexAccessor(gltf, globalBuffer, idx);
+          indices.AddRange(idc);
+        }
+      }
+
+      newMesh.Vertices = [.. vertices];
+      newMesh.Indices = [.. indices];
+      material ??= new EntityComponentSystem.Material();
+      newMesh.Material = material;
+
+      var guid = Guid.NewGuid();
+      app.Meshes.TryAdd(guid, newMesh);
+
+      newNode.MeshId = guid;
+    }
+
+    if (parent.Name != CommonConstants.NODE_INIT_NAME_NOT_SET) {
+      AnimationNode.PushChildren(&parent, &newNode);
+    } else {
+      fixed (MeshRenderer* mPtr = &meshRenderer) {
+        AnimationNode.SetMeshRenderer(&newNode, mPtr);
+      }
+      app.AnimationNodes.TryAdd(Guid.NewGuid(), newNode);
+      meshRenderer.AddAnimationNode(newNode);
+    }
+    meshRenderer.AddLinearAnimationNode(newNode);
+  }
+
   private static void LoadNode(
     Application app,
     nint allocator,
@@ -383,7 +553,7 @@ public static partial class GLTFLoaderKHR {
     ref MeshRenderer meshRenderer,
     ref List<EntityComponentSystem.Material> materials
   ) {
-    Dwarf.Rendering.Renderer3D.Node newNode = new(app) {
+    Dwarf.Rendering.Renderer3D.Node newNode = new(app, meshRenderer.Owner.Id) {
       Index = nodeIdx,
       Name = node.Name,
       SkinIndex = node.Skin.HasValue ? node.Skin.Value : -1,
