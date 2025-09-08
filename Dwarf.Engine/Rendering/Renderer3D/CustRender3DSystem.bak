@@ -17,6 +17,16 @@ using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Rendering.Renderer3D;
 
+public class NodeObjectDataTable {
+  public ObjectData ObjectData;
+  public Node Node;
+
+  public NodeObjectDataTable(Node node, ObjectData objectData) {
+    Node = node;
+    ObjectData = objectData;
+  }
+}
+
 public partial class Render3DSystem : SystemBase, IRenderSystem {
   public const string Simple3D = "simple3D";
   public const string Skinned3D = "skinned3D";
@@ -45,7 +55,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
   public Node[] NotSkinnedNodesCache { get; private set; } = [];
   public Node[] SkinnedNodesCache { get; private set; } = [];
-  private ObjectData[] _objectDataCache = [];
+  private List<NodeObjectDataTable> _objectDataCache = [];
   private Node[] _flatNodesCache = [];
   private IRender3DElement[] _renderablesCache = [];
 
@@ -150,52 +160,167 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     for (int i = 0; i < renderables.Length; i++) {
       LastKnownElemSize += renderables[i]!.CalculateBufferSize();
     }
+
+    // CreateVertexBuffer(entities);
+    // CreateIndexBuffer(entities);
+
+    // CreateIndirectCommands(entities);
+    //. CreateIndirectBuffer();
   }
 
-  [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-  public void Update(FrameInfo frameInfo, ConcurrentDictionary<Guid, Mesh> meshes) {
-    if (_objectDataScratch.Length == 0) return;
+  // TODO : rozbic na pomniejsze funkcje (np 1. ustawiamy dane do transformow, potem materialy, etc)
 
-    for (int i = 0; i < NotSkinnedNodesCache.Length; i++) {
-      var node = NotSkinnedNodesCache[i];
-      var owner = node.ParentRenderer.Owner;
-      if (owner.CanBeDisposed) continue;
+  public void UpdateTransforms() {
 
-      var transform = owner.GetTransform();
-      var mesh = meshes[node.MeshGuid];
+  }
 
-      int idx = _nodeToObjIndex[node];
-      ref var od = ref _objectDataScratch[idx];
+  public void UpdateMaterials() {
 
-      od.ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity;
-      od.NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity;
-      od.NodeMatrix = mesh.Matrix;
-      od.JointsBufferOffset = Vector4.Zero;
+  }
+
+  public void UpdateMeshes() { }
+
+  public void Update(
+    FrameInfo frameInfo,
+    ConcurrentDictionary<Guid, Mesh> meshes,
+    ConcurrentDictionary<Guid, TransformComponent> transforms
+  ) {
+    var jointsArray = new List<Matrix4x4>();
+
+    for (int i = 0; i < _objectDataCache.Count; i++) {
+      var entity = _application.Entities.Where(x => x.Id == _objectDataCache[i].Node.EntityGuid).Single();
+      var transform = entity.GetTransform();
+      var mesh = meshes[_objectDataCache[i].Node.MeshGuid];
+      var obj = _objectDataCache[i].ObjectData;
+
+      if (_objectDataCache[i].Node.HasSkin) {
+        var skin = _application.Skins[_objectDataCache[i].Node.SkinGuid];
+        var joints = skin.OutputNodeMatrices;
+        jointsArray.AddRange(joints);
+      }
+
+      obj.ModelMatrix = transform!.Matrix();
+      obj.NormalMatrix = transform!.NormalMatrix();
+      obj.NodeMatrix = mesh.Matrix;
     }
 
+    unsafe {
+      var objDatas = _objectDataCache.Select(x => x.ObjectData).ToArray();
+      fixed (ObjectData* pObjectData = objDatas) {
+        _application.StorageCollection.WriteBuffer(
+          "ObjectStorage",
+          frameInfo.FrameIndex,
+          (nint)pObjectData,
+          (ulong)Unsafe.SizeOf<ObjectData>() * (ulong)_objectDataCache.Count
+        );
+      }
+      fixed (Matrix4x4* pMatrices = jointsArray.ToArray()) {
+        _application.StorageCollection.WriteBuffer(
+          "JointsStorage",
+          frameInfo.FrameIndex,
+          (nint)pMatrices,
+          (ulong)Unsafe.SizeOf<Matrix4x4>() * (ulong)jointsArray.Count
+        );
+      }
+    }
+
+    // for (int i = 0; i < NotSkinnedNodesCache.Length; i++) {
+
+    // }
+
+    // for (int i = 0; i < SkinnedNodesCache.Length; i++) {
+
+    // }
+  }
+
+  public void Update_(
+    FrameInfo frameInfo,
+    ConcurrentDictionary<Guid, Mesh> meshes,
+    ConcurrentDictionary<Guid, TransformComponent> transforms,
+    ConcurrentDictionary<Guid, MaterialComponent> materials
+  ) {
+    // if caches not ready, there's nothing to write this frame
+    if (_objectDataScratch.Length == 0)
+      return;
+
+    // 2) fill ObjectData (no allocations)
+    // non-skinned first
+    for (int i = 0; i < NotSkinnedNodesCache.Length; i++) {
+      var node = NotSkinnedNodesCache[i];
+      // var owner = node.ParentRenderer.Owner;
+      // if (owner.CanBeDisposed) continue;
+
+      // var transform = owner.GetTransform();
+      // var material = owner.GetMaterial();
+
+      var material = materials[node.EntityGuid];
+      var transform = transforms[node.EntityGuid];
+
+      var mesh = meshes[node.MeshGuid];
+      var texKey = mesh.TextureIdReference.ToString();
+
+      if (!_texIndexCache.TryGetValue(texKey, out float texId)) {
+        var targetTexture = _textureManager.GetTextureLocal(mesh.TextureIdReference);
+        texId = GetIndexOfMyTexture(targetTexture.TextureName);
+        _texIndexCache[texKey] = texId;
+      }
+
+      var idx = _nodeToObjIndex[node];
+      _objectDataScratch[idx] = new ObjectData {
+        ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity,
+        NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity,
+        NodeMatrix = mesh.Matrix,
+        JointsBufferOffset = Vector4.Zero,
+        ColorAndFilterFlag = new Vector4(material?.Color ?? Vector3.Zero, node.FilterMeInShader ? 1f : 0f),
+        AmbientAndTexId0 = new Vector4(material?.Ambient ?? Vector3.Zero, texId),
+        DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId),
+        SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f),
+      };
+    }
+
+    // skinned (writes ObjectData and joints into the pre-sized array)
     for (int i = 0; i < SkinnedNodesCache.Length; i++) {
       var node = SkinnedNodesCache[i];
-      var owner = node.ParentRenderer.Owner;
-      if (owner.CanBeDisposed) continue;
+      // var owner = node.ParentRenderer.Owner;
+      // if (owner.CanBeDisposed) continue;
+      // var transform = owner.GetTransform();
+      // var material = owner.GetMaterial();
 
-      var transform = owner.GetTransform();
+
+      var material = materials[node.EntityGuid];
+      var transform = transforms[node.EntityGuid];
+
+
       var mesh = meshes[node.MeshGuid];
+      var texKey = mesh.TextureIdReference.ToString();
 
-      int objIdx = _nodeToObjIndex[node];
-      int jointsOffset = _nodeToJointsOffset[node];
+      if (!_texIndexCache.TryGetValue(texKey, out float texId)) {
+        var targetTexture = _textureManager.GetTextureLocal(mesh.TextureIdReference);
+        texId = GetIndexOfMyTexture(targetTexture.TextureName);
+        _texIndexCache[texKey] = texId;
+      }
 
-      ref var od = ref _objectDataScratch[objIdx];
+      var objIdx = _nodeToObjIndex[node];
+      var jointsOffset = _nodeToJointsOffset[node];
 
-      od.ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity;
-      od.NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity;
-      od.NodeMatrix = mesh.Matrix;
-      od.JointsBufferOffset = new Vector4(jointsOffset, 0, 0, 0);
+      _objectDataScratch[objIdx] = new ObjectData {
+        ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity,
+        NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity,
+        NodeMatrix = mesh.Matrix,
+        JointsBufferOffset = new Vector4(jointsOffset, 0, 0, 0),
+        ColorAndFilterFlag = new Vector4(material?.Color ?? Vector3.Zero, node.FilterMeInShader ? 1f : 0f),
+        AmbientAndTexId0 = new Vector4(material?.Ambient ?? Vector3.Zero, texId),
+        DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId),
+        SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f),
+      };
 
+      // copy current joints into the pre-allocated joints array
       var skin = _application.Skins[node.SkinGuid];
       var joints = skin.OutputNodeMatrices;
       Array.Copy(joints, 0, _jointsScratch, jointsOffset, joints.Length);
     }
 
+    // 3) upload to GPU (exact same calls you had, but with persistent arrays)
     unsafe {
       fixed (ObjectData* pObjectData = _objectDataScratch) {
         _application.StorageCollection.WriteBuffer(
@@ -216,7 +341,249 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     }
   }
 
-  [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+  //   public void Update__(
+  //     FrameInfo frameInfo,
+  //     Span<IRender3DElement> entities
+  // ) {
+  //     var objectData = Array.Empty<ObjectData>();
+  //     var flatJoints = new List<Matrix4x4>(64); // small default to avoid immediate growth
+
+  //     PerfMonitor.ComunnalStopwatch.Restart();
+  //     // Frustum.GetFrustrum(out var planes);
+  //     // entities = Frustum.FilterObjectsByPlanes(in planes, entities).ToArray();
+  //     Frustum.FlattenNodes(entities, out var flattenNodes);
+  //     // Frustum.FilterNodesByPlanes(planes, flattenNodes, out var frustumNodes);
+  //     // Frustum.FilterNodesByFog(flattenNodes, out var frustumNodes);
+
+  //     // Pre-size lists to cut reallocations (roughly half/half; adjust if you know typical ratios)
+  //     var expected = flattenNodes.Count;
+  //     var nodeObjectsSkinned = new List<KeyValuePair<Node, ObjectData>>(expected / 2);
+  //     var nodeObjectsNotSkinned = new List<KeyValuePair<Node, ObjectData>>(expected / 2);
+
+  //     int offset = 0;
+  //     // Cache texture index by id; NOTE: if TextureIdReference isn't a string, use that type directly to avoid ToString allocs.
+  //     var texIndexCache = new Dictionary<string, float>(StringComparer.Ordinal);
+
+  //     // ---------- Build phase (main thread; touches engine objects) ----------
+  //     foreach (var node in flattenNodes) {
+  //       if (!node.Enabled || !node.HasMesh)
+  //         continue;
+
+  //       var mesh = node.Mesh;
+  //       var owner = node.ParentRenderer.Owner;
+  //       var transform = owner.GetTransform();
+  //       var material = owner.GetMaterial();
+
+  //       // Avoid ToString() churn if TextureIdReference is already a string/value type
+  //       var texKey = mesh.TextureIdReference.ToString();
+  //       if (!texIndexCache.TryGetValue(texKey, out float texId)) {
+  //         var targetTexture = _textureManager.GetTextureLocal(mesh.TextureIdReference);
+  //         texId = GetIndexOfMyTexture(targetTexture.TextureName);
+  //         texIndexCache[texKey] = texId;
+  //       }
+
+  //       var filterFlag = (node.FilterMeInShader == true) ? 1f : 0f;
+
+  //       var data = new ObjectData {
+  //         ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity,
+  //         NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity,
+  //         NodeMatrix = mesh.Matrix,
+  //         JointsBufferOffset = node.HasSkin ? new Vector4(offset, 0, 0, 0) : Vector4.Zero,
+  //         ColorAndFilterFlag = new Vector4(material?.Color ?? Vector3.Zero, filterFlag),
+  //         AmbientAndTexId0 = new Vector4(material?.Ambient ?? Vector3.Zero, texId),
+  //         DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId),
+  //         SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f),
+  //       };
+
+  //       if (node.HasSkin) {
+  //         nodeObjectsSkinned.Add(new(node, data));
+
+  //         var skin = _application.Skins[node.SkinGuid];
+  //         var joints = skin.OutputNodeMatrices;
+  //         flatJoints.AddRange(joints);
+  //         offset += joints.Length;
+  //       } else {
+  //         nodeObjectsNotSkinned.Add(new(node, data));
+  //       }
+  //     }
+
+  //     // ---------- Sort (keep deterministic order) ----------
+  //     nodeObjectsSkinned.Sort(static (x, y) => x.Key.CompareTo(y.Key));
+  //     nodeObjectsNotSkinned.Sort(static (x, y) => x.Key.CompareTo(y.Key));
+
+  //     // ---------- Animation update (main thread only) ----------
+  //     for (int i = 0; i < nodeObjectsSkinned.Count; i++) {
+  //       var n = nodeObjectsSkinned[i].Key;
+  //       var owner = n.ParentRenderer.Owner;
+  //       if (owner.CanBeDisposed) continue;
+  //       owner.GetAnimationController()?.Update(n);
+  //     }
+
+  //     // ---------- Single-pass outputs + group counts (no LINQ) ----------
+  //     int skinnedCount = nodeObjectsSkinned.Count;
+  //     int notCount = nodeObjectsNotSkinned.Count;
+
+  //     SkinnedNodesCache = new Node[skinnedCount];
+  //     NotSkinnedNodesCache = new Node[notCount];
+
+  //     objectData = new ObjectData[notCount + skinnedCount];
+
+  //     // Using dictionaries is far cheaper than GroupBy allocations.
+  //     var skinnedCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+  //     var notSkinnedCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+
+  //     // Not skinned block
+  //     for (int i = 0; i < notCount; i++) {
+  //       var kv = nodeObjectsNotSkinned[i];
+  //       var node = kv.Key;
+
+  //       NotSkinnedNodesCache[i] = node;
+  //       objectData[i] = kv.Value;
+
+  //       var name = node.Name;
+  //       notSkinnedCounts.TryGetValue(name, out int c);
+  //       notSkinnedCounts[name] = c + 1;
+  //     }
+
+  //     // Skinned block
+  //     for (int i = 0; i < skinnedCount; i++) {
+  //       var kv = nodeObjectsSkinned[i];
+  //       var node = kv.Key;
+
+  //       SkinnedNodesCache[i] = node;
+  //       objectData[notCount + i] = kv.Value;
+
+  //       var name = node.Name;
+  //       skinnedCounts.TryGetValue(name, out int c);
+  //       skinnedCounts[name] = c + 1;
+  //     }
+
+  //     unsafe {
+  //       fixed (ObjectData* pObjectData = objectData) {
+  //         _application.StorageCollection.WriteBuffer(
+  //           "ObjectStorage",
+  //           frameInfo.FrameIndex,
+  //           (nint)pObjectData,
+  //           (ulong)Unsafe.SizeOf<ObjectData>() * (ulong)objectData.Length
+  //         );
+  //       }
+
+  //       ReadOnlySpan<Matrix4x4> flatArray = [.. flatJoints];
+  //       fixed (Matrix4x4* pMatrices = flatArray) {
+  //         _application.StorageCollection.WriteBuffer(
+  //           "JointsStorage",
+  //           frameInfo.FrameIndex,
+  //           (nint)pMatrices,
+  //           (ulong)Unsafe.SizeOf<Matrix4x4>() * (ulong)flatArray.Length
+  //         );
+  //       }
+  //     }
+  //   }
+
+
+  // public void Update_(
+  //   Span<IRender3DElement> entities,
+  //   out ObjectData[] objectData,
+  //   out ObjectData[] skinnedObjects,
+  //   out List<Matrix4x4> flatJoints
+  // ) {
+  //   if (entities.Length < 1) {
+  //     objectData = [];
+  //     skinnedObjects = [];
+  //     flatJoints = [];
+  //     return;
+  //   }
+
+  //   objectData = [];
+  //   skinnedObjects = [];
+  //   flatJoints = [];
+
+  //   PerfMonitor.ComunnalStopwatch.Restart();
+  //   Frustum.GetFrustrum(out var planes);
+  //   // entities = Frustum.FilterObjectsByPlanes(in planes, entities).ToArray();
+  //   Frustum.FlattenNodes(entities, out var flattenNodes);
+  //   // Frustum.FilterNodesByPlanes(planes, flattenNodes, out var frustumNodes);
+  //   // Frustum.FilterNodesByFog(flattenNodes, out var frustumNodes);
+
+  //   List<KeyValuePair<Node, ObjectData>> nodeObjectsSkinned = [];
+  //   List<KeyValuePair<Node, ObjectData>> nodeObjectsNotSkinned = [];
+
+  //   int offset = 0;
+  //   flatJoints = [];
+
+  //   return;
+
+  //   foreach (var node in flattenNodes) {
+  //     var transform = node.ParentRenderer.GetOwner().GetComponent<Transform>();
+  //     var material = node.ParentRenderer.GetOwner().GetComponent<MaterialComponent>();
+  //     var targetTexture = _textureManager.GetTextureLocal(node.Mesh!.TextureIdReference);
+  //     float texId = GetIndexOfMyTexture(targetTexture.TextureName)!;
+
+  //     if (!node.Enabled) continue;
+
+  //     if (node.HasSkin) {
+  //       nodeObjectsSkinned.Add(
+  //         new(
+  //           node,
+  //           new ObjectData {
+  //             ModelMatrix = transform.Matrix4,
+  //             NormalMatrix = transform.NormalMatrix,
+  //             NodeMatrix = node.Mesh!.Matrix,
+  //             JointsBufferOffset = new Vector4(offset, 0, 0, 0),
+  //             ColorAndFilterFlag = new Vector4(material.Color, node.FilterMeInShader == true ? 1 : 0),
+  //             AmbientAndTexId0 = new Vector4(material.Ambient, texId),
+  //             DiffuseAndTexId1 = new Vector4(material.Diffuse, texId),
+  //             SpecularAndShininess = new Vector4(material.Specular, material.Shininess)
+  //           }
+  //         )
+  //       );
+  //       flatJoints.AddRange(node.Skin!.OutputNodeMatrices);
+  //       offset += node.Skin!.OutputNodeMatrices.Length;
+  //     } else {
+  //       nodeObjectsNotSkinned.Add(
+  //         new(
+  //           node,
+  //           new ObjectData {
+  //             ModelMatrix = transform.Matrix4,
+  //             NormalMatrix = transform.NormalMatrix,
+  //             NodeMatrix = node.Mesh!.Matrix,
+  //             JointsBufferOffset = Vector4.Zero,
+  //             ColorAndFilterFlag = new Vector4(material.Color, node.FilterMeInShader == true ? 1 : 0),
+  //             AmbientAndTexId0 = new Vector4(material.Ambient, texId),
+  //             DiffuseAndTexId1 = new Vector4(material.Diffuse, texId),
+  //             SpecularAndShininess = new Vector4(material.Specular, material.Shininess)
+  //           }
+  //         )
+  //       );
+  //     }
+  //   }
+
+  //   nodeObjectsSkinned.Sort((x, y) => x.Key.CompareTo(y.Key));
+  //   nodeObjectsNotSkinned.Sort((x, y) => x.Key.CompareTo(y.Key));
+
+  //   return;
+
+  //   foreach (var skinned in nodeObjectsSkinned) {
+  //     skinned.Key.ParentRenderer.GetOwner().TryGetComponent<AnimationController>()?.Update(skinned.Key);
+  //   }
+
+  //   _skinnedGroups = [.. nodeObjectsSkinned
+  //     .GroupBy(x => x.Key.Name)
+  //     .Select(group => (Key: group.Key, Count: group.Count()))];
+
+  //   _notSkinnedGroups = [.. nodeObjectsNotSkinned
+  //     .GroupBy(x => x.Key.Name)
+  //     .Select(group => (Key: group.Key, Count: group.Count()))];
+
+  //   _skinnedNodesCache = [.. nodeObjectsSkinned.Select(x => x.Key)];
+  //   _notSkinnedNodesCache = [.. nodeObjectsNotSkinned.Select(x => x.Key)];
+
+  //   objectData = [.. nodeObjectsNotSkinned.Select(x => x.Value), .. nodeObjectsSkinned.Select(x => x.Value)];
+  //   skinnedObjects = [.. nodeObjectsSkinned.Select(x => x.Value)];
+
+  //   PerfMonitor.Render3DComputeTime = PerfMonitor.ComunnalStopwatch.ElapsedMilliseconds;
+  // }
+
   public void Render(
     IRender3DElement[] renderables,
     ConcurrentDictionary<Guid, Mesh> meshes,
@@ -265,8 +632,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalSimpleIndexBuffer!, 0);
 
     for (int i = 0; i < nodes.Length; i++) {
-      if (nodes[i].ParentRenderer.Owner.CanBeDisposed || !nodes[i].ParentRenderer.Owner.Active) continue;
-      if (!nodes[i].ParentRenderer.FinishedInitialization) continue;
+      if (!nodes[i].Enabled) continue;
+      // if (!nodes[i].ParentRenderer.FinishedInitialization) continue;
 
       uint thisCount = (uint)meshes[nodes[i].MeshGuid].Indices.Length;
       var bindInfo = _vertexSimpleBindings[i];
@@ -314,7 +681,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     for (int i = 0; i < nodes.Length; i++) {
       uint thisCount = (uint)meshes[nodes[i].MeshGuid].Indices.Length;
 
-      if (!nodes[i].ParentRenderer.Owner.Active || nodes[i].ParentRenderer.Owner.CanBeDisposed || meshes[nodes[i].MeshGuid]?.IndexCount < 1) {
+      if (!nodes[i].Enabled || meshes[nodes[i].MeshGuid]?.IndexBuffer == null) {
         indexOffset += thisCount;
         continue;
       }
@@ -511,21 +878,101 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     return false;
   }
 
-  [MethodImpl(MethodImplOptions.AggressiveInlining)]
-  private float GetOrAddTextureIndex(Guid textureId) {
-    // if TextureIdReference is a value type, using ToString() for dict key is fine,
-    // otherwise you can change the dictionary key to Guid directly
-    var key = textureId.ToString();
-    if (_texIndexCache.TryGetValue(key, out var texId))
-      return texId;
+  private void CreateOrUpdateBuffers(IRender3DElement[] renderables, ConcurrentDictionary<Guid, Mesh> meshes) {
+    _cacheMatch = _renderablesCache.SequenceEqual(renderables);
+    if (_cacheMatch && _complexBufferPool != null && _simpleBufferPool != null)
+      return;
 
-    var targetTexture = _textureManager.GetTextureLocal(textureId);
-    texId = GetIndexOfMyTexture(targetTexture.TextureName);
-    _texIndexCache[key] = texId;
-    return texId;
+    var objectDataIdx = 0u;
+
+    var nonSkinnedDataCache = new List<KeyValuePair<Node, ObjectData>>();
+    var skinnedDataCache = new List<KeyValuePair<Node, ObjectData>>();
+
+    var nonSkinnedIdx = 0;
+    var skinnedIdx = 0;
+
+    var jointsOffset = 0;
+
+    foreach (var renderable in renderables) {
+      var nodes = renderable.MeshedNodes;
+
+      foreach (var node in nodes) {
+        var material = _application.Materials.Where(x => x.Value.EntityId == node.EntityGuid).SingleOrDefault().Value;
+        var mesh = meshes[node.MeshGuid];
+
+        var texKey = mesh.TextureIdReference.ToString();
+
+        if (!_texIndexCache.TryGetValue(texKey, out float texId)) {
+          var targetTexture = _textureManager.GetTextureLocal(mesh.TextureIdReference);
+          texId = GetIndexOfMyTexture(targetTexture.TextureName);
+          _texIndexCache[texKey] = texId;
+        }
+
+        if (node.HasSkin) {
+          var skin = _application.Skins[node.SkinGuid];
+          skinnedDataCache.Add(new(node, new() {
+            JointsBufferOffset = Vector4.Zero,
+            ColorAndFilterFlag = new Vector4(material?.Color ?? Vector3.Zero, node.FilterMeInShader ? 1f : 0f),
+            AmbientAndTexId0 = new Vector4(material?.Ambient ?? Vector3.Zero, texId),
+            DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId),
+            SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f),
+          }));
+          skinnedIdx++;
+          jointsOffset += skin.OutputNodeMatrices.Length;
+        } else {
+          nonSkinnedDataCache.Add(new(node, new() {
+            JointsBufferOffset = new Vector4(jointsOffset, 0, 0, 0),
+            ColorAndFilterFlag = new Vector4(material?.Color ?? Vector3.Zero, node.FilterMeInShader ? 1f : 0f),
+            AmbientAndTexId0 = new Vector4(material?.Ambient ?? Vector3.Zero, texId),
+            DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId),
+            SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f),
+          }));
+          nonSkinnedIdx++;
+        }
+      }
+
+      objectDataIdx++;
+    }
+
+    _objectDataCache = [];
+
+    skinnedDataCache.Sort((x, y) => x.Key.CompareTo(y.Key));
+    nonSkinnedDataCache.Sort((x, y) => x.Key.CompareTo(y.Key));
+
+    var count = skinnedDataCache.Count + nonSkinnedDataCache.Count;
+
+    foreach (var nonSkinned in nonSkinnedDataCache) {
+      _objectDataCache.Add(new(nonSkinned.Key, nonSkinned.Value));
+    }
+
+    foreach (var skinned in skinnedDataCache) {
+      _objectDataCache.Add(new(skinned.Key, skinned.Value));
+    }
+
+    // _objectDataCache = [.. nonSkinnedDataCache, .. skinnedDataCache];
+
+    NotSkinnedNodesCache = [.. nonSkinnedDataCache.Select(x => x.Key)];
+    SkinnedNodesCache = [.. skinnedDataCache.Select(x => x.Key)];
+
+    Logger.Info("[RENDER 3D] Recreating Buffers");
+    if (nonSkinnedIdx > 0) {
+      CreateSimpleVertexBuffer(NotSkinnedNodesCache, meshes);
+      CreateSimpleIndexBuffer(NotSkinnedNodesCache, meshes);
+    }
+    if (skinnedIdx > 0) {
+      CreateComplexVertexBuffer(SkinnedNodesCache, meshes);
+      CreateComplexIndexBuffer(SkinnedNodesCache, meshes);
+    }
+
+    CreateIndirectBuffer(ref _indirectSimples, ref _indirectSimpleBuffers);
+    CreateIndirectBuffer(ref _indirectComplexes, ref _indirectComplexBuffers);
+
+    // remember the inputs we built for
+    _renderablesCache = (IRender3DElement[])renderables.Clone();
+    _cacheMatch = true;
   }
 
-  private void CreateOrUpdateBuffers(IRender3DElement[] renderables, ConcurrentDictionary<Guid, Mesh> meshes) {
+  private void CreateOrUpdateBuffers_(IRender3DElement[] renderables, ConcurrentDictionary<Guid, Mesh> meshes) {
     // short-circuit if renderables identical and pools already present
     _cacheMatch = _renderablesCache.SequenceEqual(renderables);
     if (_cacheMatch && _complexBufferPool != null && _simpleBufferPool != null)
@@ -601,46 +1048,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     // remember the inputs we built for
     _renderablesCache = (IRender3DElement[])renderables.Clone();
     _cacheMatch = true;
-
-    for (int i = 0; i < NotSkinnedNodesCache.Length; i++) {
-      var node = NotSkinnedNodesCache[i];
-      var owner = node.ParentRenderer.Owner;
-      var material = owner.GetMaterial();
-      var mesh = meshes[node.MeshGuid];
-
-      float texId = GetOrAddTextureIndex(mesh.TextureIdReference);
-
-      ref var od = ref _objectDataScratch[i];
-      // only static fields here; matrices are updated per-frame
-      od.ColorAndFilterFlag = new Vector4(material?.Color ?? Vector3.Zero, node.FilterMeInShader ? 1f : 0f);
-      od.AmbientAndTexId0 = new Vector4(material?.Ambient ?? Vector3.Zero, texId);
-      od.DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId);
-      od.SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f);
-      // Joints offset is zero for non-skinned; can set once:
-      od.JointsBufferOffset = Vector4.Zero;
-    }
-
-    for (int i = 0; i < SkinnedNodesCache.Length; i++) {
-      var node = SkinnedNodesCache[i];
-      var owner = node.ParentRenderer.Owner;
-      var material = owner.GetMaterial();
-      var mesh = meshes[node.MeshGuid];
-
-      float texId = GetOrAddTextureIndex(mesh.TextureIdReference);
-
-      int objIdx = _nodeToObjIndex[node];
-
-      ref var od = ref _objectDataScratch[objIdx];
-      od.ColorAndFilterFlag = new Vector4(material?.Color ?? Vector3.Zero, node.FilterMeInShader ? 1f : 0f);
-      od.AmbientAndTexId0 = new Vector4(material?.Ambient ?? Vector3.Zero, texId);
-      od.DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId);
-      od.SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f);
-
-      // You can also set JointsBufferOffset once here, since it's topology-stable:
-      // (we still refresh it in Update to match your requirement list)
-      if (_nodeToJointsOffset.TryGetValue(node, out var joff))
-        od.JointsBufferOffset = new Vector4(joff, 0, 0, 0);
-    }
   }
 
   // private void CreateOrUpdateBuffers_(IRender3DElement[] renderables) {
@@ -694,7 +1101,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     var data = pair[index];
 
     var mesh = meshes[node.MeshGuid];
-    if (mesh?.IndexCount < 1) throw new ArgumentNullException("mesh does not have indices", nameof(mesh));
+    if (mesh?.IndexBuffer == null) throw new ArgumentNullException("mesh does not have index buffer", nameof(mesh));
 
     var cmd = new VkDrawIndexedIndirectCommand {
       indexCount = (uint)mesh.Indices.Length,
@@ -809,9 +1216,9 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
     foreach (var node in nodes) {
       var mesh = meshes[node.MeshGuid];
-      if (mesh?.IndexCount < 1) continue;
+      if (mesh?.IndexBuffer == null) continue;
 
-      foreach (var idx in mesh!.Indices) {
+      foreach (var idx in mesh.Indices) {
         adjustedIndices.Add(idx + vertexOffset);
       }
 
@@ -863,9 +1270,9 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
     foreach (var node in nodes) {
       var mesh = meshes[node.MeshGuid];
-      if (mesh?.IndexCount < 1) continue;
+      if (mesh?.IndexBuffer == null) continue;
 
-      foreach (var idx in mesh!.Indices) {
+      foreach (var idx in mesh.Indices) {
         adjustedIndices.Add(idx + vertexOffset);
       }
 

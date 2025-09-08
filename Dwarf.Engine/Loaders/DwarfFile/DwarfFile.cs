@@ -97,8 +97,6 @@ public class FileMesh {
     var mesh = new Mesh(app.Allocator, app.Device) {
       Vertices = fileMesh.Vertices?.Count > 0 ? FileVertex.FromFileVertices(fileMesh.Vertices) : null!,
       Indices = fileMesh.Indices?.Count > 0 ? [.. fileMesh.Indices] : null!,
-      VertexCount = fileMesh.VertexCount,
-      IndexCount = fileMesh.IndexCount,
     };
 
     return mesh;
@@ -151,7 +149,7 @@ public class FileNode {
   public static Node FromFileNode(FileNode fileNode, Node parent = null!) {
     if (fileNode == null) return null!;
 
-    var node = new Node(Application.Instance) {
+    var node = new Node(Application.Instance, default) {
       Index = fileNode.Index,
       SkinIndex = fileNode.SkinIndex,
       Translation = fileNode.Translation != null ? FileVector3.ParseFileVector3(fileNode.Translation) : Vector3.Zero,

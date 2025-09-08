@@ -41,11 +41,15 @@ public enum AlphaMode {
 public class MaterialComponent {
   private MaterialData _materialData;
 
-  public MaterialComponent() {
+  internal Guid EntityId { get; init; }
+
+  public MaterialComponent(Guid entityId) {
+    EntityId = entityId;
     Init();
   }
 
-  public MaterialComponent(Vector3 color) {
+  public MaterialComponent(Guid entityId, Vector3 color) {
+    EntityId = entityId;
     Init();
     _materialData.Color = color;
   }

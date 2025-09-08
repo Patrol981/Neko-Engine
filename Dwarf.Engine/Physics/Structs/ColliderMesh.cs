@@ -288,8 +288,6 @@ public class ColliderMesh : IDebugRenderObject {
     var mesh = new Mesh(allocator, device) {
       Vertices = vertices,
       Indices = indices,
-      IndexCount = (ulong)indices.Length,
-      VertexCount = (ulong)vertices.Length,
     };
 
     return mesh;

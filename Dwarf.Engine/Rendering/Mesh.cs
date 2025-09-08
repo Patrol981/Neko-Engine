@@ -9,18 +9,17 @@ using Vortice.Vulkan;
 
 namespace Dwarf.Rendering;
 
-public class Mesh : IDisposable, ICloneable {
+public class Mesh : ICloneable {
   private readonly IDevice _device = null!;
   private readonly nint _allocator = IntPtr.Zero;
+
+  // internal Guid EntityId { get; init; }
 
   public Vertex[] Vertices = [];
   public uint[] Indices = [];
 
-  public DwarfBuffer? VertexBuffer { get; private set; }
-  public DwarfBuffer? IndexBuffer { get; private set; }
-
-  public ulong VertexCount = 0;
-  public ulong IndexCount = 0;
+  public ulong VertexCount => (ulong)Vertices.LongLength;
+  public ulong IndexCount => (ulong)Indices.LongLength;
 
   public bool HasIndexBuffer => IndexCount > 0;
 
@@ -37,85 +36,12 @@ public class Mesh : IDisposable, ICloneable {
     Matrix = matrix;
   }
 
-  public unsafe Task CreateVertexBuffer(ulong size = 0) {
-    ulong bufferSize;
-    ulong vertexSize;
-    VertexCount = (ulong)Vertices.Length;
-
-    if (size > 0) {
-      bufferSize = size * VertexCount;
-      vertexSize = size;
-    } else {
-      bufferSize = ((ulong)Unsafe.SizeOf<Vertex>()) * VertexCount;
-      vertexSize = (ulong)Unsafe.SizeOf<Vertex>();
-    }
-
-    var stagingBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      vertexSize,
-      VertexCount,
-      BufferUsage.TransferSrc,
-      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      default,
-      true
-    );
-
-    stagingBuffer.Map(bufferSize);
-    fixed (Vertex* verticesPtr = Vertices) {
-      stagingBuffer.WriteToBuffer((nint)verticesPtr, bufferSize);
-    }
-
-    VertexBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      vertexSize,
-      VertexCount,
-      BufferUsage.VertexBuffer | BufferUsage.TransferDst,
-      MemoryProperty.DeviceLocal
-    );
-
-    _device.CopyBuffer(stagingBuffer.GetBuffer(), VertexBuffer.GetBuffer(), bufferSize);
-    stagingBuffer.Dispose();
-    return Task.CompletedTask;
-  }
-
-  public unsafe Task CreateIndexBuffer() {
-    IndexCount = (ulong)Indices.Length;
-    if (!HasIndexBuffer) return Task.CompletedTask;
-
-    ulong bufferSize = sizeof(uint) * IndexCount;
-    ulong indexSize = sizeof(uint);
-
-    var stagingBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      indexSize,
-      IndexCount,
-      BufferUsage.TransferSrc,
-      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      default,
-      true
-    );
-
-    stagingBuffer.Map(bufferSize);
-    fixed (uint* indicesPtr = Indices) {
-      stagingBuffer.WriteToBuffer((nint)indicesPtr, bufferSize);
-    }
-
-    IndexBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      indexSize,
-      IndexCount,
-      BufferUsage.IndexBuffer | BufferUsage.TransferDst,
-      MemoryProperty.DeviceLocal
-    );
-
-    _device.CopyBuffer(stagingBuffer.GetBuffer(), IndexBuffer.GetBuffer(), bufferSize);
-    stagingBuffer.Dispose();
-    return Task.CompletedTask;
-  }
+  // public Mesh(Guid entitiyId, nint allocator, IDevice device, Matrix4x4 matrix = default) {
+  //   EntityId = entitiyId;
+  //   _allocator = allocator;
+  //   _device = device;
+  //   Matrix = matrix;
+  // }
 
   public async void BindToTexture(TextureManager textureManager, string texturePath) {
     TextureIdReference = textureManager.GetTextureIdLocal(texturePath);
@@ -154,20 +80,10 @@ public class Mesh : IDisposable, ICloneable {
     }
   }
 
-  public void Dispose() {
-    VertexBuffer?.Dispose();
-    if (HasIndexBuffer) {
-      IndexBuffer?.Dispose();
-    }
-  }
-
   public object Clone() {
     var clone = new Mesh(_allocator, _device) {
       Vertices = (Vertex[])Vertices.Clone(),
       Indices = (uint[])Indices.Clone(),
-
-      VertexCount = VertexCount,
-      IndexCount = IndexCount,
 
       TextureIdReference = TextureIdReference,
       Material = Material,
@@ -178,8 +94,5 @@ public class Mesh : IDisposable, ICloneable {
     };
 
     return clone;
-
-    // public DwarfBuffer? VertexBuffer { get; private set; }
-    // public DwarfBuffer? IndexBuffer { get; private set; }
   }
 }

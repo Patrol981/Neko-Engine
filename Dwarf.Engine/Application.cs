@@ -513,8 +513,6 @@ public partial class Application {
 
       _ubo->DirectionalLight = DirectionalLight;
 
-      ReadOnlySpan<Entity> entities = Entities.ToArray();
-
       if (Systems.PointLightSystem != null) {
         Systems.PointLightSystem.Update(Lights.Values.ToArray(), out var pointLights);
         if (pointLights.Length > 1) {
@@ -567,8 +565,16 @@ public partial class Application {
 
       _onRender?.Invoke();
       _skybox?.Render(_currentFrame);
-      Entity[] toUpdate = [.. Entities];
+
+      if (Debug) {
+        TracyWrapper.Profiler.PushProfileZone("Systems", System.Drawing.Color.AliceBlue);
+      }
+
       Systems.UpdateSystems(this, _currentFrame);
+
+      if (Debug) {
+        TracyWrapper.Profiler.PopProfileZone();
+      }
 
       Renderer.EndRendering(commandBuffer);
       Renderer.BeginPostProcess(commandBuffer);
@@ -576,6 +582,7 @@ public partial class Application {
       if (UseImGui) {
         GuiController.Update(Time.StopwatchDelta);
       }
+
       Systems.UpdateSystems2(this, _currentFrame);
       MasterRenderUpdate(Scripts.Values.ToArray());
       _onGUI?.Invoke();
@@ -667,6 +674,9 @@ public partial class Application {
 
     Renderer.CreateCommandBuffers(threadInfo.CommandPool, CommandBufferLevel.Primary);
     Mutex.ReleaseMutex();
+
+    if (Debug)
+      TracyWrapper.Profiler.InitThread();
 
     while (!_renderShouldClose) {
       if (Window.IsMinimalized) continue;

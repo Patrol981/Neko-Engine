@@ -43,7 +43,7 @@ public class Terrain3D {
     SetupTexture(_app);
 
     Owner.AddDrawable3D(new MeshRenderer(Owner, _app, _app.Device, _app.Renderer));
-    Owner.GetDrawable3D()?.AddLinearNode(new Node(_app) { MeshGuid = guid });
+    Owner.GetDrawable3D()?.AddLinearNode(new Node(_app, Owner.Id) { MeshGuid = guid });
     Owner.GetDrawable3D()?.Init(_app.Meshes);
     Owner.GetDrawable3D()?.BindToTexture(_app.TextureManager, _texturePath, _app.Meshes);
 

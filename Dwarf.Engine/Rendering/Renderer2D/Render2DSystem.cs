@@ -186,7 +186,7 @@ public class Render2DSystem : SystemBase {
 
       uint thisCount = (uint)mesh.Indices.Length;
 
-      if (!d.Active || d.Entity.CanBeDisposed || mesh.IndexBuffer == null) {
+      if (!d.Active || d.Entity.CanBeDisposed || mesh.IndexCount < 1) {
         indexOffset += thisCount;
         continue;
       }
@@ -214,7 +214,7 @@ public class Render2DSystem : SystemBase {
 
     for (int i = 0; i < drawables.Length; i++) {
       var mesh = drawables[i].Mesh;
-      if (mesh.IndexBuffer == null)
+      if (mesh.IndexCount < 1)
         continue;
 
       var cmd = new VkDrawIndexedIndirectCommand {
@@ -312,7 +312,7 @@ public class Render2DSystem : SystemBase {
 
     for (int i = 0; i < drawables.Length; i++) {
       var mesh = drawables[i].Mesh;
-      if (mesh.IndexBuffer == null) continue;
+      if (mesh.IndexCount < 1) continue;
 
       foreach (var idx in mesh.Indices) {
         adjustedIndices.Add(idx + vertexOffset);
@@ -354,47 +354,6 @@ public class Render2DSystem : SystemBase {
     );
     stagingBuffer.Dispose();
   }
-
-  private unsafe void CreateIndexBuffer_(ReadOnlySpan<IDrawable2D> drawables) {
-    _globalIndexBuffer?.Dispose();
-    ulong size = 0;
-    List<uint> indices = [];
-    for (int i = 0; i < drawables.Length; i++) {
-      var buffer = drawables[i].Mesh.IndexBuffer;
-      if (buffer != null) {
-        size += buffer.GetBufferSize();
-        indices.AddRange(drawables[i].Mesh.Indices);
-      }
-    }
-
-    var stagingBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      size,
-      BufferUsage.TransferSrc,
-      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      stagingBuffer: true,
-      cpuAccessible: true
-    );
-
-    stagingBuffer.Map(size);
-    fixed (uint* pIndices = indices.ToArray()) {
-      stagingBuffer.WriteToBuffer((nint)pIndices, size);
-    }
-
-    _globalIndexBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      size,
-      (ulong)indices.Count,
-      BufferUsage.IndexBuffer | BufferUsage.TransferDst,
-      MemoryProperty.DeviceLocal
-    );
-
-    _device.CopyBuffer(stagingBuffer.GetBuffer(), _globalIndexBuffer.GetBuffer(), size);
-    stagingBuffer.Dispose();
-  }
-
   private unsafe void CreateVertexBuffer(ReadOnlySpan<IDrawable2D> drawables) {
     _vertexBindings.Clear();
     // _bufferPool?.Dispose();

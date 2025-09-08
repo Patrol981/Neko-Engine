@@ -305,6 +305,9 @@ public class VulkanDynamicSwapchain : ISwapchain {
         presentInfo.waitSemaphoreCount = 1;
       }
       var result = vkQueuePresentKHR(queue, &presentInfo);
+      if (Application.Instance.Debug) {
+        TracyWrapper.Profiler.HeartBeat();
+      }
 
       // vkWaitForPresentKHR(
       //   _device.LogicalDevice,
