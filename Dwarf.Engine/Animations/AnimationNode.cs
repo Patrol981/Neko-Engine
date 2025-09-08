@@ -1,18 +1,26 @@
 using System.Collections.Concurrent;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Dwarf.Rendering;
+using Dwarf.Rendering.Renderer3D;
 using Dwarf.Rendering.Renderer3D.Animations;
 
 namespace Dwarf.Animations;
 
 public unsafe struct AnimationNode {
   public int Index;
+  public string Name;
+
+  public int SkinIndex; // Index of skin in gltf model
+
   public Guid MeshId; // Id of mesh in Mesh table
   public Guid SkinId; // Id of skin in Skin table
+  public MeshRenderer* MeshRenderer; // Id of MeshRenderer in MeshRenderer table
 
   public Vector3 Translation;
   public Quaternion Rotation;
   public Vector3 Scale;
+
   public Vector3 TranslationOffset;
   public Quaternion RotationOffset;
   public Vector3 ScaleOffset;
@@ -31,6 +39,8 @@ public unsafe struct AnimationNode {
   public AnimationNode() {
     MeshId = Guid.Empty;
     SkinId = Guid.Empty;
+    SkinIndex = -1;
+    Name = CommonConstants.NODE_INIT_NAME_NOT_SET;
   }
 
   public static unsafe Matrix4x4 GetLocalMatrix(AnimationNode* node) {
@@ -84,8 +94,47 @@ public unsafe struct AnimationNode {
     }
 
     for (short i = 0; i < node->ChildrenCount; i++) {
-      var child = node->Children[i];
-      Update(&child, ref meshTable, ref skinTable);
+      Update(&node->Children[i], ref meshTable, ref skinTable);
     }
+  }
+
+  public static unsafe void PushChildren(
+    AnimationNode* target,
+    AnimationNode* child
+  ) {
+    if (target == null) throw new ArgumentNullException(nameof(target));
+    if (child == null) throw new ArgumentNullException(nameof(child));
+
+    nuint oldCount = target->ChildrenCount;
+    nuint newCount = oldCount + 1u;
+    nuint newSize = (nuint)sizeof(AnimationNode) * newCount;
+
+    // Reallocates the buffer (works with null -> behaves like Alloc)
+    target->Children = (AnimationNode*)NativeMemory.Realloc(target->Children, newSize);
+    if (target->Children == null)
+      throw new OutOfMemoryException("Failed to grow children buffer.");
+
+    // parent link + copy the struct into the last slot
+    child->Parent = target;
+    target->Children[oldCount] = *child;
+
+    target->ChildrenCount = (uint)newCount;
+  }
+
+  public static void SetMeshRenderer(AnimationNode* node, MeshRenderer* meshRenderer) {
+    node->MeshRenderer = meshRenderer;
+  }
+
+  public static unsafe void FreeChildrenRecursive(AnimationNode* node) {
+    for (uint i = 0; i < node->ChildrenCount; i++)
+      FreeChildrenRecursive(&node->Children[i]);
+
+    NativeMemory.Free(node->Children);
+    node->Children = null;
+    node->ChildrenCount = 0;
+  }
+
+  public static unsafe void Dispose(AnimationNode* node) {
+    FreeChildrenRecursive(node);
   }
 }

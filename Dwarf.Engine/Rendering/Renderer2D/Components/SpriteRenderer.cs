@@ -77,12 +77,12 @@ public class SpriteRenderer : IDrawable2D {
   }
 
   public Task Bind(nint commandBuffer, uint index) {
-    Sprites[CurrentSprite].Bind(commandBuffer, index);
+    // Sprites[CurrentSprite].Bind(commandBuffer, index);
     return Task.CompletedTask;
   }
 
   public Task Draw(nint commandBuffer, uint index = 0, uint firstInstance = 0) {
-    Sprites[CurrentSprite].Draw(commandBuffer, index, firstInstance);
+    // Sprites[CurrentSprite].Draw(commandBuffer, index, firstInstance);
     return Task.CompletedTask;
   }
 

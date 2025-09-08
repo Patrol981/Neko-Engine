@@ -117,8 +117,7 @@ public static class Frustum {
       var owner = node.ParentRenderer.Owner;
       if (owner.CanBeDisposed) continue;
       var transform = owner.GetTransform();
-      Debug.Assert(transform != null);
-      var matrix = node.GetMatrix() * transform.Rotation() * transform.Position() * transform.Scale();
+      var matrix = node.GetMatrix() * transform!.Rotation() * transform!.Position() * transform!.Scale();
       var position = matrix.Translation;
       if (Vector2.Distance(new(position.X, position.Z), new(iep.X, iep.Z)) <= fogValue + (node.Radius * 4)) {
         outNodes.Add(node);

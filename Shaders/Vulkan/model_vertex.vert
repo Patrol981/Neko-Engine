@@ -35,6 +35,21 @@ layout(std140, set = 3, binding = 0) readonly buffer PointLightBuffer {
   PointLight pointLights[];
 } pointLightBuffer;
 
+void main_() {
+  vec4 positionWorld =
+    objectBuffer.objectData[id].transformMatrix *
+    objectBuffer.objectData[id].nodeMatrix *
+    vec4(position, 1.0);
+
+  vec3 worldPos = positionWorld.xyz / positionWorld.w;
+  vec4 clip = ubo.projection * ubo.view * vec4(worldPos, 1.0);
+  gl_Position = clip;
+
+  fragPositionWorld = positionWorld.xyz;
+  fragColor = color;
+  texCoord = uv;
+}
+
 void main() {
   id = gl_BaseInstance;
 

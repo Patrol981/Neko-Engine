@@ -67,7 +67,7 @@ public static class EntityExtensions {
     var guid = Guid.NewGuid();
     try {
       entity.Components.TryAdd(typeof(MaterialComponent), guid);
-      var material = new MaterialComponent(Vector3.One);
+      var material = new MaterialComponent(entity.Id, Vector3.One);
       if (!Application.Instance.Materials.TryAdd(guid, material)) {
         throw new Exception("Cannot add material to list");
       }

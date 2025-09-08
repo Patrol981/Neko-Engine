@@ -233,9 +233,7 @@ public class CaveGenerator {
           Normal = Vector3.UnitY,
         };
       }).ToArray();
-      wallMesh.VertexCount = (ulong)wallVertices.Count;
       wallMesh.Indices = [.. wallTriangles];
-      wallMesh.IndexCount = (ulong)wallTriangles.Count;
 
       for (int i = 0; i < wallVertices.Count; i++) {
         float percentX = Float.InverseLerp(
@@ -854,9 +852,7 @@ public class CaveGenerator {
           Normal = Vector3.UnitY,
         };
       }).ToArray(),
-      VertexCount = (ulong)grid.Vertices.Count,
       Indices = [.. grid.Triangles],
-      IndexCount = (ulong)grid.Triangles.Count
     };
 
     for (int i = 0; i < grid.Vertices.Count; i++) {

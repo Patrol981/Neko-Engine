@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Numerics;
 
 using Dwarf.AbstractionLayer;
+using Dwarf.Animations;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Loaders;
 using Dwarf.Math;
@@ -113,8 +114,6 @@ public class MeshRenderer : IRender3DElement, ICollision {
     for (int i = 0; i < MeshedNodes.Length; i++) {
       if (MeshedNodes[i].HasMesh) {
         var mesh = meshes[MeshedNodes[i].MeshGuid];
-        createTasks.Add(mesh.CreateVertexBuffer());
-        createTasks.Add(mesh.CreateIndexBuffer());
 
         AABBArray[i] = new();
         AABBArray[i].Update(mesh);
@@ -390,6 +389,9 @@ public class MeshRenderer : IRender3DElement, ICollision {
     Ssbo?.Dispose();
   }
 
+  public List<AnimationNode> LinearAnimationNodes = [];
+  public List<AnimationNode> AnimationNodes = [];
+
   public int NodesCount { get; private set; } = 0;
   public int MeshedNodesCount { get; private set; } = 0;
   public int LinearNodesCount { get; private set; } = 0;
@@ -429,6 +431,14 @@ public class MeshRenderer : IRender3DElement, ICollision {
     tmp.Add(node);
     LinearNodes = [.. tmp];
   }
+
+  public unsafe void AddAnimationNode(AnimationNode node) {
+    AnimationNodes.Add(node);
+  }
+  public void AddLinearAnimationNode(AnimationNode node) {
+    LinearAnimationNodes.Add(node);
+  }
+
   public void AddJoint(Node[] jointsToAdd, int nodeIdx, int jointIdx) {
     // node.ParentRenderer = this;
     var targetNode = NodeFromIndex(nodeIdx);

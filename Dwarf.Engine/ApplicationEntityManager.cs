@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Dwarf.AbstractionLayer;
+using Dwarf.Animations;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Physics;
 using Dwarf.Procedural;
@@ -30,6 +31,10 @@ public partial class Application {
 
   internal ConcurrentDictionary<Guid, Mesh> Meshes = [];
   internal ConcurrentDictionary<Guid, Skin> Skins = [];
+  internal ConcurrentDictionary<Guid, AnimationNode> AnimationNodes = [];
+
+  // Computed 
+  // internal ConcurrentDictionary
 
   private readonly Queue<Entity> _entitiesQueue = new();
   private readonly Queue<MeshRenderer> _reloadQueue = new();

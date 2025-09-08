@@ -183,16 +183,8 @@ public class TilemapLayer : IDrawable2D {
       }
     }
 
-    LayerMesh.VertexCount = (ulong)vertices.Count;
-    LayerMesh.IndexCount = (ulong)indices.Count;
-
     LayerMesh.Vertices = [.. vertices];
     LayerMesh.Indices = [.. indices];
-
-    if (Application.ApplicationMode == ApplicationType.Headless) return;
-
-    LayerMesh.CreateVertexBuffer();
-    LayerMesh.CreateIndexBuffer();
   }
 
   public void SetupTexture(string path) {
@@ -217,7 +209,7 @@ public class TilemapLayer : IDrawable2D {
   }
 
   public void Dispose() {
-    LayerMesh.Dispose();
+
   }
 
   public void BuildDescriptors(IDescriptorSetLayout descriptorSetLayout, IDescriptorPool descriptorPool) {

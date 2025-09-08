@@ -49,7 +49,7 @@ public class Tilemap : IDrawable2D {
   }
 
   public Task Draw(nint commandBuffer, uint index, uint firstInstance) {
-    DrawLayers(commandBuffer);
+    // DrawLayers(commandBuffer);
 
     return Task.CompletedTask;
   }
@@ -58,37 +58,37 @@ public class Tilemap : IDrawable2D {
     _pipelineLayout = (VkPipelineLayout)pipelineLayout;
   }
 
-  private void DrawLayers(nint commandBuffer) {
-    for (int i = 0; i < Layers.Count; i++) {
-      if (Layers[i].LayerMesh.VertexBuffer == null) {
-        Logger.Warn($"Vertex Buffer of Layer {i} is null");
-        continue;
-      }
+  // private void DrawLayers(nint commandBuffer) {
+  //   for (int i = 0; i < Layers.Count; i++) {
+  //     if (Layers[i].LayerMesh.VertexBuffer == null) {
+  //       Logger.Warn($"Vertex Buffer of Layer {i} is null");
+  //       continue;
+  //     }
 
-      Descriptor.BindDescriptorSet(Layers[i].LayerTexture.TextureDescriptor, commandBuffer, _pipelineLayout, 2, 1);
+  //     Descriptor.BindDescriptorSet(Layers[i].LayerTexture.TextureDescriptor, commandBuffer, _pipelineLayout, 2, 1);
 
-      _application.Renderer.CommandList.BindVertex(commandBuffer, Layers[i].LayerMesh.VertexBuffer!, 0);
-      if (Layers[i].LayerMesh!.IndexBuffer != null) {
-        _application.Renderer.CommandList.BindIndex(commandBuffer, Layers[i].LayerMesh.IndexBuffer!, 0);
-      }
+  //     _application.Renderer.CommandList.BindVertex(commandBuffer, Layers[i].LayerMesh.VertexBuffer!, 0);
+  //     if (Layers[i].LayerMesh!.IndexBuffer != null) {
+  //       _application.Renderer.CommandList.BindIndex(commandBuffer, Layers[i].LayerMesh.IndexBuffer!, 0);
+  //     }
 
-      if (Layers[i].LayerMesh.HasIndexBuffer) {
-        _application.Renderer.CommandList.DrawIndexed(commandBuffer, Layers[i].LayerMesh.IndexCount, 1, 0, 0, 0);
-      } else {
-        _application.Renderer.CommandList.Draw(commandBuffer, Layers[i].LayerMesh.VertexCount, 1, 0, 0);
-      }
-    }
+  //     if (Layers[i].LayerMesh.HasIndexBuffer) {
+  //       _application.Renderer.CommandList.DrawIndexed(commandBuffer, Layers[i].LayerMesh.IndexCount, 1, 0, 0, 0);
+  //     } else {
+  //       _application.Renderer.CommandList.Draw(commandBuffer, Layers[i].LayerMesh.VertexCount, 1, 0, 0);
+  //     }
+  //   }
 
-    // DrawBackgrounds(commandBuffer);
-  }
+  //   // DrawBackgrounds(commandBuffer);
+  // }
 
-  private void DrawBackgrounds(nint commandBuffer) {
-    for (int i = 0; i < Backgrounds.Count; i++) {
-      Descriptor.BindDescriptorSet(Backgrounds[i].Texture.TextureDescriptor, commandBuffer, _pipelineLayout, 2, 1);
-      Backgrounds[i].Bind(commandBuffer, 0);
-      Backgrounds[i].Draw(commandBuffer);
-    }
-  }
+  // private void DrawBackgrounds(nint commandBuffer) {
+  //   for (int i = 0; i < Backgrounds.Count; i++) {
+  //     Descriptor.BindDescriptorSet(Backgrounds[i].Texture.TextureDescriptor, commandBuffer, _pipelineLayout, 2, 1);
+  //     Backgrounds[i].Bind(commandBuffer, 0);
+  //     Backgrounds[i].Draw(commandBuffer);
+  //   }
+  // }
 
   public void CreateTilemap(string[] imageSource) {
     for (int i = 0; i < Layers.Count; i++) {

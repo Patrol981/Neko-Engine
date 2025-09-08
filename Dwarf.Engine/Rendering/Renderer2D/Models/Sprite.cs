@@ -128,18 +128,18 @@ public class Sprite : IDisposable, ICloneable {
     _spriteTexture.BuildDescriptor(descriptorSetLayout, descriptorPool);
   }
 
-  public void Bind(nint commandBuffer, uint index) {
-    _renderer.CommandList.BindVertex(commandBuffer, _spriteMesh.VertexBuffer!, index);
-    if (_spriteMesh.HasIndexBuffer) _renderer.CommandList.BindIndex(commandBuffer, _spriteMesh.IndexBuffer!, index);
-  }
+  // public void Bind(nint commandBuffer, uint index) {
+  //   _renderer.CommandList.BindVertex(commandBuffer, _spriteMesh.VertexBuffer!, index);
+  //   if (_spriteMesh.HasIndexBuffer) _renderer.CommandList.BindIndex(commandBuffer, _spriteMesh.IndexBuffer!, index);
+  // }
 
-  public void Draw(nint commandBuffer, uint index = 0, uint firstInstance = 0) {
-    if (_spriteMesh.HasIndexBuffer) {
-      _renderer.CommandList.DrawIndexed(commandBuffer, _spriteMesh.IndexCount, 1, index, 0, firstInstance);
-    } else {
-      _renderer.CommandList.Draw(commandBuffer, _spriteMesh.VertexCount, 1, 0, 0);
-    }
-  }
+  // public void Draw(nint commandBuffer, uint index = 0, uint firstInstance = 0) {
+  //   if (_spriteMesh.HasIndexBuffer) {
+  //     _renderer.CommandList.DrawIndexed(commandBuffer, _spriteMesh.IndexCount, 1, index, 0, firstInstance);
+  //   } else {
+  //     _renderer.CommandList.Draw(commandBuffer, _spriteMesh.VertexCount, 1, 0, 0);
+  //   }
+  // }
 
   public void Reset() {
     SpriteIndex = 0;
@@ -167,9 +167,6 @@ public class Sprite : IDisposable, ICloneable {
         throw new ArgumentException("Neither of spriteCount or spriteSheetTileSize was set");
       }
     }
-
-    _spriteMesh.CreateVertexBuffer();
-    _spriteMesh.CreateIndexBuffer();
   }
 
   private void GetAspectRatio() {
@@ -331,7 +328,6 @@ public class Sprite : IDisposable, ICloneable {
   }
 
   public void Dispose() {
-    _spriteMesh.Dispose();
     GC.SuppressFinalize(this);
   }
 

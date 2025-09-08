@@ -248,7 +248,7 @@ public class Skybox : IDisposable {
     _textureManager = textureManager;
     _renderer = renderer;
     _transform = new();
-    _material = new(new Vector3(1.0f, 1.0f, 1.0f));
+    _material = new(default, new Vector3(1.0f, 1.0f, 1.0f));
 
     _textureSetLayout = new VulkanDescriptorSetLayout.Builder(_device)
     .AddBinding(0, DescriptorType.CombinedImageSampler, ShaderStageFlags.Fragment)
