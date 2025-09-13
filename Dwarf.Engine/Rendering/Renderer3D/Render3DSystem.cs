@@ -556,9 +556,12 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     foreach (var s in _simpleVisibleScratch.Values) s.Clear();
     foreach (var s in _complexVisibleScratch.Values) s.Clear();
 
+    var planes = Frustum.BuildFromCamera(CameraState.GetCamera());
+
     // --- SIMPLE (non-skinned) ---
     List<Node> visSimpleIn;
-    Frustum.FilterNodesByFog(new List<Node>(_simpleBufferNodes), out visSimpleIn); // your culling
+    // Frustum.FilterNodesByFog(new List<Node>(_simpleBufferNodes), out visSimpleIn); // your culling
+    Frustum.FilterNodesByPlanes(in planes, [.. _simpleBufferNodes], out visSimpleIn);
 
     foreach (var n in visSimpleIn) {
       var owner = n.ParentRenderer.Owner;
@@ -597,6 +600,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     // --- COMPLEX (skinned) ---
     List<Node> visComplexIn;
     Frustum.FilterNodesByFog(new List<Node>(_complexBufferNodes), out visComplexIn);
+    // Frustum.FilterNodesByPlanes(in planes, [.. _complexBufferNodes], out visComplexIn);
 
     foreach (var n in visComplexIn) {
       var owner = n.ParentRenderer.Owner;

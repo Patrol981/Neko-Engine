@@ -197,6 +197,9 @@ public class VulkanPipeline : IPipeline {
   public unsafe void Dispose() {
     vkDestroyShaderModule(_device.LogicalDevice, _vertexShaderModule, null);
     vkDestroyShaderModule(_device.LogicalDevice, _fragmentShaderModule, null);
+    if (_geometryShaderModule.IsNotNull) {
+      vkDestroyShaderModule(_device.LogicalDevice, _geometryShaderModule, null);
+    }
     vkDestroyPipeline(_device.LogicalDevice, _graphicsPipeline);
   }
 }
