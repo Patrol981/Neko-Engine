@@ -24,6 +24,7 @@ public class VulkanDevice : IDevice {
   private VkDebugUtilsMessengerEXT _debugMessenger = VkDebugUtilsMessengerEXT.Null;
 
   private VkInstance _vkInstance = VkInstance.Null;
+  private List<VkUtf8String> _instanceExtensions = [];
   private VkPhysicalDevice _physicalDevice = VkPhysicalDevice.Null;
   private VkDevice _logicalDevice = VkDevice.Null;
 
@@ -416,16 +417,14 @@ public class VulkanDevice : IDevice {
       pApplicationInfo = &appInfo
     };
 
-    List<VkUtf8String> instanceExtensions = [];
-
     if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
       foreach (var ext in SDL_Vulkan_GetInstanceExtensions()) {
         ReadOnlySpan<byte> sdlExtSpan = Encoding.UTF8.GetBytes(ext);
-        instanceExtensions.Add(sdlExtSpan);
+        _instanceExtensions.Add(sdlExtSpan);
       }
     } else {
-      instanceExtensions.Add(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
-      instanceExtensions.Add(VK_KHR_SURFACE_EXTENSION_NAME);
+      _instanceExtensions.Add(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
+      _instanceExtensions.Add(VK_KHR_SURFACE_EXTENSION_NAME);
 
       // VK_EXT_metal_surface
       // VK_KHR_surface
@@ -437,39 +436,50 @@ public class VulkanDevice : IDevice {
     // Check if VK_EXT_debug_utils is supported, which supersedes VK_EXT_Debug_Report
     foreach (VkUtf8String availableExtension in availableInstanceExtensions) {
       if (availableExtension == VK_EXT_DEBUG_UTILS_EXTENSION_NAME) {
-        instanceExtensions.Add(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-      } else if (availableExtension == VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME) {
-        instanceExtensions.Add(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+        _instanceExtensions.Add(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+      }
+
+      if (availableExtension == VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME) {
+        _instanceExtensions.Add(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+      }
+
+      if (availableExtension == VK_KHR_SWAPCHAIN_EXTENSION_NAME) {
+        _instanceExtensions.Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
       }
 
       if (availableExtension == VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME) {
-        instanceExtensions.Add(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
+        _instanceExtensions.Add(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
       }
 
       if (availableExtension == VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME) {
-        instanceExtensions.Add(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
+        _instanceExtensions.Add(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
       }
 
       if (availableExtension == VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME) {
-        instanceExtensions.Add(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+        _instanceExtensions.Add(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
       }
 
       if (availableExtension == VK_EXT_ROBUSTNESS_2_EXTENSION_NAME) {
-        instanceExtensions.Add(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
+        _instanceExtensions.Add(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
       }
 
       if (availableExtension == VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME) {
-        instanceExtensions.Add(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
+        _instanceExtensions.Add(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
       }
 
-      if (availableExtension == VK_KHR_PRESENT_WAIT_2_EXTENSION_NAME) {
-        instanceExtensions.Add(VK_KHR_PRESENT_WAIT_2_EXTENSION_NAME);
+      if (availableExtension == VK_KHR_PRESENT_WAIT_EXTENSION_NAME) {
+        _instanceExtensions.Add(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
       }
+
+      // if (availableExtension == VK_KHR_PRESENT_WAIT_EXTENSION_NAME) {
+      //   _instanceExtensions.Add(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
+      // }
 
       if (availableExtension == VK_KHR_PRESENT_ID_2_EXTENSION_NAME) {
-        instanceExtensions.Add(VK_KHR_PRESENT_ID_2_EXTENSION_NAME);
+        _instanceExtensions.Add(VK_KHR_PRESENT_ID_2_EXTENSION_NAME);
       }
     }
+
     // instanceExtensions.Add(VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME);
     // instanceExtensions.Add(VK_EXT_dynamic_rendering_unused_attachments);
     // instanceExtensions.Add(VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME);
@@ -484,7 +494,7 @@ public class VulkanDevice : IDevice {
     }
 
     using VkStringArray vkLayerNames = new(instanceLayers);
-    using VkStringArray vkInstanceExtensions = new(instanceExtensions);
+    using VkStringArray vkInstanceExtensions = new(_instanceExtensions);
 
     createInfo.enabledLayerCount = vkLayerNames.Length;
     createInfo.ppEnabledLayerNames = vkLayerNames;
@@ -697,18 +707,30 @@ public class VulkanDevice : IDevice {
 
     List<VkUtf8String> enabledExtensions;
 
+    // enabledExtensions = isOSX ? [
+    //   VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    //   VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
+    // ] : [
+    //   VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    //   VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
+    //   VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
+    //   VK_KHR_PRESENT_WAIT_EXTENSION_NAME,
+    //   VK_KHR_PRESENT_ID_EXTENSION_NAME,
+    //   // VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME,
+    //   // VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME
+    // ];
+
     enabledExtensions = isOSX ? [
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
       VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
-    ] : [
+    ] : DeviceHelper.CreateEnabledExtensionsList(
+      _physicalDevice,
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
       VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
-      VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
-      VK_KHR_PRESENT_WAIT_EXTENSION_NAME,
-      VK_KHR_PRESENT_ID_EXTENSION_NAME,
-      // VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME,
-      // VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME
-    ];
+      VK_EXT_ROBUSTNESS_2_EXTENSION_NAME
+    // VK_KHR_PRESENT_WAIT_EXTENSION_NAME
+    // VK_KHR_PRESENT_ID_EXTENSION_NAME
+    );
 
     using var deviceExtensionNames = new VkStringArray(enabledExtensions);
 

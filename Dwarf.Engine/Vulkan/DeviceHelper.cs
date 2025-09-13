@@ -1,3 +1,4 @@
+using System.Text;
 using Dwarf.Extensions.Logging;
 using Dwarf.Utils;
 
@@ -196,6 +197,80 @@ public static unsafe class DeviceHelper {
     }
 
     return extensions;
+  }
+
+  public static bool IsExtenstionPresent(this IList<VkUtf8String> @string, VkUtf8String extensionName) {
+    var sList = new List<string>();
+    foreach (var s in @string) {
+      sList.Add(Encoding.UTF8.GetString(s));
+    }
+    var target = Encoding.UTF8.GetString(extensionName);
+
+    foreach (var item in @string) {
+      // var strItem = Encoding.UTF8.GetString(item);
+      if (item == extensionName) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public static bool CheckDeviceExtensionSupport(VkUtf8ReadOnlyString extensionName, ReadOnlySpan<VkExtensionProperties> availableDeviceExtensions) {
+    foreach (VkExtensionProperties property in availableDeviceExtensions) {
+      if (extensionName == property.extensionName)
+        return true;
+    }
+
+    return false;
+  }
+
+  public static List<VkUtf8String> CreateEnabledExtensionsList(
+    VkPhysicalDevice physicalDevice,
+    params VkUtf8String[] extensions
+  ) {
+    var availableDeviceExtensions = vkEnumerateDeviceExtensionProperties(physicalDevice);
+    var extList = new List<VkUtf8String>();
+
+    foreach (var ext in extensions) {
+      if (CheckDeviceExtensionSupport(ext, availableDeviceExtensions)) {
+        extList.Add(ext);
+      }
+    }
+
+    // return extList;
+    return [.. extensions];
+  }
+
+  public unsafe static List<VkUtf8String> CreateEnabledExtensionsList(
+    List<VkUtf8String> availableExtensions,
+    VkPhysicalDevice physicalDevice,
+    params VkUtf8String[] extensions
+  ) {
+    // var enabledExtensions = new List<VkUtf8String>();
+    // var instanceExtensions = GetInstanceExtensions();
+
+    // foreach (var ext in extensions) {
+    //   if (availableExtensions.IsExtenstionPresent(ext)) {
+    //     enabledExtensions.Add(ext);
+    //   }
+    // }
+
+    uint count = 0;
+    vkEnumerateDeviceExtensionProperties(physicalDevice, null, &count, null).CheckResult();
+
+    var extProperties = stackalloc VkExtensionProperties[(int)count];
+    vkEnumerateDeviceExtensionProperties(physicalDevice, null, &count, extProperties).CheckResult();
+
+    List<string> names = [];
+    Span<byte> dest;
+    for (int i = 0; i < count; i++) {
+      var ext = extProperties[i];
+
+      var str = ext.extensionName->ToString();
+      names.Add(str);
+    }
+
+    return availableExtensions;
   }
 
   public static (uint graphicsFamily, uint presentFamily) FindQueueFamilies(

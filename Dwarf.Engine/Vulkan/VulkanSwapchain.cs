@@ -1132,6 +1132,11 @@ public class VulkanSwapchain : IDisposable {
     _postProcessLayout?.Dispose();
     _descriptorPool?.Dispose();
 
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+      vkDestroySemaphore(_device.LogicalDevice, _imageAvailableSemaphores[i], null);
+      vkDestroySemaphore(_device.LogicalDevice, _renderFinishedSemaphores[i], null);
+    }
+
     for (int i = 0; i < _swapChainImageViews.Length; i++) {
       vkDestroyImageView(_device.LogicalDevice, _swapChainImageViews[i]);
     }

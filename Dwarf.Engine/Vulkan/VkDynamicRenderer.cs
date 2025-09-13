@@ -60,9 +60,9 @@ public unsafe class VkDynamicRenderer : IRenderer {
 
     RecreateSwapchain();
 
-    InitVulkan();
-    CreateSamplers();
-    CreateDescriptors();
+    // InitVulkan();
+    // CreateSamplers();
+    // CreateDescriptors();
   }
   public void UpdateDescriptors() {
     VkDescriptorImageInfo* descriptorImageInfo = stackalloc VkDescriptorImageInfo[2];
@@ -289,6 +289,42 @@ public unsafe class VkDynamicRenderer : IRenderer {
     return _device.FindSupportedFormat(items, VkImageTiling.Optimal, VkFormatFeatureFlags.DepthStencilAttachment);
   }
 
+  private void DestroySyncObjects() {
+    if (_semaphores != null) {
+      foreach (var s in _semaphores) {
+        if (s.PresentComplete.Handle != 0)
+          vkDestroySemaphore(_device.LogicalDevice, s.PresentComplete, null);
+        if (s.RenderComplete.Handle != 0)
+          vkDestroySemaphore(_device.LogicalDevice, s.RenderComplete, null);
+      }
+      _semaphores = Array.Empty<Semaphores>();
+    }
+
+    if (_waitFences != null) {
+      foreach (var f in _waitFences) {
+        if (f.Handle != 0)
+          vkDestroyFence(_device.LogicalDevice, f, null);
+      }
+      _waitFences = Array.Empty<VkFence>();
+    }
+  }
+
+  private void DestroyDescriptorsAndSamplers() {
+    _descriptorPool?.Dispose();
+    _descriptorPool = null!;
+    _postProcessLayout?.Dispose();
+    _postProcessLayout = null!;
+
+    if (ImageSampler.Handle != 0) {
+      vkDestroySampler(_device.LogicalDevice, ImageSampler);
+      ImageSampler = VkSampler.Null;
+    }
+    if (DepthSampler.Handle != 0) {
+      vkDestroySampler(_device.LogicalDevice, DepthSampler);
+      DepthSampler = VkSampler.Null;
+    }
+  }
+
   public void RecreateSwapchain() {
     var extent = _window.Extent.ToVkExtent2D();
     while (extent.width == 0 || extent.height == 0 || _window.IsMinimalized) {
@@ -296,6 +332,9 @@ public unsafe class VkDynamicRenderer : IRenderer {
     }
 
     _device.WaitDevice();
+
+    DestroySyncObjects();
+    DestroyDescriptorsAndSamplers();
 
     if (Swapchain != null) {
       if (_depthStencil.Length > 0) {
@@ -309,10 +348,11 @@ public unsafe class VkDynamicRenderer : IRenderer {
           vkFreeMemory(_device.LogicalDevice, _sceneColor[i].ImageMemory, null);
         }
       }
+      Swapchain.Dispose();
     }
 
-    Swapchain?.Dispose();
     _swapchain = new VulkanDynamicSwapchain(_device, extent, _application.VSync);
+
     if (_depthStencil.Length < 1) {
       _depthStencil = new AttachmentImage[_swapchain.Images.Length];
       _sceneColor = new AttachmentImage[_swapchain.Images.Length];
@@ -647,11 +687,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     _descriptorPool?.Dispose();
     _postProcessLayout?.Dispose();
 
-
     for (int i = 0; i < Swapchain.Images.Length; i++) {
-      vkDestroySemaphore(_device.LogicalDevice, _semaphores[i].PresentComplete, null);
-      vkDestroySemaphore(_device.LogicalDevice, _semaphores[i].RenderComplete, null);
-
       vkDestroyImageView(_device.LogicalDevice, _depthStencil[i].ImageView, null);
       vkDestroyImage(_device.LogicalDevice, _depthStencil[i].Image, null);
       vkFreeMemory(_device.LogicalDevice, _depthStencil[i].ImageMemory, null);
@@ -660,6 +696,13 @@ public unsafe class VkDynamicRenderer : IRenderer {
       vkDestroyImage(_device.LogicalDevice, _sceneColor[i].Image, null);
       vkFreeMemory(_device.LogicalDevice, _sceneColor[i].ImageMemory, null);
     }
+
+    foreach (var semaphore in _semaphores) {
+      vkDestroySemaphore(_device.LogicalDevice, semaphore.PresentComplete, null);
+      vkDestroySemaphore(_device.LogicalDevice, semaphore.RenderComplete, null);
+    }
+
+    _semaphores = [];
 
     foreach (var fence in _waitFences) {
       vkDestroyFence(_device.LogicalDevice, fence, null);
