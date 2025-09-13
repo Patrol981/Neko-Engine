@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
@@ -9,35 +10,49 @@ using Dwarf.Rendering.Renderer3D;
 namespace Dwarf.Math;
 
 public static class Frustum {
-  public enum FrustumItersectionInfo {
-    Inside,
-    Outside,
-    Intersecting
+  public enum FrustumContainment {
+    Outside = 0,
+    Intersecting = 1,
+    Inside = 2
   }
-  public static List<IRender3DElement> FilterObjectsByPlanes(in Plane[] planes, Span<IRender3DElement> objects) {
-    var filteredObjects = new List<IRender3DElement>();
 
-    // foreach (var obj in objects) {
-    //   // var aabb = obj.GetOwner().GetComponent<MeshRenderer>().AABB;
-    //   // if (IsInAABBFrustum(
-    //   //     planes,
-    //   //     aabb.Min,
-    //   //     aabb.Max
-    //   //   )
-    //   // ) {
-    //   //   filteredObjects.Add(obj);
-    //   // }
-    //   if (IsInSphereFrustumOG(
-    //     planes,
-    //     obj.Owner.GetComponent<Transform>().Position,
-    //     obj.
-    //     )
-    //   ) {
-    //     filteredObjects.Add(obj);
-    //   }
-    // }
+  public enum MatrixOrder { RowMajor, ColumnMajor }
+  public enum ClipSpaceDepth { ZeroToOne, MinusOneToOne }
 
-    return filteredObjects;
+  public struct Plane {
+    public Vector3 Normal;
+    public float D;
+
+    public Plane(Vector3 n, float d) {
+      Normal = n;
+      D = d;
+    }
+
+    public void Normalize() {
+      float len = Normal.Length();
+      if (len > 1e-8f) {
+        float inv = 1.0f / len;
+        Normal *= len;
+        D *= inv;
+      }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public float DistanceTo(in Vector3 p) => Vector3.Dot(Normal, p) + D;
+  }
+
+  public struct FrustumPlanes {
+    public Plane Left, Right, Bottom, Top, Near, Far;
+
+    public readonly Plane this[int i] => i switch {
+      0 => Left,
+      1 => Right,
+      2 => Bottom,
+      3 => Top,
+      4 => Near,
+      5 => Far,
+      _ => Left
+    };
   }
 
   public static void FlattenNodes<T>(Span<T> entities, out List<Node> nodes) where T : IRender3DElement {
@@ -58,56 +73,7 @@ public static class Frustum {
     }
   }
 
-  public static void FilterNodesByPlanes(in Plane[] planes, in List<Node> inNodes, out List<Node> outNodes) {
-    outNodes = [];
-    // Guizmos.Clear();
-    // foreach (var node in inNodes) {
-    //   var owner = node.ParentRenderer.Owner;
-    //   if (owner.CanBeDisposed) continue;
-    //   var transform = owner.TryGetComponent<Transform>();
-    //   Debug.Assert(transform != null);
-
-    //   // var globalScale = node.Scale;
-    //   // var transformedCenter = Vector4.Transform(new Vector4(node.Center, 1f), node.GetMatrix());
-    //   // var globalCenter = new Vector3(transformedCenter.X, transformedCenter.Y, transformedCenter.Z);
-
-    //   var position = (-node.GetMatrix().Translation + transform.Position) - node.Center * 2;
-
-    //   // float maxScale = MathF.Max(MathF.Max(globalScale.X, globalScale.Y), globalScale.Z);
-
-    //   if (node.Radius < 10) {
-    //     // Guizmos.AddCircular(position, new(node.Radius * 2), new(0, 0.7f, 0));
-    //   }
-
-
-    //   // var result =
-    //   //   IsOnOrForwardPlane(planes[5], position, node.Radius);
-    //   // // IsOnOrForwardPlane(planes[4], globalCenter, node.Radius * (maxScale * 0.5f));
-    //   // // IsOnOrForwardPlane(planes[2], globalCenter, node.Radius * (maxScale * 0.5f)) &&
-    //   // // IsOnOrForwardPlane(planes[3], globalCenter, node.Radius * (maxScale * 0.5f)) &&
-    //   // // IsOnOrForwardPlane(planes[4], globalCenter, node.Radius * (maxScale * 0.5f)) &&
-    //   // // IsOnOrForwardPlane(planes[5], globalCenter, node.Radius * (maxScale * 0.5f));
-
-    //   // if (result) {
-    //   //   outNodes.Add(node);
-    //   // }
-
-    //   var result = IsInSphereFrustum(planes, position, node.Radius * 2);
-    //   if (result == FrustumItersectionInfo.Inside || result == FrustumItersectionInfo.Intersecting) {
-    //     outNodes.Add(node);
-    //   }
-    //   // if (IsBoundingSphereInFrustum(planes, node.Center + transform.Position, node.Radius)) {
-    //   //   outNodes.Add(node);
-    //   // }
-    //   // if (IsInSphereFrustum(planes, position, node.Radius)) {
-    //   //   outNodes.Add(node);
-    //   // }
-    //   // if (IsInAABBFrustum(planes, node.BoundingVolume.Min * node.GetMatrix().Translation, node.BoundingVolume.Max * node.GetMatrix().Translation)) {
-    //   //   outNodes.Add(node);
-    //   // }
-    // }
-  }
-
+  [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public static void FilterNodesByFog(in List<Node> inNodes, out List<Node> outNodes) {
     outNodes = [];
     var globalUbo = Application.Instance.GlobalUbo;
@@ -125,387 +91,153 @@ public static class Frustum {
     }
   }
 
-  private static bool IsOnOrForwardPlane(Plane plane, Vector3 center, float radius) {
-    return GetSignedDistanceToPlane(plane, center) > radius;
+  [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+  public static FrustumPlanes BuildFromCamera(Camera cam) {
+    // Use the camera's view matrix and projection matrix to calculate the frustum
+    var view = cam.GetViewMatrix();
+    var proj = cam.GetProjectionMatrix();
+
+    // Multiply the view and projection matrices to get the combined view-projection matrix
+    var vp = view * proj;
+
+    // Extract the planes from the combined view-projection matrix
+    return ExtractPlanes(vp, normalize: true);
   }
 
-  private static float GetSignedDistanceToPlane(Plane plane, Vector3 point) {
-    return Vector3.Dot(plane.Normal, point) - plane.D;
-  }
+  // Method to extract the frustum planes from the view-projection matrix
+  public static FrustumPlanes ExtractPlanes(
+        in Matrix4x4 vp,
+        bool normalize = true,
+        MatrixOrder order = MatrixOrder.RowMajor,
+        ClipSpaceDepth depth = ClipSpaceDepth.ZeroToOne
+      ) {
+    // If the incoming 'vp' is column-major (OpenGL style), transpose so we can
+    // use the same row-major extraction math below.
+    Matrix4x4 m = (order == MatrixOrder.ColumnMajor) ? Matrix4x4.Transpose(vp) : vp;
 
-  public static void GetFrustrum(out Plane[] planes) {
-    planes = new Plane[6];
+    // Common row-major extraction (Row4 ± RowX)
+    Plane left = new(new Vector3(m.M14 + m.M11, m.M24 + m.M21, m.M34 + m.M31), m.M44 + m.M41);
+    Plane right = new(new Vector3(m.M14 - m.M11, m.M24 - m.M21, m.M34 - m.M31), m.M44 - m.M41);
+    Plane bottom = new(new Vector3(m.M14 + m.M12, m.M24 + m.M22, m.M34 + m.M32), m.M44 + m.M42);
+    Plane top = new(new Vector3(m.M14 - m.M12, m.M24 - m.M22, m.M34 - m.M32), m.M44 - m.M42);
 
-    var camera = CameraState.GetCamera();
-    Matrix4x4 projectionMatrix = camera.GetProjectionMatrix();
-    Matrix4x4 viewMatrix = camera.GetViewMatrix();
-    Matrix4x4 mvpMatrix = Matrix4x4.Multiply(viewMatrix, projectionMatrix);
+    Plane nearP, farP;
 
-    // Right plane
-    planes[0] = new Plane(
-      mvpMatrix.M14 + mvpMatrix.M11,
-      mvpMatrix.M24 + mvpMatrix.M21,
-      mvpMatrix.M34 + mvpMatrix.M31,
-      mvpMatrix.M44 + mvpMatrix.M41
-    );
-
-    // Left plane
-    planes[1] = new Plane(
-      mvpMatrix.M14 - mvpMatrix.M11,
-      mvpMatrix.M24 - mvpMatrix.M21,
-      mvpMatrix.M34 - mvpMatrix.M31,
-      mvpMatrix.M44 - mvpMatrix.M41
-    );
-
-    // Bottom plane
-    planes[2] = new Plane(
-      mvpMatrix.M14 + mvpMatrix.M12,
-      mvpMatrix.M24 + mvpMatrix.M22,
-      mvpMatrix.M34 + mvpMatrix.M32,
-      mvpMatrix.M44 + mvpMatrix.M42
-    );
-
-    // Top plane
-    planes[3] = new Plane(
-      mvpMatrix.M14 - mvpMatrix.M12,
-      mvpMatrix.M24 - mvpMatrix.M22,
-      mvpMatrix.M34 - mvpMatrix.M32,
-      mvpMatrix.M44 - mvpMatrix.M42
-    );
-
-    // Far plane
-    planes[4] = new Plane(
-      mvpMatrix.M13,
-      mvpMatrix.M23,
-      mvpMatrix.M33,
-      mvpMatrix.M43
-    );
-
-    // Near plane
-    planes[5] = new Plane(
-      mvpMatrix.M14 + mvpMatrix.M13,
-      mvpMatrix.M24 + mvpMatrix.M23,
-      mvpMatrix.M34 + mvpMatrix.M33,
-      mvpMatrix.M44 + mvpMatrix.M43
-    );
-
-    // Normalize all planes
-    for (int i = 0; i < 6; i++) {
-      planes[i] = Plane.Normalize(planes[i]);
+    if (depth == ClipSpaceDepth.ZeroToOne) {
+      // D3D/Vulkan (z ∈ [0,1]): near = Row3, far = Row4 - Row3
+      nearP = new Plane(new Vector3(m.M13, m.M23, m.M33), m.M43);
+      farP = new Plane(new Vector3(m.M14 - m.M13, m.M24 - m.M23, m.M34 - m.M33), m.M44 - m.M43);
+    } else {
+      // OpenGL (z ∈ [-1,1]): near = Row4 + Row3, far = Row4 - Row3
+      nearP = new Plane(new Vector3(m.M14 + m.M13, m.M24 + m.M23, m.M34 + m.M33), m.M44 + m.M43);
+      farP = new Plane(new Vector3(m.M14 - m.M13, m.M24 - m.M23, m.M34 - m.M33), m.M44 - m.M43);
     }
 
-    // Logger.Info($"{camera.Far} {planes[4].D}");
-  }
-
-  public static void GetFrustrumBruh(out Plane[] planes) {
-    var camera = CameraState.GetCamera();
-    var viewProjection = camera.GetProjectionMatrix() * camera.GetViewMatrix();
-    var camPos = CameraState.GetCameraEntity().GetTransform()!.Position;
-    var vertical = camera.Far * MathF.Atan(camera.Fov * 0.5f);
-    var horizontal = vertical * camera.Aspect;
-    var multiplier = camera.Far * camera.Front;
-
-    planes = new Plane[6];
-
-    /*
-    frustum.leftFace = {
-      cam.Position,
-      glm::cross(cam.Up,frontMultFar + cam.Right * halfHSide)
-    };
-
-    frustum.rightFace = {
-      cam.Position,
-      glm::cross(frontMultFar - cam.Right * halfHSide, cam.Up)
-    };
-
-    frustum.topFace = {
-      cam.Position,
-      glm::cross(cam.Right, frontMultFar - cam.Up * halfVSide)
-    };
-
-    frustum.bottomFace = {
-      cam.Position,
-      glm::cross(frontMultFar + cam.Up * halfVSide, cam.Right)
-    };
-
-    frustum.nearFace = {
-      cam.Position + zNear * cam.Front,
-      cam.Front
-    };
-
-    frustum.farFace = {
-    cam.Position + frontMultFar,
-    -cam.Front
-    };
-    */
-
-    // Left Plane
-    planes[0] = new Plane(
-      camPos,
-      Vector3.Dot(camera.Up, multiplier + camera.Right * horizontal)
-    );
-
-    // Right Plane
-    planes[1] = new Plane(
-      camPos,
-      Vector3.Dot(multiplier - camera.Right * horizontal, camera.Up)
-    );
-
-    // Top Plane
-    planes[2] = new Plane(
-      camPos,
-      Vector3.Dot(camera.Right, multiplier - camera.Up * vertical)
-    );
-
-    // Bottom Plane
-    planes[3] = new Plane(
-      camPos,
-      Vector3.Cross(multiplier + camera.Up * vertical, camera.Right).Length()
-    );
-
-    // Near Plane
-    planes[4] = new Plane(
-      camPos + camera.Front * camera.Near,
-      camera.Front.Length()
-    );
-
-    // Far Plane
-    planes[5] = new Plane(
-      camPos + camera.Front * camera.Far,
-      -camera.Front.Length()
-    );
-
-    // Guizmos.Clear();
-    // Guizmos.AddCircular(camPos - planes[5].Normal * planes[5].D, default, new(1, 0, 1));
-  }
-
-  public static void GetFrustrumNG(out Plane[] planes) {
-    var camera = CameraState.GetCamera();
-    var viewProjection = camera.GetViewMatrix() * camera.GetProjectionMatrix();
-
-    planes = new Plane[6];
-
-    // Left Plane
-    planes[0] = new Plane(
-        new Vector3(
-            viewProjection.M14 + viewProjection.M11,
-            viewProjection.M24 + viewProjection.M21,
-            viewProjection.M34 + viewProjection.M31
-        ),
-        viewProjection.M44 + viewProjection.M41
-    );
-
-    // Right Plane
-    planes[1] = new Plane(
-        new Vector3(
-            viewProjection.M14 - viewProjection.M11,
-            viewProjection.M24 - viewProjection.M21,
-            viewProjection.M34 - viewProjection.M31
-        ),
-        viewProjection.M44 - viewProjection.M41
-    );
-
-    // Bottom Plane (Swapped because your up is -Y)
-    planes[2] = new Plane(
-        new Vector3(
-            viewProjection.M14 - viewProjection.M12, // Swap signs due to -Y up vector
-            viewProjection.M24 - viewProjection.M22,
-            viewProjection.M34 - viewProjection.M32
-        ),
-        viewProjection.M44 - viewProjection.M42
-    );
-
-    // Top Plane (Swapped because your up is -Y)
-    planes[3] = new Plane(
-        new Vector3(
-            viewProjection.M14 + viewProjection.M12, // Swap signs due to -Y up vector
-            viewProjection.M24 + viewProjection.M22,
-            viewProjection.M34 + viewProjection.M32
-        ),
-        viewProjection.M44 + viewProjection.M42
-    );
-
-    // Near Plane
-    planes[4] = new Plane(
-        new Vector3(
-            viewProjection.M14 + viewProjection.M13,
-            viewProjection.M24 + viewProjection.M23,
-            viewProjection.M34 + viewProjection.M33
-        ),
-        viewProjection.M44 + viewProjection.M43
-    );
-
-    // Far Plane
-    planes[5] = new Plane(
-        new Vector3(
-            viewProjection.M14 - viewProjection.M13,
-            viewProjection.M24 - viewProjection.M23,
-            viewProjection.M34 - viewProjection.M33
-        ),
-        viewProjection.M44 - viewProjection.M43
-    );
-
-    // var camPos = CameraState.GetCameraEntity().GetComponent<Transform>().Position;
-    // Guizmos.Clear();
-
-    // Normalize planes to ensure correct culling behavior
-    for (int i = 0; i < 6; i++) {
-      planes[i] = NormalizePlane(planes[i]);
+    if (normalize) {
+      left.Normalize(); right.Normalize(); bottom.Normalize();
+      top.Normalize(); nearP.Normalize(); farP.Normalize();
     }
 
-    // Guizmos.AddCircular(planes[4].Normal, default, new(1, 0, 0));
-    // Guizmos.AddCircular(camPos + planes[5].Normal * planes[5].D, default, new(1, 0, 1));
+    return new FrustumPlanes { Left = left, Right = right, Bottom = bottom, Top = top, Near = nearP, Far = farP };
   }
 
-  public static void GetFrustrumOG(out Plane[] planes) {
-    var camera = CameraState.GetCamera();
-    var viewProjection = camera.GetViewMatrix() * camera.GetProjectionMatrix();
+  // Method to check if a bounding sphere is inside the frustum
+  [MethodImpl(MethodImplOptions.AggressiveInlining)]
+  public static bool SphereInside(in FrustumPlanes f, in Vector3 center, float radius) {
+    // Check if the sphere is inside all 6 planes of the frustum
+    if (f.Left.DistanceTo(center) < -radius) return false;
+    if (f.Right.DistanceTo(center) < -radius) return false;
+    if (f.Bottom.DistanceTo(center) < -radius) return false;
+    if (f.Top.DistanceTo(center) < -radius) return false;
+    if (f.Near.DistanceTo(center) < -radius) return false;
+    if (f.Far.DistanceTo(center) < -radius) return false;
 
-    planes = new Plane[6];
+    return true;
+  }
 
-    // Left Plane
-    planes[0] = new Plane(
-        new Vector3(
-            viewProjection.M14 + viewProjection.M11,
-            viewProjection.M24 + viewProjection.M21,
-            viewProjection.M34 + viewProjection.M31
-        ),
-        viewProjection.M44 - viewProjection.M41
-    );
+  // Method to extract the maximum scale from a transformation matrix
+  [MethodImpl(MethodImplOptions.AggressiveInlining)]
+  private static float ExtractMaxScale(in Matrix4x4 m) {
+    // Extract the lengths of the basis vectors (ignoring translation)
+    float sx = MathF.Sqrt(m.M11 * m.M11 + m.M12 * m.M12 + m.M13 * m.M13);
+    float sy = MathF.Sqrt(m.M21 * m.M21 + m.M22 * m.M22 + m.M23 * m.M23);
+    float sz = MathF.Sqrt(m.M31 * m.M31 + m.M32 * m.M32 + m.M33 * m.M33);
+    return MathF.Max(sx, MathF.Max(sy, sz));
+  }
 
-    // Right Plane
-    planes[1] = new Plane(
-        new Vector3(
-            viewProjection.M14 - viewProjection.M11,
-            viewProjection.M24 - viewProjection.M21,
-            viewProjection.M34 - viewProjection.M31
-        ),
-        viewProjection.M44 + viewProjection.M41
-    );
+  // Public method to filter nodes by the frustum (cull the nodes)
+  public static void FilterNodesByFrustum(Camera cam, in List<Node> inNodes, out List<Node> outNodes) {
+    // Build the frustum from the camera's matrices
+    var planes = BuildFromCamera(cam);
+    // Filter nodes based on the frustum planes
+    FilterNodesByPlanes(in planes, inNodes, out outNodes);
+  }
 
-    // Bottom Plane
-    planes[2] = new Plane(
-        new Vector3(
-            viewProjection.M14 - viewProjection.M12,
-            viewProjection.M24 - viewProjection.M22,
-            viewProjection.M34 - viewProjection.M32
-        ),
-        viewProjection.M44 - viewProjection.M42
-    );
-
-    // Top Plane
-    planes[3] = new Plane(
-        new Vector3(
-            viewProjection.M14 + viewProjection.M12,
-            viewProjection.M24 + viewProjection.M22,
-            viewProjection.M34 + viewProjection.M32
-        ),
-        viewProjection.M44 + viewProjection.M42
-    );
-
-    // Near Plane
-    planes[4] = new Plane(
-        new Vector3(
-          viewProjection.M14 + viewProjection.M13,
-          viewProjection.M24 + viewProjection.M23,
-          viewProjection.M34 + viewProjection.M33
-        ),
-        viewProjection.M44 + viewProjection.M43
-    );
-
-    // Far Plane
-    planes[5] = new Plane(
-        new Vector3(
-            viewProjection.M14 - viewProjection.M13,
-            viewProjection.M24 - viewProjection.M23,
-            viewProjection.M34 - viewProjection.M33
-        ),
-        viewProjection.M44 - viewProjection.M43
-    );
-
-    var camPos = CameraState.GetCameraEntity().GetTransform()!.Position;
+  // Public method to filter nodes by the frustum planes (cull the nodes)
+  public static void FilterNodesByPlanes(in FrustumPlanes planes, in List<Node> inNodes, out List<Node> outNodes) {
     Guizmos.Clear();
 
-    // Guizmos.AddCircular(camPos - (planes[5].Normal * planes[5].D), default, new(1, 0, 1));
+    outNodes = new List<Node>(inNodes.Count);
 
-    // Normalize planes
-    for (int i = 0; i < planes.Length; i++) {
-      planes[i] = NormalizePlane(planes[i]);
-    }
+    // Loop through all nodes and check if they are inside the frustum
+    for (int i = 0; i < inNodes.Count; i++) {
+      var node = inNodes[i];
+      if (!node.Enabled || !node.HasMesh) continue;
 
+      var owner = node.ParentRenderer.Owner;
+      if (owner.CanBeDisposed || !owner.Active) continue;
 
-    // Guizmos.AddCircular(camPos + planes[4].Normal, new(0.2f), new(1, 0, 0));
-    // Guizmos.AddCircular(camPos - (planes[5].Normal), default, new(1, 0, 1));
-  }
+      var t = owner.GetTransform();
+      if (t == null) continue;
 
-  private static Plane NormalizePlane(Plane plane) {
-    float magnitude = plane.Normal.LengthSquared();
-    return new Plane(plane.Normal / magnitude, plane.D / magnitude);
-  }
+      // Calculate the world matrix of the node
+      var world = node.GetMatrix() * t.Rotation() * t.Position() * t.Scale();
 
-  public static bool IsBoundingSphereInFrustum(in Plane[] planes, Vector3 center, float radius) {
-    foreach (var plane in planes) {
-      if (Plane.DotCoordinate(plane, center) < -(radius * radius)) {
-        return false; // Outside frustum
-      }
-    }
-    return true; // Inside frustum
-  }
+      // Get the center and radius of the node's bounding sphere (scaled by node's world transform)
+      var center = world.Translation;
+      float radiusScaled = MathF.Max(0.0001f, node.Radius * ExtractMaxScale(world));
 
-
-  public static FrustumItersectionInfo IsInSphereFrustum(in Plane[] planes, Vector3 center, float radius) {
-    int outsideCount = 0;
-
-    foreach (var plane in planes) {
-      // Calculate the distance from the sphere's center to the plane
-      float distance = Vector3.Cross(plane.Normal, center).Length() + plane.D; // Plane equation: Ax + By + Cz + D = 0
-      // var distance = Vector3.Distance(plane.Normal * plane.D, center);
-
-      // If the distance is greater than the radius, the sphere is outside the frustum
-      if (distance < -radius) {
-        return FrustumItersectionInfo.Outside;
+      // Perform the sphere test against the frustum
+      if (SphereInside(planes, center, radiusScaled)) {
+        outNodes.Add(node);
       }
 
-      // If the distance is between the negative radius and positive radius, the sphere intersects the frustum
-      if (distance < radius) {
-        outsideCount++;
-      }
-    }
+      Guizmos.AddCircular(center, new(radiusScaled / 10, radiusScaled / 10, radiusScaled / 10), new(0, 0, 1));
 
-    // If no planes are intersected, the sphere is inside the frustum
-    if (outsideCount == 0) {
-      return FrustumItersectionInfo.Inside;
     }
-
-    // If some planes are intersected, it is considered as intersecting
-    return FrustumItersectionInfo.Intersecting;
   }
 
-  public static bool IsInSphereFrustumOG(in Plane[] planes, Vector3 center, float radius) {
-    for (int i = 0; i < planes.Length; i++) {
-      // float distance = Vector3.Dot(planes[i].Normal, center) + planes[i].D;
-      float distance = Vector3.Dot(planes[i].Normal, center) + planes[i].D;
-      // float result = distance + radius;
-      Logger.Info(distance);
-      var pos = Vector3.Cross(planes[i].Normal, center);
-      // float distance = planes[i].D + radius;
-      if (distance < -radius) {
-        return false;
-      }
-    }
-    return true;
+  [MethodImpl(MethodImplOptions.AggressiveInlining)]
+  public static FrustumContainment ClassifySphere(in FrustumPlanes f, in Vector3 center, float radius, float epsilon = 0f) {
+    // epsilon lets you be conservative (treat almost-touching as intersecting/inside)
+    bool intersects = false;
+
+    // Check each plane
+    float d = f.Left.DistanceTo(center);
+    if (d < -radius - epsilon) return FrustumContainment.Outside;
+    if (d < radius + epsilon) intersects = true;
+
+    d = f.Right.DistanceTo(center);
+    if (d < -radius - epsilon) return FrustumContainment.Outside;
+    if (d < radius + epsilon) intersects = true;
+
+    d = f.Bottom.DistanceTo(center);
+    if (d < -radius - epsilon) return FrustumContainment.Outside;
+    if (d < radius + epsilon) intersects = true;
+
+    d = f.Top.DistanceTo(center);
+    if (d < -radius - epsilon) return FrustumContainment.Outside;
+    if (d < radius + epsilon) intersects = true;
+
+    d = f.Near.DistanceTo(center);
+    if (d < -radius - epsilon) return FrustumContainment.Outside;
+    if (d < radius + epsilon) intersects = true;
+
+    d = f.Far.DistanceTo(center);
+    if (d < -radius - epsilon) return FrustumContainment.Outside;
+    if (d < radius + epsilon) intersects = true;
+
+    return intersects ? FrustumContainment.Intersecting : FrustumContainment.Inside;
   }
 
-  public static bool IsInAABBFrustum(in Plane[] planes, Vector3 min, Vector3 max) {
-    for (int i = 0; i < planes.Length; i++) {
-      var vec3 = new Vector3(
-        planes[i].Normal.X >= 0 ? max.X : min.X,
-        planes[i].Normal.Y >= 0 ? max.Y : min.Y,
-        planes[i].Normal.Z >= 0 ? max.Z : min.Z
-      );
-      if (Vector3.Dot(planes[i].Normal, vec3) + planes[i].D < -float.Epsilon)
-        return false;
-    }
-    return true;
-  }
 }

@@ -58,13 +58,14 @@ public class SystemCollection : IDisposable {
     _directionaLightSystem?.Render(frameInfo);
     _pointLightSystem?.Render(frameInfo);
 
+    _guizmoRenderSystem?.Render(frameInfo);
+
     // _renderDebugSystem?.Render(frameInfo, entities.DistinctInterface<IDebugRenderObject>());
     _renderDebugSystem?.Render(frameInfo, app.DebugMeshes.Values.ToArray());
     _particleSystem?.Render(frameInfo);
   }
 
   public void UpdateSystems2(Application app, FrameInfo frameInfo) {
-    // _guizmoRenderSystem?.Render(frameInfo);
     // _renderDebugSystem?.Render(frameInfo, entities.DistinctInterface<IDebugRenderObject>());
     // _particleSystem?.Render(frameInfo);
     // _renderUISystem?.DrawUI(frameInfo, _canvas);

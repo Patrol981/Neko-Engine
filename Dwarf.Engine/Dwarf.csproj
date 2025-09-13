@@ -11,24 +11,16 @@
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <AnalysisLevel>latest</AnalysisLevel>
     <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
-    <Version>0.2.5</Version>
+    <Deterministic>true</Deterministic>
+    <Version>0.3.0</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
-    <DefineConstants>RUNTIME</DefineConstants>
+    <DefineConstants>RUNTIME;DEBUG</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
-    <DefineConstants>RUNTIME</DefineConstants>
-    <Optimize>True</Optimize>
-    <PublishAot>false</PublishAot>
-    <IsAotCompatible>true</IsAotCompatible>
-    <OptimizationPreference>Speed</OptimizationPreference>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseAOT|AnyCPU'">
     <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
     <DefineConstants>RUNTIME</DefineConstants>
     <Optimize>True</Optimize>
