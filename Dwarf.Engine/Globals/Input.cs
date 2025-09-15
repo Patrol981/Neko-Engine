@@ -1,5 +1,6 @@
 // using Dwarf.Extensions.GLFW;
 using System.Numerics;
+using Dwarf.Extensions.Logging;
 using Dwarf.Rendering.UI;
 using Dwarf.Testing;
 using Dwarf.Windowing;

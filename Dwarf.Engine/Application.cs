@@ -499,7 +499,7 @@ public partial class Application {
       _ubo->CameraPosition = CameraEntity.GetTransform()?.Position ?? Vector3.Zero;
       _ubo->Fov = 60;
       _ubo->ImportantEntityPosition = _currentFrame.ImportantEntity?.GetTransform()?.Position ?? Vector3.Zero;
-      _ubo->ImportantEntityPosition.Z += 0.5f;
+      _ubo->ImportantEntityPosition.Z += 2.0f;
       _ubo->ImportantEntityDirection = _currentFrame.ImportantEntity?.GetTransform()?.Forward() ?? Vector3.Zero;
       _ubo->HasImportantEntity = _currentFrame.ImportantEntity != null ? 1 : 0;
       // _ubo->Fog = FogValue;

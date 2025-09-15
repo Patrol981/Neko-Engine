@@ -167,9 +167,16 @@ public static class EntityExtensions {
     }
 
     entity.AddDrawable3D(await GLTFLoaderKHR.LoadGLTF(entity, app, modelPath, flip));
-    if (entity.GetDrawable3D()?.Animations.Count > 0) {
-      entity.AddAnimationController(new AnimationController(entity));
-      entity.GetAnimationController()?.Init((entity.GetDrawable3D() as MeshRenderer)!);
+    var meshRenderer = entity.GetDrawable3D()!;
+    if (meshRenderer.Animations.Count > 0) {
+      entity.AddAnimationController(
+        new AnimationController(
+          entity,
+          meshRenderer.Animations.ToArray(),
+          (meshRenderer as MeshRenderer)!
+        )
+      );
+      // entity.GetAnimationController()?.Init((entity.GetDrawable3D() as MeshRenderer)!);
     }
   }
 

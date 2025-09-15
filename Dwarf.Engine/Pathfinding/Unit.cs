@@ -30,11 +30,11 @@ public class Unit : DwarfScript {
   }
 
   public override void Update() {
-    if (IsMoving) {
-      _animationController?.SetCurrentAnimation("Walking_A");
-    } else {
-      _animationController?.SetCurrentAnimation("Idle");
-    }
+    // if (IsMoving) {
+    //   _animationController?.SetCurrentAnimation("Walking_A");
+    // } else {
+    //   _animationController?.SetCurrentAnimation("Idle");
+    // }
   }
 
   public async void OnPathFound(Vector3[] newPath, bool pathSuccess) {
