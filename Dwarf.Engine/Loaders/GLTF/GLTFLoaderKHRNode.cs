@@ -16,7 +16,12 @@ using Node = glTFLoader.Schema.Node;
 namespace Dwarf.Loaders;
 
 public static partial class GLTFLoaderKHR {
-  public unsafe static Task<MeshRenderer> LoadGLTF(Entity targetEntity, Application app, string path, int flip = 1) {
+  public unsafe static Task<MeshRenderer> LoadGLTF(
+    Entity targetEntity,
+    Application app,
+    string path,
+    int flip = 1
+  ) {
     var gltf = Interface.LoadModel(path);
     var glb = Interface.LoadBinaryBuffer(path);
 
