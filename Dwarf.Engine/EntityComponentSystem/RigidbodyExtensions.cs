@@ -289,7 +289,7 @@ public static class RigidbodyExtensions {
   public static Rigidbody? GetRigidbody(this Entity entity) {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
     if (entity.Components.TryGetValue(typeof(Rigidbody), out var guid)) {
-      var result = Application.Instance.Rigidbodies[guid];
+      Application.Instance.Rigidbodies.TryGetValue(guid, out var result);
       return result;
     } else {
       return null;

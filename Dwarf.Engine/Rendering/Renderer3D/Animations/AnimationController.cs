@@ -7,7 +7,7 @@ using Dwarf.Rendering.Renderer3D;
 
 namespace Dwarf.Rendering.Renderer3D.Animations;
 
-public class AnimationController {
+public class AnimationController_ {
   private MeshRenderer _meshRenderer;
   private readonly Dictionary<string, Animation> _animations = [];
   // private Animation _currentAnimation = null!;
@@ -16,7 +16,7 @@ public class AnimationController {
 
   public Entity Owner { get; init; }
 
-  public AnimationController(Entity owner) {
+  public AnimationController_(Entity owner) {
     Owner = owner;
     var mr = Owner.GetDrawable3D() as MeshRenderer;
     if (mr != null) {
@@ -158,13 +158,13 @@ public class AnimationController {
           if (u <= 1.0f) {
             switch (channel.Path) {
               case AnimationChannel.PathType.Translation:
-                sampler.Translate(i, time, channel.Node, weight);
+                sampler.Translate_Old(i, time, ref channel.Node, weight);
                 break;
               case AnimationChannel.PathType.Rotation:
-                sampler.Rotate(i, time, channel.Node, weight);
+                sampler.Rotate_Old(i, time, ref channel.Node, weight);
                 break;
               case AnimationChannel.PathType.Scale:
-                sampler.Scale(i, time, channel.Node, weight);
+                sampler.Scale_Old(i, time, ref channel.Node, weight);
                 break;
             }
           }

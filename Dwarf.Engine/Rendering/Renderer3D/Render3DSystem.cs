@@ -243,13 +243,14 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     IRender3DElement[] renderables,
     ConcurrentDictionary<Guid, Mesh> meshes,
     FrameInfo frameInfo,
+    out IEnumerable<Node> animatedNodes,
     bool indirect = true
   ) {
 
     PerfMonitor.Clear3DRendererInfo();
     PerfMonitor.NumberOfObjectsRenderedIn3DRenderer = (uint)LastElemRenderedCount;
     CreateOrUpdateBuffers(renderables, meshes);
-    uint visible = RefillIndirectBuffersWithCulling(meshes);
+    uint visible = RefillIndirectBuffersWithCulling(meshes, out animatedNodes);
     PerfMonitor.Clear3DRendererInfo();
     PerfMonitor.NumberOfObjectsRenderedIn3DRenderer = visible;
 
@@ -551,7 +552,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   }
 
   // NEW
-  private unsafe uint RefillIndirectBuffersWithCulling(ConcurrentDictionary<Guid, Mesh> meshes) {
+  private unsafe uint RefillIndirectBuffersWithCulling(ConcurrentDictionary<Guid, Mesh> meshes, out IEnumerable<Node> animatedNodes) {
     // clear scratch
     foreach (var s in _simpleVisibleScratch.Values) s.Clear();
     foreach (var s in _complexVisibleScratch.Values) s.Clear();
@@ -560,8 +561,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
     // --- SIMPLE (non-skinned) ---
     List<Node> visSimpleIn;
-    // Frustum.FilterNodesByFog(new List<Node>(_simpleBufferNodes), out visSimpleIn); // your culling
-    Frustum.FilterNodesByPlanes(in planes, [.. _simpleBufferNodes], out visSimpleIn);
+    Frustum.FilterNodesByFog([.. _simpleBufferNodes], out visSimpleIn); // your culling
+    //Frustum.FilterNodesByPlanes(in planes, [.. _simpleBufferNodes], out visSimpleIn);
 
     foreach (var n in visSimpleIn) {
       var owner = n.ParentRenderer.Owner;
@@ -600,6 +601,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     // --- COMPLEX (skinned) ---
     List<Node> visComplexIn;
     Frustum.FilterNodesByFog(new List<Node>(_complexBufferNodes), out visComplexIn);
+    animatedNodes = visComplexIn;
     // Frustum.FilterNodesByPlanes(in planes, [.. _complexBufferNodes], out visComplexIn);
 
     foreach (var n in visComplexIn) {

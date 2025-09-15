@@ -7,6 +7,9 @@ using ZLinq;
 namespace Dwarf.Animations;
 
 public class AnimationSystem : SystemBase {
+
+  public bool Enabled = true;
+
   public AnimationSystem(
     Application app,
     nint allocator,
@@ -17,22 +20,26 @@ public class AnimationSystem : SystemBase {
   ) : base(app, allocator, device, renderer, textureManager, configInfo) {
   }
 
-  public void Update(ValueEnumerable<ZLinq.Linq.FromArray<Node>, Node> animatedNodes) {
-    // Parallel.ForEach(animatedNodes, node => {
-    //   var owner = node.ParentRenderer.Owner;
-    //   if (owner.CanBeDisposed) return;
-    //   owner.GetAnimationController()?.Update(node);
-    // });
+  public void Update(IEnumerable<Node> animatedNodes) {
+    if (!Enabled) return;
+
+    Parallel.ForEach(animatedNodes, node => {
+      var owner = node.ParentRenderer.Owner;
+      if (owner.CanBeDisposed) return;
+      owner.GetAnimationController()?.Update(node);
+
+      // var ctrl = owner.GetAnimationController();
+    });
     // for (int i = 0; i < animatedNodes.Length; i++) {
     //   var n = animatedNodes[i];
     //   var owner = n.ParentRenderer.Owner;
     //   if (owner.CanBeDisposed) continue;
     //   owner.GetAnimationController()?.Update(n);
     // }
-    foreach (var node in animatedNodes) {
-      var owner = node.ParentRenderer.Owner;
-      if (owner.CanBeDisposed) return;
-      owner.GetAnimationController()?.Update(node);
-    }
+    // foreach (var node in animatedNodes) {
+    //   var owner = node.ParentRenderer.Owner;
+    //   if (owner.CanBeDisposed) return;
+    //   owner.GetAnimationController()?.Update(node);
+    // }
   }
 }
