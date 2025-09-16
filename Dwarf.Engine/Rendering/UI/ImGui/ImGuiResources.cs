@@ -27,7 +27,7 @@ public partial class ImGuiController {
     );
     pipelineInfo.pushConstantRangeCount = 1;
     pipelineInfo.pPushConstantRanges = &pushConstantRange;
-    vkCreatePipelineLayout(_device.LogicalDevice, &pipelineInfo, null, out _systemPipelineLayout).CheckResult();
+    _device.DeviceApi.vkCreatePipelineLayout(_device.LogicalDevice, &pipelineInfo, null, out _systemPipelineLayout).CheckResult();
   }
 
   private unsafe void CreatePipeline(
@@ -102,15 +102,15 @@ public partial class ImGuiController {
     imageInfo.sharingMode = VkSharingMode.Exclusive;
     imageInfo.initialLayout = VkImageLayout.Undefined;
 
-    vkCreateImage(_device.LogicalDevice, &imageInfo, null, out _fontImage).CheckResult();
+    _device.DeviceApi.vkCreateImage(_device.LogicalDevice, &imageInfo, null, out _fontImage).CheckResult();
     VkMemoryRequirements memReqs;
-    vkGetImageMemoryRequirements(_device.LogicalDevice, _fontImage, &memReqs);
+    _device.DeviceApi.vkGetImageMemoryRequirements(_device.LogicalDevice, _fontImage, &memReqs);
     VkMemoryAllocateInfo memAllocInfo = new();
     memAllocInfo.allocationSize = memReqs.size;
     memAllocInfo.memoryTypeIndex = _device.FindMemoryType(memReqs.memoryTypeBits, MemoryProperty.DeviceLocal);
 
-    vkAllocateMemory(_device.LogicalDevice, &memAllocInfo, null, out _fontMemory).CheckResult();
-    vkBindImageMemory(_device.LogicalDevice, _fontImage, _fontMemory, 0).CheckResult();
+    _device.DeviceApi.vkAllocateMemory(_device.LogicalDevice, &memAllocInfo, null, out _fontMemory).CheckResult();
+    _device.DeviceApi.vkBindImageMemory(_device.LogicalDevice, _fontImage, _fontMemory, 0).CheckResult();
 
     // Image view
     VkImageViewCreateInfo viewInfo = new();
@@ -121,7 +121,7 @@ public partial class ImGuiController {
     viewInfo.subresourceRange.levelCount = 1;
     viewInfo.subresourceRange.layerCount = 1;
 
-    vkCreateImageView(_device.LogicalDevice, &viewInfo, null, out _fontView);
+    _device.DeviceApi.vkCreateImageView(_device.LogicalDevice, &viewInfo, null, out _fontView);
 
     // staging buffers
     var stagingBuffer = new DwarfBuffer(
@@ -145,6 +145,7 @@ public partial class ImGuiController {
 
     // prepare for transfer
     VkUtils.SetImageLayout(
+      _device,
       copyCmd,
       _fontImage,
       VkImageAspectFlags.Color,
@@ -162,7 +163,7 @@ public partial class ImGuiController {
     bufferCopyRegion.imageExtent.height = (uint)texHeight;
     bufferCopyRegion.imageExtent.depth = 1;
 
-    vkCmdCopyBufferToImage(
+    _device.DeviceApi.vkCmdCopyBufferToImage(
       copyCmd,
       stagingBuffer.GetBuffer(),
       _fontImage,
@@ -173,6 +174,7 @@ public partial class ImGuiController {
 
     // prepare for shader read
     VkUtils.SetImageLayout(
+      _device,
       copyCmd,
       _fontImage,
       VkImageAspectFlags.Color,
@@ -203,7 +205,7 @@ public partial class ImGuiController {
     samplerInfo.compareEnable = false;
     samplerInfo.compareOp = VkCompareOp.Always;
 
-    var samplerResult = vkCreateSampler(_device.LogicalDevice, &samplerInfo, null, out _sampler);
+    var samplerResult = _device.DeviceApi.vkCreateSampler(_device.LogicalDevice, &samplerInfo, null, out _sampler);
     if (samplerResult != VkResult.Success) {
       throw new ArgumentException("Failed to create sampler");
     }
@@ -215,7 +217,7 @@ public partial class ImGuiController {
     allocInfo.descriptorSetCount = 1;
     var setLayout = _systemSetLayout.GetDescriptorSetLayout();
     allocInfo.pSetLayouts = &setLayout;
-    vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
+    _device.DeviceApi.vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
 
     VkDescriptorImageInfo descriptorImageInfo = new() {
       imageLayout = VkImageLayout.ShaderReadOnlyOptimal,
@@ -244,7 +246,7 @@ public partial class ImGuiController {
     };
 
 
-    vkUpdateDescriptorSets(_device.LogicalDevice, 2, writes, 0, null);
+    _device.DeviceApi.vkUpdateDescriptorSets(_device.LogicalDevice, 2, writes, 0, null);
     // vkUpdateDescriptorSets()
 
     _systemDescriptorSet = descriptorSet;
@@ -307,7 +309,7 @@ public partial class ImGuiController {
       Projection = mvp
     };
 
-    vkCmdPushConstants(
+    _device.DeviceApi.vkCmdPushConstants(
       frameInfo.CommandBuffer,
       _systemPipelineLayout,
       VkShaderStageFlags.Vertex,
@@ -319,7 +321,7 @@ public partial class ImGuiController {
 
   public unsafe void BindTexture(FrameInfo frameInfo) {
     fixed (VkDescriptorSet* descPtr = &_systemDescriptorSet) {
-      vkCmdBindDescriptorSets(
+      _device.DeviceApi.vkCmdBindDescriptorSets(
         frameInfo.CommandBuffer,
         VkPipelineBindPoint.Graphics,
         _systemPipelineLayout,
@@ -333,7 +335,7 @@ public partial class ImGuiController {
   }
 
   public unsafe void BindTexture(FrameInfo frameInfo, VkDescriptorSet texId) {
-    vkCmdBindDescriptorSets(
+    _device.DeviceApi.vkCmdBindDescriptorSets(
         frameInfo.CommandBuffer,
         VkPipelineBindPoint.Graphics,
         _systemPipelineLayout,
@@ -370,6 +372,6 @@ public partial class ImGuiController {
     // scissorRect.offset.y = System.Math.Max((int)pcmd.ClipRect.Y, 0);
     // scissorRect.extent.width = (uint)(pcmd.ClipRect.Z - pcmd.ClipRect.X);
     // scissorRect.extent.height = (uint)(pcmd.ClipRect.W - pcmd.ClipRect.Y);
-    vkCmdSetScissor(frameInfo.CommandBuffer, 0, 1, &scissorRect);
+    _device.DeviceApi.vkCmdSetScissor(frameInfo.CommandBuffer, 0, 1, &scissorRect);
   }
 }

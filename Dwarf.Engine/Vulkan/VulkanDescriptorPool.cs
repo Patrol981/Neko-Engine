@@ -10,19 +10,19 @@ namespace Dwarf.Vulkan;
 public class VulkanDescriptorPool : IDescriptorPool {
   private VkDescriptorPool _descriptorPool;
   public class Builder {
-    private readonly IDevice _device;
+    private readonly VulkanDevice _device;
     private VkDescriptorPoolSize[] _poolSizes = [];
     private uint _maxSets = 1000;
     private VkDescriptorPoolCreateFlags _poolFlags = 0;
 
-    public Builder(IDevice device, uint maxSets, VkDescriptorPoolCreateFlags poolFlags, VkDescriptorPoolSize[] poolSizes) {
+    public Builder(VulkanDevice device, uint maxSets, VkDescriptorPoolCreateFlags poolFlags, VkDescriptorPoolSize[] poolSizes) {
       this._device = device;
       this._maxSets = maxSets;
       this._poolSizes = poolSizes;
       this._poolFlags = poolFlags;
     }
 
-    public Builder(IDevice device) {
+    public Builder(VulkanDevice device) {
       this._device = device;
     }
 
@@ -53,7 +53,7 @@ public class VulkanDescriptorPool : IDescriptorPool {
   }
 
   public unsafe VulkanDescriptorPool(
-    IDevice device,
+    VulkanDevice device,
     uint maxSets,
     VkDescriptorPoolCreateFlags poolFlags,
     VkDescriptorPoolSize[] poolSizes
@@ -68,7 +68,7 @@ public class VulkanDescriptorPool : IDescriptorPool {
     descriptorPoolInfo.maxSets = maxSets;
     descriptorPoolInfo.flags = poolFlags;
 
-    vkCreateDescriptorPool(Device.LogicalDevice, &descriptorPoolInfo, null, out _descriptorPool).CheckResult();
+    Device.DeviceApi.vkCreateDescriptorPool(Device.LogicalDevice, &descriptorPoolInfo, null, out _descriptorPool).CheckResult();
   }
 
   public unsafe bool AllocateDescriptor(VkDescriptorSetLayout descriptorSetLayout, out VkDescriptorSet descriptorSet) {
@@ -79,33 +79,33 @@ public class VulkanDescriptorPool : IDescriptorPool {
     };
 
     fixed (VkDescriptorSet* ptr = &descriptorSet) {
-      var result = vkAllocateDescriptorSets(Device.LogicalDevice, &allocInfo, ptr);
+      var result = Device.DeviceApi.vkAllocateDescriptorSets(Device.LogicalDevice, &allocInfo, ptr);
       return result == VkResult.Success;
     }
   }
 
   public unsafe void FreeDescriptors(VkDescriptorSet[] descriptorSets) {
     fixed (VkDescriptorSet* ptr = descriptorSets) {
-      vkFreeDescriptorSets(Device.LogicalDevice, _descriptorPool, (uint)descriptorSets.Length, ptr).CheckResult();
+      Device.DeviceApi.vkFreeDescriptorSets(Device.LogicalDevice, _descriptorPool, (uint)descriptorSets.Length, ptr).CheckResult();
     }
   }
 
   public unsafe void FreeDescriptors(PublicList<VkDescriptorSet> descriptorSets) {
     fixed (VkDescriptorSet* ptr = descriptorSets.GetData()) {
-      vkFreeDescriptorSets(Device.LogicalDevice, _descriptorPool, (uint)descriptorSets.Size, ptr).CheckResult();
+      Device.DeviceApi.vkFreeDescriptorSets(Device.LogicalDevice, _descriptorPool, (uint)descriptorSets.Size, ptr).CheckResult();
     }
   }
 
   public unsafe void FreeDescriptors(PublicList<PublicList<VkDescriptorSet>> descriptorSets) {
     for (int i = 0; i < descriptorSets.Size; i++) {
       fixed (VkDescriptorSet* ptr = descriptorSets.GetAt(i).GetData()) {
-        vkFreeDescriptorSets(Device.LogicalDevice, _descriptorPool, (uint)descriptorSets.GetAt(i).Size, ptr).CheckResult();
+        Device.DeviceApi.vkFreeDescriptorSets(Device.LogicalDevice, _descriptorPool, (uint)descriptorSets.GetAt(i).Size, ptr).CheckResult();
       }
     }
   }
 
   public unsafe void ResetPool() {
-    vkResetDescriptorPool(Device.LogicalDevice, _descriptorPool, 0).CheckResult();
+    Device.DeviceApi.vkResetDescriptorPool(Device.LogicalDevice, _descriptorPool, 0).CheckResult();
   }
 
   public VkDescriptorPool GetVkDescriptorPool() {
@@ -116,9 +116,9 @@ public class VulkanDescriptorPool : IDescriptorPool {
     return _descriptorPool.Handle;
   }
 
-  public IDevice Device { get; }
+  public VulkanDevice Device { get; }
 
   public unsafe void Dispose() {
-    vkDestroyDescriptorPool(Device.LogicalDevice, _descriptorPool);
+    Device.DeviceApi.vkDestroyDescriptorPool(Device.LogicalDevice, _descriptorPool);
   }
 }

@@ -6,13 +6,14 @@ using Dwarf.EntityComponentSystem;
 using Dwarf.Math;
 using Dwarf.Physics.Interfaces;
 using Dwarf.Rendering;
+using Dwarf.Vulkan;
 using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Physics;
 
 public class ColliderMesh : IDebugRenderObject {
-  private readonly IDevice _device = null!;
+  private readonly VulkanDevice _device = null!;
   private readonly nint _allocator = IntPtr.Zero;
 
   private DwarfBuffer _vertexBuffer = null!;
@@ -27,7 +28,7 @@ public class ColliderMesh : IDebugRenderObject {
     Owner = owner;
   }
 
-  public ColliderMesh(Entity owner, nint allocator, IDevice device, Mesh mesh) {
+  public ColliderMesh(Entity owner, nint allocator, VulkanDevice device, Mesh mesh) {
     Application.Mutex.WaitOne();
     Owner = owner;
     _allocator = allocator;
@@ -40,7 +41,7 @@ public class ColliderMesh : IDebugRenderObject {
     Application.Mutex.ReleaseMutex();
   }
 
-  public ColliderMesh(Entity owner, nint allocator, IDevice device, AABB aabb) {
+  public ColliderMesh(Entity owner, nint allocator, VulkanDevice device, AABB aabb) {
     Application.Mutex.WaitOne();
     Owner = owner;
     _device = device;
@@ -69,11 +70,11 @@ public class ColliderMesh : IDebugRenderObject {
     ulong[] offsets = [0];
     fixed (VkBuffer* buffersPtr = buffers)
     fixed (ulong* offsetsPtr = offsets) {
-      vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffersPtr, offsetsPtr);
+      _device.DeviceApi.vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffersPtr, offsetsPtr);
     }
 
     if (_hasIndexBuffer) {
-      vkCmdBindIndexBuffer(commandBuffer, _indexBuffer.GetBuffer(), 0, VkIndexType.Uint32);
+      _device.DeviceApi.vkCmdBindIndexBuffer(commandBuffer, _indexBuffer.GetBuffer(), 0, VkIndexType.Uint32);
     }
     // _device._mutex.ReleaseMutex();
     return Task.CompletedTask;
@@ -95,9 +96,9 @@ public class ColliderMesh : IDebugRenderObject {
   public Task Draw(IntPtr commandBuffer, uint index = 0, uint firstInstance = 0) {
     // _device._mutex.WaitOne();
     if (_hasIndexBuffer) {
-      vkCmdDrawIndexed(commandBuffer, (uint)_indexCount, 1, 0, 0, firstInstance);
+      _device.DeviceApi.vkCmdDrawIndexed(commandBuffer, (uint)_indexCount, 1, 0, 0, firstInstance);
     } else {
-      vkCmdDraw(commandBuffer, (uint)_vertexCount, 1, 0, firstInstance);
+      _device.DeviceApi.vkCmdDraw(commandBuffer, (uint)_vertexCount, 1, 0, firstInstance);
     }
     // _device._mutex.ReleaseMutex();
     return Task.CompletedTask;

@@ -112,7 +112,7 @@ public partial class ImGuiController : IDisposable {
     // InitTexture();
 
     VkPipelineCacheCreateInfo pipelineCacheCreateInfo = new();
-    vkCreatePipelineCache(_device.LogicalDevice, &pipelineCacheCreateInfo, null, out _pipelineCache).CheckResult();
+    _device.DeviceApi.vkCreatePipelineCache(_device.LogicalDevice, &pipelineCacheCreateInfo, null, out _pipelineCache).CheckResult();
 
     CreatePipelineLayout(descriptorSetLayouts);
     // CreatePipeline(_renderer.GetPostProcessingPass(), "imgui_vertex", "imgui_fragment", new PipelineImGuiProvider());
@@ -549,8 +549,8 @@ public partial class ImGuiController : IDisposable {
     ImDrawVert* vtxDst = null;
     ushort* idxDst = null;
 
-    vkMapMemory(_device.LogicalDevice, _vertexBuffer.GetVkDeviceMemory(), 0, _vertexBuffer.GetBufferSize(), 0, (void**)&vtxDst);
-    vkMapMemory(_device.LogicalDevice, _indexBuffer.GetVkDeviceMemory(), 0, _indexBuffer.GetBufferSize(), 0, (void**)&idxDst);
+    _device.DeviceApi.vkMapMemory(_device.LogicalDevice, _vertexBuffer.GetVkDeviceMemory(), 0, _vertexBuffer.GetBufferSize(), 0, (void**)&vtxDst);
+    _device.DeviceApi.vkMapMemory(_device.LogicalDevice, _indexBuffer.GetVkDeviceMemory(), 0, _indexBuffer.GetBufferSize(), 0, (void**)&idxDst);
 
     for (int n = 0; n < drawData.CmdListsCount; n++) {
       var cmdList = drawData.CmdLists[n];
@@ -562,8 +562,8 @@ public partial class ImGuiController : IDisposable {
       idxDst += cmdList.IdxBuffer.Size;
     }
 
-    vkUnmapMemory(_device.LogicalDevice, _vertexBuffer.GetVkDeviceMemory());
-    vkUnmapMemory(_device.LogicalDevice, _indexBuffer.GetVkDeviceMemory());
+    _device.DeviceApi.vkUnmapMemory(_device.LogicalDevice, _vertexBuffer.GetVkDeviceMemory());
+    _device.DeviceApi.vkUnmapMemory(_device.LogicalDevice, _indexBuffer.GetVkDeviceMemory());
   }
 
   public unsafe void RenderImDrawData(ImDrawDataPtr drawData, FrameInfo frameInfo) {
@@ -581,9 +581,9 @@ public partial class ImGuiController : IDisposable {
 
       fixed (VkBuffer* vertexPtr = vertexBuffers)
       fixed (ulong* offsetsPtr = offsets) {
-        vkCmdBindVertexBuffers(frameInfo.CommandBuffer, 0, 1, vertexPtr, offsetsPtr);
+        _device.DeviceApi.vkCmdBindVertexBuffers(frameInfo.CommandBuffer, 0, 1, vertexPtr, offsetsPtr);
       }
-      vkCmdBindIndexBuffer(frameInfo.CommandBuffer, _indexBuffer.GetBuffer(), 0, VkIndexType.Uint16);
+      _device.DeviceApi.vkCmdBindIndexBuffer(frameInfo.CommandBuffer, _indexBuffer.GetBuffer(), 0, VkIndexType.Uint16);
 
       for (int i = 0; i < drawData.CmdListsCount; i++) {
         var cmdList = drawData.CmdLists[i];
@@ -600,7 +600,7 @@ public partial class ImGuiController : IDisposable {
           }
 
           SetScissorRect(frameInfo, pcmd, drawData);
-          vkCmdDrawIndexed(
+          _device.DeviceApi.vkCmdDrawIndexed(
             frameInfo.CommandBuffer,
             pcmd.ElemCount,
             1,
@@ -625,17 +625,17 @@ public partial class ImGuiController : IDisposable {
     _vertexBuffer?.Dispose();
     _indexBuffer?.Dispose();
 
-    vkDestroyImage(_device.LogicalDevice, _fontImage, null);
-    vkDestroyImageView(_device.LogicalDevice, _fontView, null);
-    vkFreeMemory(_device.LogicalDevice, _fontMemory, null);
-    vkDestroySampler(_device.LogicalDevice, _sampler, null);
+    _device.DeviceApi.vkDestroyImage(_device.LogicalDevice, _fontImage, null);
+    _device.DeviceApi.vkDestroyImageView(_device.LogicalDevice, _fontView, null);
+    _device.DeviceApi.vkFreeMemory(_device.LogicalDevice, _fontMemory, null);
+    _device.DeviceApi.vkDestroySampler(_device.LogicalDevice, _sampler, null);
 
     _fontTexture?.Dispose();
     _systemPipeline?.Dispose();
     _systemDescriptorPool?.Dispose();
     _systemSetLayout?.Dispose();
-    vkDestroyPipelineLayout(_device.LogicalDevice, _systemPipelineLayout);
-    vkDestroyPipelineCache(_device.LogicalDevice, _pipelineCache, null);
+    _device.DeviceApi.vkDestroyPipelineLayout(_device.LogicalDevice, _systemPipelineLayout);
+    _device.DeviceApi.vkDestroyPipelineCache(_device.LogicalDevice, _pipelineCache, null);
 
     /*
     vkDestroyShaderModule(_device.LogicalDevice, _vertexModule, null);

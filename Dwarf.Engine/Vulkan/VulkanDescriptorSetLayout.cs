@@ -7,17 +7,17 @@ using static Vortice.Vulkan.Vulkan;
 namespace Dwarf.Vulkan;
 
 public class VulkanDescriptorSetLayout : IDescriptorSetLayout {
-  private readonly IDevice _device = null!;
+  private readonly VulkanDevice _device = null!;
   private readonly VkDescriptorSetLayout _descriptorSetLayout = VkDescriptorSetLayout.Null;
   public class Builder {
-    private readonly IDevice _device = null!;
+    private readonly VulkanDevice _device = null!;
     private readonly Dictionary<uint, VkDescriptorSetLayoutBinding> _bindings = [];
-    public Builder(IDevice device, Dictionary<uint, VkDescriptorSetLayoutBinding> bindings) {
+    public Builder(VulkanDevice device, Dictionary<uint, VkDescriptorSetLayoutBinding> bindings) {
       _device = device;
       _bindings = bindings;
     }
 
-    public Builder(IDevice device) {
+    public Builder(VulkanDevice device) {
       _device = device;
     }
 
@@ -43,7 +43,7 @@ public class VulkanDescriptorSetLayout : IDescriptorSetLayout {
 
   }
 
-  public unsafe VulkanDescriptorSetLayout(IDevice device, Dictionary<uint, VkDescriptorSetLayoutBinding> bindings) {
+  public unsafe VulkanDescriptorSetLayout(VulkanDevice device, Dictionary<uint, VkDescriptorSetLayoutBinding> bindings) {
     _device = device;
     Bindings = bindings;
 
@@ -78,7 +78,7 @@ public class VulkanDescriptorSetLayout : IDescriptorSetLayout {
         flags = flags
       };
 
-      vkCreateDescriptorSetLayout(
+      _device.DeviceApi.vkCreateDescriptorSetLayout(
         _device.LogicalDevice,
         &layoutCreateInfo,
         null,
@@ -117,6 +117,6 @@ public class VulkanDescriptorSetLayout : IDescriptorSetLayout {
   public Dictionary<uint, VkDescriptorSetLayoutBinding> Bindings { get; } = new();
 
   public unsafe void Dispose() {
-    vkDestroyDescriptorSetLayout(_device.LogicalDevice, _descriptorSetLayout);
+    _device.DeviceApi.vkDestroyDescriptorSetLayout(_device.LogicalDevice, _descriptorSetLayout);
   }
 }

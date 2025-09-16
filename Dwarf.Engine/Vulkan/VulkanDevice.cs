@@ -16,6 +16,8 @@ namespace Dwarf.Vulkan;
 
 public class VulkanDevice : IDevice {
   public RenderAPI RenderAPI => RenderAPI.Vulkan;
+  public VkInstanceApi InstanceApi { get; private set; }
+  public VkDeviceApi DeviceApi { get; private set; }
 
   private readonly string[] VALIDATION_LAYERS = ["VK_LAYER_KHRONOS_validation"];
   public static bool s_EnableValidationLayers = true;
@@ -89,20 +91,20 @@ public class VulkanDevice : IDevice {
 
     // Logger.Info($"Allocating Size: {size}");
 
-    vkCreateBuffer(_logicalDevice, &bufferInfo, null, out var buff).CheckResult();
+    DeviceApi.vkCreateBuffer(_logicalDevice, &bufferInfo, null, out var buff).CheckResult();
     buffer = buff;
 
     VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(_logicalDevice, buffer, out memRequirements);
+    DeviceApi.vkGetBufferMemoryRequirements(_logicalDevice, buffer, out memRequirements);
 
     VkMemoryAllocateInfo allocInfo = new() {
       allocationSize = memRequirements.size,
       memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, pFlags)
     };
 
-    vkAllocateMemory(_logicalDevice, &allocInfo, null, out var buffMem).CheckResult();
+    DeviceApi.vkAllocateMemory(_logicalDevice, &allocInfo, null, out var buffMem).CheckResult();
     bufferMemory = buffMem;
-    vkBindBufferMemory(_logicalDevice, buffer, bufferMemory, 0).CheckResult();
+    DeviceApi.vkBindBufferMemory(_logicalDevice, buffer, bufferMemory, 0).CheckResult();
   }
 
   public unsafe void AllocateBuffer(
@@ -113,16 +115,16 @@ public class VulkanDevice : IDevice {
     out ulong bufferMemory
   ) {
     VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(_logicalDevice, buffer, out memRequirements);
+    DeviceApi.vkGetBufferMemoryRequirements(_logicalDevice, buffer, out memRequirements);
 
     VkMemoryAllocateInfo allocInfo = new() {
       allocationSize = memRequirements.size,
       memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, pFlags)
     };
 
-    vkAllocateMemory(_logicalDevice, &allocInfo, null, out var buffMem).CheckResult();
+    DeviceApi.vkAllocateMemory(_logicalDevice, &allocInfo, null, out var buffMem).CheckResult();
     bufferMemory = buffMem;
-    vkBindBufferMemory(_logicalDevice, buffer, bufferMemory, 0).CheckResult();
+    DeviceApi.vkBindBufferMemory(_logicalDevice, buffer, bufferMemory, 0).CheckResult();
   }
 
   public unsafe Task CopyBuffer(ulong srcBuffer, ulong dstBuffer, ulong size) {
@@ -135,7 +137,7 @@ public class VulkanDevice : IDevice {
         dstOffset = 0,  // Optional
         size = size
       };
-      vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+      DeviceApi.vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
       // FlushCommandBuffer(commandBuffer, _presentQueue, true);
       EndSingleTimeCommands(commandBuffer);
@@ -153,7 +155,7 @@ public class VulkanDevice : IDevice {
         dstOffset = dstOffset,  // Optional
         size = size
       };
-      vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+      DeviceApi.vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
       // FlushCommandBuffer(commandBuffer, _presentQueue, true);
       EndSingleTimeCommands(commandBuffer);
@@ -169,10 +171,10 @@ public class VulkanDevice : IDevice {
     allocInfo.commandBufferCount = 1;
 
     var cmdBuffer = new VkCommandBuffer();
-    vkAllocateCommandBuffers(_logicalDevice, &allocInfo, &cmdBuffer).CheckResult();
+    DeviceApi.vkAllocateCommandBuffers(_logicalDevice, &allocInfo, &cmdBuffer).CheckResult();
     if (begin) {
       var buffInfo = new VkCommandBufferBeginInfo();
-      vkBeginCommandBuffer(cmdBuffer, &buffInfo).CheckResult();
+      DeviceApi.vkBeginCommandBuffer(cmdBuffer, &buffInfo).CheckResult();
     }
 
     return cmdBuffer;
@@ -185,7 +187,7 @@ public class VulkanDevice : IDevice {
   public unsafe void FlushCommandBuffer(VkCommandBuffer cmdBuffer, VkQueue queue, VkCommandPool pool, bool free) {
     if (cmdBuffer == VkCommandBuffer.Null) return;
 
-    vkEndCommandBuffer(cmdBuffer).CheckResult();
+    DeviceApi.vkEndCommandBuffer(cmdBuffer).CheckResult();
 
     var submitInfo = new VkSubmitInfo();
     submitInfo.commandBufferCount = 1;
@@ -194,15 +196,15 @@ public class VulkanDevice : IDevice {
     // Create fence to ensure that the command buffer has finished executing
     var fenceInfo = new VkFenceCreateInfo();
     fenceInfo.flags = VkFenceCreateFlags.None;
-    vkCreateFence(_logicalDevice, &fenceInfo, null, out var fence).CheckResult();
+    DeviceApi.vkCreateFence(_logicalDevice, &fenceInfo, null, out var fence).CheckResult();
     // Submit to the queue
     Application.Mutex.WaitOne();
-    vkQueueSubmit(queue, submitInfo, fence).CheckResult();
+    DeviceApi.vkQueueSubmit(queue, submitInfo, fence).CheckResult();
     Application.Mutex.ReleaseMutex();
-    vkWaitForFences(_logicalDevice, 1, &fence, VkBool32.True, 100000000000);
-    vkDestroyFence(_logicalDevice, fence, null);
+    DeviceApi.vkWaitForFences(_logicalDevice, 1, &fence, VkBool32.True, 100000000000);
+    DeviceApi.vkDestroyFence(_logicalDevice, fence, null);
     if (free) {
-      vkFreeCommandBuffers(_logicalDevice, pool, 1, &cmdBuffer);
+      DeviceApi.vkFreeCommandBuffers(_logicalDevice, pool, 1, &cmdBuffer);
     }
   }
 
@@ -213,17 +215,17 @@ public class VulkanDevice : IDevice {
   public static unsafe VkSemaphore CreateSemaphore(VulkanDevice device) {
     var semaphoreInfo = new VkSemaphoreCreateInfo();
     var semaphore = new VkSemaphore();
-    vkCreateSemaphore(device.LogicalDevice, &semaphoreInfo, null, &semaphore);
+    device.DeviceApi.vkCreateSemaphore(device.LogicalDevice, &semaphoreInfo, null, &semaphore);
     return semaphore;
   }
 
   public static unsafe void DestroySemaphore(VulkanDevice device, VkSemaphore semaphore) {
-    vkDestroySemaphore(device.LogicalDevice, semaphore, null);
+    device.DeviceApi.vkDestroySemaphore(device.LogicalDevice, semaphore, null);
   }
 
   public VkFormat FindSupportedFormat(List<VkFormat> candidates, VkImageTiling tilling, VkFormatFeatureFlags features) {
     foreach (var format in candidates) {
-      vkGetPhysicalDeviceFormatProperties(_physicalDevice, format, out VkFormatProperties props);
+      InstanceApi.vkGetPhysicalDeviceFormatProperties(_physicalDevice, format, out VkFormatProperties props);
 
       if (tilling == VkImageTiling.Linear && (props.linearTilingFeatures & features) == features) {
         return format;
@@ -241,23 +243,23 @@ public class VulkanDevice : IDevice {
     out VkDeviceMemory imageMemory
   ) {
 
-    vkCreateImage(_logicalDevice, &imageInfo, null, out image).CheckResult();
+    DeviceApi.vkCreateImage(_logicalDevice, &imageInfo, null, out image).CheckResult();
 
     VkMemoryRequirements memRequirements;
-    vkGetImageMemoryRequirements(_logicalDevice, image, out memRequirements);
+    DeviceApi.vkGetImageMemoryRequirements(_logicalDevice, image, out memRequirements);
 
     VkMemoryAllocateInfo allocInfo = new() {
       allocationSize = memRequirements.size,
       memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, (MemoryProperty)properties)
     };
 
-    vkAllocateMemory(_logicalDevice, &allocInfo, null, out imageMemory).CheckResult();
-    vkBindImageMemory(_logicalDevice, image, imageMemory, 0);
+    DeviceApi.vkAllocateMemory(_logicalDevice, &allocInfo, null, out imageMemory).CheckResult();
+    DeviceApi.vkBindImageMemory(_logicalDevice, image, imageMemory, 0);
   }
 
   public uint FindMemoryType(uint typeFilter, MemoryProperty properties) {
     VkPhysicalDeviceMemoryProperties memProperties;
-    vkGetPhysicalDeviceMemoryProperties(_physicalDevice, out memProperties);
+    InstanceApi.vkGetPhysicalDeviceMemoryProperties(_physicalDevice, out memProperties);
     for (int i = 0; i < memProperties.memoryTypeCount; i++) {
       // 1 << n is basically an equivalent to 2^n.
       // if ((typeFilter & (1 << i)) &&
@@ -283,30 +285,30 @@ public class VulkanDevice : IDevice {
       };
 
       VkCommandBuffer commandBuffer;
-      vkAllocateCommandBuffers(_logicalDevice, &allocInfo, &commandBuffer);
+      DeviceApi.vkAllocateCommandBuffers(_logicalDevice, &allocInfo, &commandBuffer);
 
       VkCommandBufferBeginInfo beginInfo = new() {
         flags = VkCommandBufferUsageFlags.OneTimeSubmit
       };
 
-      vkBeginCommandBuffer(commandBuffer, &beginInfo);
+      DeviceApi.vkBeginCommandBuffer(commandBuffer, &beginInfo);
       return commandBuffer;
     }
   }
 
   public unsafe void EndSingleTimeCommands(IntPtr commandBuffer) {
     lock (_queueLock) {
-      vkEndCommandBuffer(commandBuffer);
+      DeviceApi.vkEndCommandBuffer(commandBuffer);
 
       SubmitQueue(commandBuffer);
 
       // vkFreeCommandBuffers(_logicalDevice, _commandPool, 1, &commandBuffer);
-      vkFreeCommandBuffers(_logicalDevice, _commandPool, commandBuffer);
+      DeviceApi.vkFreeCommandBuffers(_logicalDevice, _commandPool, commandBuffer);
     }
   }
 
   public unsafe void WaitDevice() {
-    var result = vkDeviceWaitIdle(_logicalDevice);
+    var result = DeviceApi.vkDeviceWaitIdle(_logicalDevice);
     if (result == VkResult.ErrorDeviceLost) {
       throw new VkException($"[DWARF] Device Lost! {result}");
     }
@@ -315,12 +317,12 @@ public class VulkanDevice : IDevice {
   public unsafe VkFence CreateFence(VkFenceCreateFlags flags = VkFenceCreateFlags.None) {
     var fenceInfo = new VkFenceCreateInfo();
     fenceInfo.flags = flags;
-    vkCreateFence(_logicalDevice, &fenceInfo, null, out var fence).CheckResult();
+    DeviceApi.vkCreateFence(_logicalDevice, &fenceInfo, null, out var fence).CheckResult();
     return fence;
   }
 
   public unsafe void WaitQueue(VkQueue queue) {
-    vkQueueWaitIdle(queue);
+    DeviceApi.vkQueueWaitIdle(queue);
   }
 
   public void WaitQueue() {
@@ -348,20 +350,20 @@ public class VulkanDevice : IDevice {
   // }
 
   public unsafe void SubmitQueue(uint submitCount, VkSubmitInfo* pSubmits, VkFence fence, bool destroy = false) {
-    vkQueueSubmit(_graphicsQueue, submitCount, pSubmits, fence).CheckResult();
-    vkWaitForFences(_logicalDevice, 1, &fence, VkBool32.True, UInt64.MaxValue);
+    DeviceApi.vkQueueSubmit(_graphicsQueue, submitCount, pSubmits, fence).CheckResult();
+    DeviceApi.vkWaitForFences(_logicalDevice, 1, &fence, VkBool32.True, UInt64.MaxValue);
     if (destroy) {
-      vkDestroyFence(_logicalDevice, fence);
+      DeviceApi.vkDestroyFence(_logicalDevice, fence);
     }
   }
 
   public unsafe void SubmitQueue2(uint submitCount, VkSubmitInfo2* pSubmits, VkFence fence, bool destroy = false) {
     try {
       Application.Mutex.WaitOne();
-      vkQueueSubmit2(_graphicsQueue, submitCount, pSubmits, fence).CheckResult();
-      vkWaitForFences(_logicalDevice, 1, &fence, VkBool32.True, UInt64.MaxValue);
+      DeviceApi.vkQueueSubmit2(_graphicsQueue, submitCount, pSubmits, fence).CheckResult();
+      DeviceApi.vkWaitForFences(_logicalDevice, 1, &fence, VkBool32.True, UInt64.MaxValue);
       if (destroy) {
-        vkDestroyFence(_logicalDevice, fence);
+        DeviceApi.vkDestroyFence(_logicalDevice, fence);
       }
     } finally {
       Application.Mutex.ReleaseMutex();
@@ -378,7 +380,7 @@ public class VulkanDevice : IDevice {
     createInfo.pNext = &timelineCreateInfo;
     createInfo.flags = VkSemaphoreCreateFlags.None;
 
-    vkCreateSemaphore(_logicalDevice, &createInfo, null, out var timelineSemaphore).CheckResult();
+    DeviceApi.vkCreateSemaphore(_logicalDevice, &createInfo, null, out var timelineSemaphore).CheckResult();
 
     ulong waitValue = 2; // Wait until semaphore value is >= 2
     ulong signalValue = 3; // Set semaphore value to 3
@@ -399,7 +401,7 @@ public class VulkanDevice : IDevice {
     submitInfo.commandBufferCount = 0;
     submitInfo.pCommandBuffers = null;
 
-    vkQueueSubmit(GraphicsQueue, submitInfo, VkFence.Null);
+    DeviceApi.vkQueueSubmit(GraphicsQueue, submitInfo, VkFence.Null);
   }
 
   private unsafe void CreateInstance() {
@@ -517,10 +519,12 @@ public class VulkanDevice : IDevice {
     var result = vkCreateInstance(&createInfo, null, out _vkInstance);
     if (result != VkResult.Success) throw new Exception("Failed to create instance!");
 
-    vkLoadInstanceOnly(_vkInstance);
+    InstanceApi = GetApi(_vkInstance);
+
+    // InstanceApi.vkLoadInstanceOnly(_vkInstance);
 
     if (instanceLayers.Count > 0) {
-      vkCreateDebugUtilsMessengerEXT(_vkInstance, &debugCreateInfo, null, out _debugMessenger).CheckResult();
+      InstanceApi.vkCreateDebugUtilsMessengerEXT(_vkInstance, &debugCreateInfo, null, out _debugMessenger).CheckResult();
     }
   }
 
@@ -575,7 +579,7 @@ public class VulkanDevice : IDevice {
   }
 
   private unsafe void PickPhysicalDevice() {
-    _physicalDevice = DeviceHelper.GetPhysicalDevice(_vkInstance, Surface);
+    _physicalDevice = DeviceHelper.GetPhysicalDevice(this, _vkInstance, Surface);
   }
 
   private unsafe void CreateLogicalDevice() {
@@ -585,12 +589,16 @@ public class VulkanDevice : IDevice {
       pNext = &maintenance4Properties
     };
 
-    vkGetPhysicalDeviceProperties2(_physicalDevice, &properties);
+    InstanceApi.vkGetPhysicalDeviceProperties2(_physicalDevice, &properties);
     Properties = properties;
-    var queueFamilies = DeviceHelper.FindQueueFamilies(_physicalDevice, Surface);
-    var availableDeviceExtensions = vkEnumerateDeviceExtensionProperties(_physicalDevice);
+    var queueFamilies = DeviceHelper.FindQueueFamilies(this, Surface);
 
-    vkGetPhysicalDeviceMemoryProperties(_physicalDevice, out var memoryProperties);
+
+    InstanceApi.vkEnumerateDeviceExtensionProperties(_physicalDevice, out uint propCount).CheckResult();
+    Span<VkExtensionProperties> availableDeviceExtensions = stackalloc VkExtensionProperties[(int)propCount];
+    InstanceApi.vkEnumerateDeviceExtensionProperties(_physicalDevice, availableDeviceExtensions).CheckResult();
+
+    InstanceApi.vkGetPhysicalDeviceMemoryProperties(_physicalDevice, out var memoryProperties);
 
     MaxBufferSize = maintenance4Properties.maxBufferSize;
     MaxHeapSize = memoryProperties.memoryHeaps.e0.size;
@@ -742,29 +750,31 @@ public class VulkanDevice : IDevice {
     Features = isOSX ? deviceFeatures : deviceFeatures2.features;
     DeviceExtensions = enabledExtensions;
 
-    var result = vkCreateDevice(_physicalDevice, &createInfo, null, out _logicalDevice);
+    var result = InstanceApi.vkCreateDevice(_physicalDevice, &createInfo, null, out _logicalDevice);
     if (result != VkResult.Success) throw new Exception($"Failed to create a device! [{result}]");
 
-    vkLoadDevice(_logicalDevice);
+    DeviceApi = GetApi(_vkInstance, _logicalDevice);
 
-    vkGetDeviceQueue(_logicalDevice, queueFamilies.graphicsFamily, 0, out _graphicsQueue);
+    // vkLoadDevice(_logicalDevice);
+
+    DeviceApi.vkGetDeviceQueue(_logicalDevice, queueFamilies.graphicsFamily, 0, out _graphicsQueue);
     // vkGetDeviceQueue(_logicalDevice, queueFamilies.presentFamily, 0, out _presentQueue);
   }
 
   public unsafe ulong CreateCommandPool() {
-    var queueFamilies = DeviceHelper.FindQueueFamilies(_physicalDevice, Surface);
+    var queueFamilies = DeviceHelper.FindQueueFamilies(this, Surface);
 
     VkCommandPoolCreateInfo poolCreateInfo = new() {
       queueFamilyIndex = queueFamilies.graphicsFamily,
       flags = VkCommandPoolCreateFlags.Transient | VkCommandPoolCreateFlags.ResetCommandBuffer
     };
 
-    var result = vkCreateCommandPool(_logicalDevice, &poolCreateInfo, null, out var commandPool);
+    var result = DeviceApi.vkCreateCommandPool(_logicalDevice, &poolCreateInfo, null, out var commandPool);
     return result != VkResult.Success ? throw new Exception("Failed to create command pool!") : (ulong)commandPool;
   }
 
   public unsafe void DisposeCommandPool(ulong commandPool) {
-    vkDestroyCommandPool(LogicalDevice, commandPool, null);
+    DeviceApi.vkDestroyCommandPool(LogicalDevice, commandPool, null);
   }
 
   public object CreateFence(FenceCreateFlags fenceCreateFlags) {
@@ -772,25 +782,25 @@ public class VulkanDevice : IDevice {
   }
 
   public void WaitFence(object fence, bool waitAll) {
-    vkWaitForFences(LogicalDevice, (VkFence)fence, waitAll, VulkanDevice.FenceTimeout);
+    DeviceApi.vkWaitForFences(LogicalDevice, (VkFence)fence, waitAll, VulkanDevice.FenceTimeout);
     unsafe {
-      vkDestroyFence(LogicalDevice, (VkFence)fence);
+      DeviceApi.vkDestroyFence(LogicalDevice, (VkFence)fence);
     }
   }
 
   public void BeginWaitFence(object fence, bool waitAll) {
-    vkWaitForFences(LogicalDevice, (VkFence)fence, waitAll, FenceTimeout);
+    DeviceApi.vkWaitForFences(LogicalDevice, (VkFence)fence, waitAll, FenceTimeout);
   }
   public unsafe void EndWaitFence(object fence) {
-    vkDestroyFence(LogicalDevice, (VkFence)fence);
+    DeviceApi.vkDestroyFence(LogicalDevice, (VkFence)fence);
   }
 
   public unsafe void Dispose() {
-    vkDestroyCommandPool(_logicalDevice, _commandPool);
-    vkDestroyDevice(_logicalDevice);
-    vkDestroySurfaceKHR(_vkInstance, Surface);
-    vkDestroyDebugUtilsMessengerEXT(_vkInstance, _debugMessenger);
-    vkDestroyInstance(_vkInstance);
+    DeviceApi.vkDestroyCommandPool(_logicalDevice, _commandPool);
+    DeviceApi.vkDestroyDevice(_logicalDevice);
+    InstanceApi.vkDestroySurfaceKHR(_vkInstance, Surface);
+    InstanceApi.vkDestroyDebugUtilsMessengerEXT(_vkInstance, _debugMessenger);
+    InstanceApi.vkDestroyInstance(_vkInstance);
   }
 
   public IntPtr LogicalDevice => _logicalDevice;

@@ -121,6 +121,9 @@ public static class Frustum {
     Plane bottom = new(new Vector3(m.M14 + m.M12, m.M24 + m.M22, m.M34 + m.M32), m.M44 + m.M42);
     Plane top = new(new Vector3(m.M14 - m.M12, m.M24 - m.M22, m.M34 - m.M32), m.M44 - m.M42);
 
+    // left.Normal *= -1;
+    // right.Normal *= -1;
+
     Plane nearP, farP;
 
     if (depth == ClipSpaceDepth.ZeroToOne) {
@@ -145,8 +148,8 @@ public static class Frustum {
   [MethodImpl(MethodImplOptions.AggressiveInlining)]
   public static bool SphereInside(in FrustumPlanes f, in Vector3 center, float radius) {
     // Check if the sphere is inside all 6 planes of the frustum
-    if (f.Left.DistanceTo(center) < -radius) return false;
-    if (f.Right.DistanceTo(center) < -radius) return false;
+    if (f.Left.DistanceTo(center) < radius) return false;
+    if (f.Right.DistanceTo(center) < radius) return false;
     if (f.Bottom.DistanceTo(center) < -radius) return false;
     if (f.Top.DistanceTo(center) < -radius) return false;
     if (f.Near.DistanceTo(center) < -radius) return false;
@@ -165,15 +168,6 @@ public static class Frustum {
     return MathF.Max(sx, MathF.Max(sy, sz));
   }
 
-  // Public method to filter nodes by the frustum (cull the nodes)
-  public static void FilterNodesByFrustum(Camera cam, in List<Node> inNodes, out List<Node> outNodes) {
-    // Build the frustum from the camera's matrices
-    var planes = BuildFromCamera(cam);
-    // Filter nodes based on the frustum planes
-    FilterNodesByPlanes(in planes, inNodes, out outNodes);
-  }
-
-  // Public method to filter nodes by the frustum planes (cull the nodes)
   public static void FilterNodesByPlanes(in FrustumPlanes planes, in List<Node> inNodes, out List<Node> outNodes) {
     Guizmos.Clear();
 
@@ -202,7 +196,7 @@ public static class Frustum {
         outNodes.Add(node);
       }
 
-      Guizmos.AddCircular(center, new(radiusScaled / 10, radiusScaled / 10, radiusScaled / 10), new(0, 0, 1));
+      // Guizmos.AddCircular(center, new(radiusScaled / 10, radiusScaled / 10, radiusScaled / 10), new(0, 0, 1));
 
     }
   }

@@ -56,7 +56,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     _window = _application.Window;
     _device = (VulkanDevice)_application.Device;
 
-    CommandList = new VulkanCommandList();
+    CommandList = new VulkanCommandList(_device);
 
     RecreateSwapchain();
 
@@ -92,7 +92,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
       dstBinding = 1,
       pImageInfo = &descriptorImageInfo[1]
     };
-    vkUpdateDescriptorSets(_device.LogicalDevice, 2, writeDescriptorSets, 0, null);
+    _device.DeviceApi.vkUpdateDescriptorSets(_device.LogicalDevice, 2, writeDescriptorSets, 0, null);
   }
 
   private void CreateSamplers() {
@@ -105,7 +105,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
 
   private void CreateSampler(out VkSampler sampler, bool compare = false) {
     VkPhysicalDeviceProperties2 properties = new();
-    vkGetPhysicalDeviceProperties2(_device.PhysicalDevice, &properties);
+    _device.InstanceApi.vkGetPhysicalDeviceProperties2(_device.PhysicalDevice, &properties);
 
     VkSamplerCreateInfo samplerInfo = new();
     samplerInfo.magFilter = VkFilter.Linear;
@@ -121,7 +121,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     samplerInfo.compareOp = compare ? VkCompareOp.LessOrEqual : VkCompareOp.Always;
     samplerInfo.mipmapMode = VkSamplerMipmapMode.Linear;
 
-    vkCreateSampler(_device.LogicalDevice, &samplerInfo, null, out sampler).CheckResult();
+    _device.DeviceApi.vkCreateSampler(_device.LogicalDevice, &samplerInfo, null, out sampler).CheckResult();
   }
 
   private unsafe void CreateDescriptors() {
@@ -153,7 +153,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
       descriptorSetCount = 1,
       pSetLayouts = &setLayout
     };
-    vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
+    _device.DeviceApi.vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
 
     VkDescriptorImageInfo colorInfo = new() {
       imageLayout = VkImageLayout.ShaderReadOnlyOptimal,
@@ -182,13 +182,13 @@ public unsafe class VkDynamicRenderer : IRenderer {
       pImageInfo = &depthInfo
     };
 
-    vkUpdateDescriptorSets(_device.LogicalDevice, 2, writeDescriptorSets, 0, null);
+    _device.DeviceApi.vkUpdateDescriptorSets(_device.LogicalDevice, 2, writeDescriptorSets, 0, null);
     ImageDescriptors[index] = descriptorSet;
   }
 
   private void PrepareFrame() {
     fixed (VkFence* fences = _waitFences) {
-      vkWaitForFences(_device.LogicalDevice, (uint)Swapchain.Images.Length, fences, true, UInt64.MaxValue);
+      _device.DeviceApi.vkWaitForFences(_device.LogicalDevice, (uint)Swapchain.Images.Length, fences, true, UInt64.MaxValue);
     }
 
     var result = _swapchain.AcquireNextImage(_semaphores[Swapchain.CurrentFrame].PresentComplete, out _imageIndex);
@@ -219,7 +219,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     }
 
     FrameIndex = (FrameIndex + 1) % Swapchain.Images.Length;
-    vkQueueWaitIdle(_device.GraphicsQueue).CheckResult();
+    _device.DeviceApi.vkQueueWaitIdle(_device.GraphicsQueue).CheckResult();
   }
 
   private unsafe void InitVulkan() {
@@ -228,15 +228,15 @@ public unsafe class VkDynamicRenderer : IRenderer {
     };
     _waitFences = new VkFence[Swapchain.Images.Length];
     for (int i = 0; i < _waitFences.Length; i++) {
-      vkCreateFence(_device.LogicalDevice, &fenceCreateInfo, null, out _waitFences[i]);
+      _device.DeviceApi.vkCreateFence(_device.LogicalDevice, &fenceCreateInfo, null, out _waitFences[i]);
     }
 
     _semaphores = new Semaphores[Swapchain.Images.Length];
     for (int i = 0; i < Swapchain.Images.Length; i++) {
       _semaphores[i] = new();
       VkSemaphoreCreateInfo semaphoreCreateInfo = new();
-      vkCreateSemaphore(_device.LogicalDevice, &semaphoreCreateInfo, null, out _semaphores[i].PresentComplete).CheckResult();
-      vkCreateSemaphore(_device.LogicalDevice, &semaphoreCreateInfo, null, out _semaphores[i].RenderComplete).CheckResult();
+      _device.DeviceApi.vkCreateSemaphore(_device.LogicalDevice, &semaphoreCreateInfo, null, out _semaphores[i].PresentComplete).CheckResult();
+      _device.DeviceApi.vkCreateSemaphore(_device.LogicalDevice, &semaphoreCreateInfo, null, out _semaphores[i].RenderComplete).CheckResult();
     }
   }
   private void CreateDepthStencil(int index) {
@@ -253,16 +253,16 @@ public unsafe class VkDynamicRenderer : IRenderer {
     imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageCI.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-    vkCreateImage(_device.LogicalDevice, &imageCI, null, out _depthStencil[index].Image);
+    _device.DeviceApi.vkCreateImage(_device.LogicalDevice, &imageCI, null, out _depthStencil[index].Image);
 
     VkMemoryRequirements memReqs = new();
-    vkGetImageMemoryRequirements(_device.LogicalDevice, _depthStencil[index].Image, &memReqs);
+    _device.DeviceApi.vkGetImageMemoryRequirements(_device.LogicalDevice, _depthStencil[index].Image, &memReqs);
 
     VkMemoryAllocateInfo memAllloc = new();
     memAllloc.allocationSize = memReqs.size;
     memAllloc.memoryTypeIndex = _device.FindMemoryType(memReqs.memoryTypeBits, MemoryProperty.DeviceLocal);
-    vkAllocateMemory(_device.LogicalDevice, &memAllloc, null, out _depthStencil[index].ImageMemory).CheckResult();
-    vkBindImageMemory(_device.LogicalDevice, _depthStencil[index].Image, _depthStencil[index].ImageMemory, 0).CheckResult();
+    _device.DeviceApi.vkAllocateMemory(_device.LogicalDevice, &memAllloc, null, out _depthStencil[index].ImageMemory).CheckResult();
+    _device.DeviceApi.vkBindImageMemory(_device.LogicalDevice, _depthStencil[index].Image, _depthStencil[index].ImageMemory, 0).CheckResult();
 
     VkImageViewCreateInfo imageViewCI = new();
     imageViewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -277,7 +277,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     if (dp >= VK_FORMAT_D16_UNORM_S8_UINT) {
       imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
     }
-    vkCreateImageView(_device.LogicalDevice, &imageViewCI, null, out _depthStencil[index].ImageView).CheckResult();
+    _device.DeviceApi.vkCreateImageView(_device.LogicalDevice, &imageViewCI, null, out _depthStencil[index].ImageView).CheckResult();
   }
 
   private VkFormat FindDepthFormat() {
@@ -293,9 +293,9 @@ public unsafe class VkDynamicRenderer : IRenderer {
     if (_semaphores != null) {
       foreach (var s in _semaphores) {
         if (s.PresentComplete.Handle != 0)
-          vkDestroySemaphore(_device.LogicalDevice, s.PresentComplete, null);
+          _device.DeviceApi.vkDestroySemaphore(_device.LogicalDevice, s.PresentComplete, null);
         if (s.RenderComplete.Handle != 0)
-          vkDestroySemaphore(_device.LogicalDevice, s.RenderComplete, null);
+          _device.DeviceApi.vkDestroySemaphore(_device.LogicalDevice, s.RenderComplete, null);
       }
       _semaphores = Array.Empty<Semaphores>();
     }
@@ -303,7 +303,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     if (_waitFences != null) {
       foreach (var f in _waitFences) {
         if (f.Handle != 0)
-          vkDestroyFence(_device.LogicalDevice, f, null);
+          _device.DeviceApi.vkDestroyFence(_device.LogicalDevice, f, null);
       }
       _waitFences = Array.Empty<VkFence>();
     }
@@ -316,11 +316,11 @@ public unsafe class VkDynamicRenderer : IRenderer {
     _postProcessLayout = null!;
 
     if (ImageSampler.Handle != 0) {
-      vkDestroySampler(_device.LogicalDevice, ImageSampler);
+      _device.DeviceApi.vkDestroySampler(_device.LogicalDevice, ImageSampler);
       ImageSampler = VkSampler.Null;
     }
     if (DepthSampler.Handle != 0) {
-      vkDestroySampler(_device.LogicalDevice, DepthSampler);
+      _device.DeviceApi.vkDestroySampler(_device.LogicalDevice, DepthSampler);
       DepthSampler = VkSampler.Null;
     }
   }
@@ -339,13 +339,13 @@ public unsafe class VkDynamicRenderer : IRenderer {
     if (Swapchain != null) {
       if (_depthStencil.Length > 0) {
         for (int i = 0; i < Swapchain.Images.Length; i++) {
-          vkDestroyImageView(_device.LogicalDevice, _depthStencil[i].ImageView, null);
-          vkDestroyImage(_device.LogicalDevice, _depthStencil[i].Image, null);
-          vkFreeMemory(_device.LogicalDevice, _depthStencil[i].ImageMemory, null);
+          _device.DeviceApi.vkDestroyImageView(_device.LogicalDevice, _depthStencil[i].ImageView, null);
+          _device.DeviceApi.vkDestroyImage(_device.LogicalDevice, _depthStencil[i].Image, null);
+          _device.DeviceApi.vkFreeMemory(_device.LogicalDevice, _depthStencil[i].ImageMemory, null);
 
-          vkDestroyImageView(_device.LogicalDevice, _sceneColor[i].ImageView, null);
-          vkDestroyImage(_device.LogicalDevice, _sceneColor[i].Image, null);
-          vkFreeMemory(_device.LogicalDevice, _sceneColor[i].ImageMemory, null);
+          _device.DeviceApi.vkDestroyImageView(_device.LogicalDevice, _sceneColor[i].ImageView, null);
+          _device.DeviceApi.vkDestroyImage(_device.LogicalDevice, _sceneColor[i].Image, null);
+          _device.DeviceApi.vkFreeMemory(_device.LogicalDevice, _sceneColor[i].ImageMemory, null);
         }
       }
       Swapchain.Dispose();
@@ -390,12 +390,12 @@ public unsafe class VkDynamicRenderer : IRenderer {
     IsFrameInProgress = true;
 
     var commandBuffer = _commandBuffers[_imageIndex];
-    vkResetCommandBuffer(commandBuffer, VkCommandBufferResetFlags.None);
+    _device.DeviceApi.vkResetCommandBuffer(commandBuffer, VkCommandBufferResetFlags.None);
     VkCommandBufferBeginInfo beginInfo = new();
     if (level == CommandBufferLevel.Secondary) {
       beginInfo.flags = VkCommandBufferUsageFlags.SimultaneousUse;
     }
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    _device.DeviceApi.vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
     return commandBuffer;
   }
@@ -406,7 +406,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     }
 
     var commandBuffer = _commandBuffers[_imageIndex];
-    vkEndCommandBuffer(commandBuffer).CheckResult();
+    _device.DeviceApi.vkEndCommandBuffer(commandBuffer).CheckResult();
 
     fixed (VkSemaphore* renderPtr = &_semaphores[_imageIndex].RenderComplete)
     fixed (VkSemaphore* presentPtr = &_semaphores[Swapchain.CurrentFrame].PresentComplete) {
@@ -426,10 +426,10 @@ public unsafe class VkDynamicRenderer : IRenderer {
       submitInfo.pSignalSemaphores = renderPtr;
       submitInfo.pNext = null;
 
-      vkResetFences(_device.LogicalDevice, _waitFences[Swapchain.CurrentFrame]);
+      _device.DeviceApi.vkResetFences(_device.LogicalDevice, _waitFences[Swapchain.CurrentFrame]);
 
       Application.Mutex.WaitOne();
-      var queueResult = vkQueueSubmit(_device.GraphicsQueue, 1, &submitInfo, _waitFences[Swapchain.CurrentFrame]);
+      var queueResult = _device.DeviceApi.vkQueueSubmit(_device.GraphicsQueue, 1, &submitInfo, _waitFences[Swapchain.CurrentFrame]);
       Application.Mutex.ReleaseMutex();
       SubmitFrame();
 
@@ -439,6 +439,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
 
   public void BeginPostProcess(nint commandBuffer) {
     VkUtils.InsertMemoryBarrier2(
+      _device,
       CurrentCommandBuffer,
       Swapchain.Images[_imageIndex],
       Swapchain.SurfaceFormat,
@@ -451,6 +452,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     );
 
     VkUtils.InsertMemoryBarrier2(
+      _device,
       CurrentCommandBuffer,
       _depthStencil[_imageIndex].Image,
       DepthFormat.AsVkFormat(),
@@ -488,7 +490,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     renderingInfo.viewMask = 0;
     // renderingInfo.pStencilAttachment = &depthStencilAttachment;
 
-    vkCmdBeginRendering(commandBuffer, &renderingInfo);
+    _device.DeviceApi.vkCmdBeginRendering(commandBuffer, &renderingInfo);
 
     VkViewport viewport = new() {
       x = 0.0f,
@@ -500,14 +502,15 @@ public unsafe class VkDynamicRenderer : IRenderer {
     };
 
     VkRect2D scissor = new(0, 0, Swapchain.Extent2D.Width, Swapchain.Extent2D.Height);
-    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    _device.DeviceApi.vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    _device.DeviceApi.vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
   }
 
   public void EndPostProcess(nint commandBuffer) {
-    vkCmdEndRendering(commandBuffer);
+    _device.DeviceApi.vkCmdEndRendering(commandBuffer);
 
     VkUtils.InsertMemoryBarrier2(
+      _device,
       CurrentCommandBuffer, Swapchain.Images[_imageIndex],
       Swapchain.SurfaceFormat,
       VkImageLayout.ColorAttachmentOptimal,
@@ -531,6 +534,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
 
     // SceneColor: (UNDEFINED or SHADER_READ_ONLY) -> COLOR_ATTACHMENT
     VkUtils.InsertMemoryBarrier2(
+      _device,
       CurrentCommandBuffer,
       _sceneColor[_imageIndex].Image,
       Swapchain.SurfaceFormat,
@@ -544,6 +548,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
 
     // Depth: UNDEFINED -> DEPTH_ATTACHMENT
     VkUtils.InsertMemoryBarrier2(
+      _device,
       CurrentCommandBuffer,
       _depthStencil[_imageIndex].Image,
       DepthFormat.AsVkFormat(),
@@ -581,7 +586,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     renderingInfo.viewMask = 0;
     // renderingInfo.pStencilAttachment = &depthStencilAttachment;
 
-    vkCmdBeginRendering(commandBuffer, &renderingInfo);
+    _device.DeviceApi.vkCmdBeginRendering(commandBuffer, &renderingInfo);
 
     VkViewport viewport = new() {
       x = 0.0f,
@@ -593,8 +598,8 @@ public unsafe class VkDynamicRenderer : IRenderer {
     };
 
     VkRect2D scissor = new(0, 0, Swapchain.Extent2D.Width, Swapchain.Extent2D.Height);
-    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    _device.DeviceApi.vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    _device.DeviceApi.vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
   }
 
   public void EndRendering(nint commandBuffer) {
@@ -607,9 +612,10 @@ public unsafe class VkDynamicRenderer : IRenderer {
       return;
     }
 
-    vkCmdEndRendering(commandBuffer);
+    _device.DeviceApi.vkCmdEndRendering(commandBuffer);
 
     VkUtils.InsertMemoryBarrier2(
+      _device,
       CurrentCommandBuffer,
       _sceneColor[_imageIndex].Image,
       Swapchain.SurfaceFormat,
@@ -623,6 +629,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
 
     // Depth (if sampling): DEPTH_ATTACHMENT -> DEPTH_READ_ONLY
     VkUtils.InsertMemoryBarrier2(
+      _device,
       CurrentCommandBuffer, _depthStencil[_imageIndex].Image,
       DepthFormat.AsVkFormat(),
       VkImageLayout.DepthAttachmentOptimal,
@@ -643,7 +650,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     };
 
     fixed (VkCommandBuffer* cmdBuffersPtr = _commandBuffers) {
-      vkAllocateCommandBuffers(_device.LogicalDevice, &cmdBufAllocateInfo, cmdBuffersPtr).CheckResult();
+      _device.DeviceApi.vkAllocateCommandBuffers(_device.LogicalDevice, &cmdBufAllocateInfo, cmdBuffersPtr).CheckResult();
     }
   }
 
@@ -659,16 +666,16 @@ public unsafe class VkDynamicRenderer : IRenderer {
     imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageCI.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-    vkCreateImage(_device.LogicalDevice, &imageCI, null, out _sceneColor[index].Image).CheckResult();
+    _device.DeviceApi.vkCreateImage(_device.LogicalDevice, &imageCI, null, out _sceneColor[index].Image).CheckResult();
 
     VkMemoryRequirements memReqs;
-    vkGetImageMemoryRequirements(_device.LogicalDevice, _sceneColor[index].Image, &memReqs);
+    _device.DeviceApi.vkGetImageMemoryRequirements(_device.LogicalDevice, _sceneColor[index].Image, &memReqs);
 
     VkMemoryAllocateInfo alloc = new();
     alloc.allocationSize = memReqs.size;
     alloc.memoryTypeIndex = _device.FindMemoryType(memReqs.memoryTypeBits, MemoryProperty.DeviceLocal);
-    vkAllocateMemory(_device.LogicalDevice, &alloc, null, out _sceneColor[index].ImageMemory).CheckResult();
-    vkBindImageMemory(_device.LogicalDevice, _sceneColor[index].Image, _sceneColor[index].ImageMemory, 0).CheckResult();
+    _device.DeviceApi.vkAllocateMemory(_device.LogicalDevice, &alloc, null, out _sceneColor[index].ImageMemory).CheckResult();
+    _device.DeviceApi.vkBindImageMemory(_device.LogicalDevice, _sceneColor[index].Image, _sceneColor[index].ImageMemory, 0).CheckResult();
 
     VkImageViewCreateInfo viewCI = new();
     viewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -680,7 +687,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     viewCI.subresourceRange.layerCount = 1;
     viewCI.subresourceRange.aspectMask = VkUtils.AspectFor(colorFormat);
 
-    vkCreateImageView(_device.LogicalDevice, &viewCI, null, out _sceneColor[index].ImageView).CheckResult();
+    _device.DeviceApi.vkCreateImageView(_device.LogicalDevice, &viewCI, null, out _sceneColor[index].ImageView).CheckResult();
   }
 
   public unsafe void Dispose() {
@@ -688,28 +695,28 @@ public unsafe class VkDynamicRenderer : IRenderer {
     _postProcessLayout?.Dispose();
 
     for (int i = 0; i < Swapchain.Images.Length; i++) {
-      vkDestroyImageView(_device.LogicalDevice, _depthStencil[i].ImageView, null);
-      vkDestroyImage(_device.LogicalDevice, _depthStencil[i].Image, null);
-      vkFreeMemory(_device.LogicalDevice, _depthStencil[i].ImageMemory, null);
+      _device.DeviceApi.vkDestroyImageView(_device.LogicalDevice, _depthStencil[i].ImageView, null);
+      _device.DeviceApi.vkDestroyImage(_device.LogicalDevice, _depthStencil[i].Image, null);
+      _device.DeviceApi.vkFreeMemory(_device.LogicalDevice, _depthStencil[i].ImageMemory, null);
 
-      vkDestroyImageView(_device.LogicalDevice, _sceneColor[i].ImageView, null);
-      vkDestroyImage(_device.LogicalDevice, _sceneColor[i].Image, null);
-      vkFreeMemory(_device.LogicalDevice, _sceneColor[i].ImageMemory, null);
+      _device.DeviceApi.vkDestroyImageView(_device.LogicalDevice, _sceneColor[i].ImageView, null);
+      _device.DeviceApi.vkDestroyImage(_device.LogicalDevice, _sceneColor[i].Image, null);
+      _device.DeviceApi.vkFreeMemory(_device.LogicalDevice, _sceneColor[i].ImageMemory, null);
     }
 
     foreach (var semaphore in _semaphores) {
-      vkDestroySemaphore(_device.LogicalDevice, semaphore.PresentComplete, null);
-      vkDestroySemaphore(_device.LogicalDevice, semaphore.RenderComplete, null);
+      _device.DeviceApi.vkDestroySemaphore(_device.LogicalDevice, semaphore.PresentComplete, null);
+      _device.DeviceApi.vkDestroySemaphore(_device.LogicalDevice, semaphore.RenderComplete, null);
     }
 
     _semaphores = [];
 
     foreach (var fence in _waitFences) {
-      vkDestroyFence(_device.LogicalDevice, fence, null);
+      _device.DeviceApi.vkDestroyFence(_device.LogicalDevice, fence, null);
     }
 
-    vkDestroySampler(_device.LogicalDevice, ImageSampler);
-    vkDestroySampler(_device.LogicalDevice, DepthSampler);
+    _device.DeviceApi.vkDestroySampler(_device.LogicalDevice, ImageSampler);
+    _device.DeviceApi.vkDestroySampler(_device.LogicalDevice, DepthSampler);
 
     Swapchain?.Dispose();
 

@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Utils;
-
+using Dwarf.Vulkan;
 using Vortice.Vulkan;
 
 using static Vortice.Vulkan.Vulkan;
@@ -20,7 +20,7 @@ public class PointLightSystem : SystemBase {
   public PointLightSystem(
     Application app,
     nint allocator,
-    IDevice device,
+    VulkanDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
@@ -64,7 +64,7 @@ public class PointLightSystem : SystemBase {
   public void Render(FrameInfo frameInfo) {
     BindPipeline(frameInfo.CommandBuffer);
     unsafe {
-      vkCmdBindDescriptorSets(
+      _device.DeviceApi.vkCmdBindDescriptorSets(
         frameInfo.CommandBuffer,
         VkPipelineBindPoint.Graphics,
         PipelineLayout,
@@ -83,7 +83,7 @@ public class PointLightSystem : SystemBase {
         _lightPushConstant->Position = new Vector4(pos!.Position, 1.0f);
         _lightPushConstant->Radius = pos.Scale.X / 10;
 
-        vkCmdPushConstants(
+        _device.DeviceApi.vkCmdPushConstants(
           frameInfo.CommandBuffer,
           PipelineLayout,
           VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
@@ -92,7 +92,7 @@ public class PointLightSystem : SystemBase {
           _lightPushConstant
         );
 
-        vkCmdDraw(frameInfo.CommandBuffer, 6, 1, 0, 0);
+        _device.DeviceApi.vkCmdDraw(frameInfo.CommandBuffer, 6, 1, 0, 0);
       }
     }
   }

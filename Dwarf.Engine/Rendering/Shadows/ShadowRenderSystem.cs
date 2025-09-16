@@ -21,7 +21,7 @@ public class ShadowRenderSystem : SystemBase {
   public ShadowRenderSystem(
     Application app,
     nint allocator,
-    IDevice device,
+    VulkanDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     SystemConfiguration systemConfiguration,
@@ -58,7 +58,7 @@ public class ShadowRenderSystem : SystemBase {
   public unsafe void Render(FrameInfo frameInfo) {
     BindPipeline(frameInfo.CommandBuffer);
     unsafe {
-      vkCmdBindDescriptorSets(
+      _device.DeviceApi.vkCmdBindDescriptorSets(
         frameInfo.CommandBuffer,
         VkPipelineBindPoint.Graphics,
         PipelineLayout,
@@ -79,7 +79,7 @@ public class ShadowRenderSystem : SystemBase {
       _shadowPushConstant->Transform = _positions[i].Position();
       _shadowPushConstant->Radius = 1;
 
-      vkCmdPushConstants(
+      _device.DeviceApi.vkCmdPushConstants(
         frameInfo.CommandBuffer,
         PipelineLayout,
         VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,

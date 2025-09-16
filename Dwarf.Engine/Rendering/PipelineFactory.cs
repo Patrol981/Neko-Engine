@@ -60,7 +60,7 @@ public static class PipelineFactory {
     pipelineConfig.PipelineLayout = pipelineLayout;
 
     return new VulkanPipeline(
-      app.Device,
+      (VulkanDevice)app.Device,
       (VkPipelineConfigInfo)pipelineConfigInfo,
       (VkPipelineProvider)pipelineProvider,
       depthFormat.AsVkFormat(),

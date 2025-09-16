@@ -26,7 +26,7 @@ public class GuizmoRenderSystem : SystemBase {
   public GuizmoRenderSystem(
     Application app,
     nint allocator,
-    IDevice device,
+    VulkanDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
@@ -50,7 +50,7 @@ public class GuizmoRenderSystem : SystemBase {
 
     BindPipeline(frameInfo.CommandBuffer);
     unsafe {
-      vkCmdBindDescriptorSets(
+      _device.DeviceApi.vkCmdBindDescriptorSets(
         frameInfo.CommandBuffer,
         VkPipelineBindPoint.Graphics,
         PipelineLayout,
@@ -84,7 +84,7 @@ public class GuizmoRenderSystem : SystemBase {
         _bufferObject->ColorY = color.Y;
         _bufferObject->ColorZ = color.Z;
 
-        vkCmdPushConstants(
+        _device.DeviceApi.vkCmdPushConstants(
           frameInfo.CommandBuffer,
           PipelineLayout,
           VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
@@ -94,7 +94,7 @@ public class GuizmoRenderSystem : SystemBase {
         );
       }
 
-      vkCmdDraw(frameInfo.CommandBuffer, 6, 1, 0, 0);
+      _device.DeviceApi.vkCmdDraw(frameInfo.CommandBuffer, 6, 1, 0, 0);
     }
   }
 
