@@ -271,14 +271,14 @@ public class TextureManager : IDisposable {
   }
 
   private void VkInit() {
-    ManagerPool = new VulkanDescriptorPool.Builder(_device)
+    ManagerPool = new VulkanDescriptorPool.Builder((VulkanDevice)_device)
       .SetMaxSets(CommonConstants.MAX_SETS)
       .AddPoolSize(DescriptorType.SampledImage, CommonConstants.MAX_SETS)
       .AddPoolSize(DescriptorType.Sampler, CommonConstants.MAX_SETS)
       .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
-    AllTexturesSetLayout = new VulkanDescriptorSetLayout.Builder(_device)
+    AllTexturesSetLayout = new VulkanDescriptorSetLayout.Builder((VulkanDevice)_device)
       .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.Fragment, CommonConstants.MAX_TEXTURE)
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.Fragment)
       .Build();
@@ -292,7 +292,7 @@ public class TextureManager : IDisposable {
 
     if (_allTexturesSampler == 0) {
       VkPhysicalDeviceProperties2 properties = new();
-      vkGetPhysicalDeviceProperties2(_device.PhysicalDevice, &properties);
+      ((VulkanDevice)_device).InstanceApi.vkGetPhysicalDeviceProperties2(_device.PhysicalDevice, &properties);
 
       var samplerCreateInfo = new VkSamplerCreateInfo() {
         magFilter = VkFilter.Nearest,
@@ -308,7 +308,7 @@ public class TextureManager : IDisposable {
         compareOp = VkCompareOp.Always,
         mipmapMode = VkSamplerMipmapMode.Nearest
       };
-      vkCreateSampler(_device.LogicalDevice, &samplerCreateInfo, null, out var sampler).CheckResult();
+      ((VulkanDevice)_device).DeviceApi.vkCreateSampler(_device.LogicalDevice, &samplerCreateInfo, null, out var sampler).CheckResult();
       _allTexturesSampler = sampler.Handle;
     }
 
@@ -328,7 +328,7 @@ public class TextureManager : IDisposable {
     };
     var setLayout = AllTexturesSetLayout.GetDescriptorSetLayoutPointer();
     allocInfo.pSetLayouts = (VkDescriptorSetLayout*)&setLayout;
-    vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
+    ((VulkanDevice)_device).DeviceApi.vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
 
     var samplerInfo = new VkDescriptorImageInfo() {
       sampler = _allTexturesSampler
@@ -373,7 +373,7 @@ public class TextureManager : IDisposable {
         pImageInfo = &samplerInfo
       };
 
-      vkUpdateDescriptorSets(_device.LogicalDevice, 2, writes, 0, null);
+      ((VulkanDevice)_device).DeviceApi.vkUpdateDescriptorSets(_device.LogicalDevice, 2, writes, 0, null);
       AllTexturesDescriptor = descriptorSet;
     }
   }
@@ -397,10 +397,10 @@ public class TextureManager : IDisposable {
 
   private unsafe void VkDispose() {
     Array.Clear(_allTexturesInfos);
-    vkDestroySampler(_device.LogicalDevice, _allTexturesSampler);
+    ((VulkanDevice)_device).DeviceApi.vkDestroySampler(_device.LogicalDevice, _allTexturesSampler);
     // vkFreeDescriptorSets(_device.LogicalDevice, ManagerPool.GetHandle(), AllTexturesDescriptor);
-    vkDestroyDescriptorPool(_device.LogicalDevice, ManagerPool.GetHandle());
-    vkDestroyDescriptorSetLayout(_device.LogicalDevice, AllTexturesSetLayout.GetDescriptorSetLayoutPointer());
+    ((VulkanDevice)_device).DeviceApi.vkDestroyDescriptorPool(_device.LogicalDevice, ManagerPool.GetHandle());
+    ((VulkanDevice)_device).DeviceApi.vkDestroyDescriptorSetLayout(_device.LogicalDevice, AllTexturesSetLayout.GetDescriptorSetLayoutPointer());
   }
 
   public void Dispose() {

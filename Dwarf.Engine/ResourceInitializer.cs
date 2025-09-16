@@ -115,24 +115,24 @@ public class ResourceInitializer {
       .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
 
-    descriptorSetLayouts.TryAdd("Global", new VulkanDescriptorSetLayout.Builder(device)
+    descriptorSetLayouts.TryAdd("Global", new VulkanDescriptorSetLayout.Builder((VulkanDevice)device)
      .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
      .Build());
 
-    descriptorSetLayouts.TryAdd("PointLight", new VulkanDescriptorSetLayout.Builder(device)
+    descriptorSetLayouts.TryAdd("PointLight", new VulkanDescriptorSetLayout.Builder((VulkanDevice)device)
       .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.AllGraphics)
       .Build());
 
-    descriptorSetLayouts.TryAdd("ObjectData", new VulkanDescriptorSetLayout.Builder(device)
+    descriptorSetLayouts.TryAdd("ObjectData", new VulkanDescriptorSetLayout.Builder((VulkanDevice)device)
       .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.AllGraphics)
       // .AddBinding(1, VkDescriptorType.StorageBuffer, VkShaderStageFlags.AllGraphics)
       .Build());
 
-    descriptorSetLayouts.TryAdd("SpriteData", new VulkanDescriptorSetLayout.Builder(device)
+    descriptorSetLayouts.TryAdd("SpriteData", new VulkanDescriptorSetLayout.Builder((VulkanDevice)device)
       .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.AllGraphics)
       .Build());
 
-    descriptorSetLayouts.TryAdd("JointsBuffer", new VulkanDescriptorSetLayout.Builder(device)
+    descriptorSetLayouts.TryAdd("JointsBuffer", new VulkanDescriptorSetLayout.Builder((VulkanDevice)device)
       .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.Vertex)
       .Build());
 

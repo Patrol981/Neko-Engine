@@ -72,7 +72,7 @@ public class PostProcessingSystem : SystemBase {
   public PostProcessingSystem(
     Application app,
     nint allocator,
-    IDevice device,
+    VulkanDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     SystemConfiguration systemConfiguration,
@@ -81,14 +81,14 @@ public class PostProcessingSystem : SystemBase {
   ) : base(app, allocator, device, renderer, textureManager, configInfo) {
     _textureManager = Application.Instance.TextureManager;
 
-    _setLayout = new VulkanDescriptorSetLayout.Builder(_device)
+    _setLayout = new VulkanDescriptorSetLayout.Builder((VulkanDevice)_device)
       .AddBinding(0, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       .AddBinding(1, DescriptorType.CombinedImageSampler, ShaderStageFlags.AllGraphics)
       // .AddBinding(2, VkDescriptorType.SampledImage, VkShaderStageFlags.AllGraphics)
       // .AddBinding(3, VkDescriptorType.Sampler, VkShaderStageFlags.AllGraphics)
       .Build();
 
-    _textureSetLayout = new VulkanDescriptorSetLayout.Builder(_device)
+    _textureSetLayout = new VulkanDescriptorSetLayout.Builder((VulkanDevice)_device)
       .AddBinding(0, DescriptorType.SampledImage, ShaderStageFlags.AllGraphics)
       .AddBinding(1, DescriptorType.Sampler, ShaderStageFlags.AllGraphics)
       .Build();
@@ -194,7 +194,7 @@ public class PostProcessingSystem : SystemBase {
       postProcessInfoPushConstant.Float_8_3 = PostProcessInfo.Float_8_3;
       postProcessInfoPushConstant.Float_8_4 = PostProcessInfo.Float_8_4;
 
-      vkCmdPushConstants(
+      _device.DeviceApi.vkCmdPushConstants(
         frameInfo.CommandBuffer,
         PipelineLayout,
         VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
@@ -204,7 +204,7 @@ public class PostProcessingSystem : SystemBase {
       );
     }
 
-    vkCmdBindDescriptorSets(
+    _device.DeviceApi.vkCmdBindDescriptorSets(
       frameInfo.CommandBuffer,
       VkPipelineBindPoint.Graphics,
       PipelineLayout,
@@ -212,7 +212,7 @@ public class PostProcessingSystem : SystemBase {
       _renderer.PostProcessDecriptor
     );
 
-    vkCmdBindDescriptorSets(
+    _device.DeviceApi.vkCmdBindDescriptorSets(
       frameInfo.CommandBuffer,
       VkPipelineBindPoint.Graphics,
       PipelineLayout,
@@ -221,7 +221,7 @@ public class PostProcessingSystem : SystemBase {
     );
 
     for (uint i = 2, j = 0; i <= _inputTextures.Length + 1; i++, j++) {
-      vkCmdBindDescriptorSets(
+      _device.DeviceApi.vkCmdBindDescriptorSets(
         frameInfo.CommandBuffer,
         VkPipelineBindPoint.Graphics,
         PipelineLayout,
@@ -230,7 +230,7 @@ public class PostProcessingSystem : SystemBase {
       );
     }
 
-    vkCmdDraw(frameInfo.CommandBuffer, 3, 1, 0, 0);
+    _device.DeviceApi.vkCmdDraw(frameInfo.CommandBuffer, 3, 1, 0, 0);
   }
 
   public static PostProcessConfiguration GetConfigurationBasedOnFlag(PostProcessingConfigurationFlag flag) {

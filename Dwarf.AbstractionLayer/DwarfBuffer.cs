@@ -18,6 +18,8 @@ public unsafe class DwarfBuffer : IDisposable {
   private nint _allocator;
   private nint _allocation;
 
+  private readonly VkDeviceApi? _deviceApi;
+
   private void* _mapped;
   private ulong _buffer = 0;
   private ulong _memory = 0;
@@ -44,7 +46,8 @@ public unsafe class DwarfBuffer : IDisposable {
     ulong minOffsetAlignment = 1,
     bool stagingBuffer = false,
     bool cpuAccessible = true,
-    AllocationStrategy allocationStrategy = AllocationStrategy.VulkanMemoryAllocator
+    AllocationStrategy allocationStrategy = AllocationStrategy.VulkanMemoryAllocator,
+    VkDeviceApi deviceApi = null!
   ) {
     _device = device;
     _instanceSize = instanceSize;
@@ -60,6 +63,7 @@ public unsafe class DwarfBuffer : IDisposable {
 
     if (allocationStrategy == AllocationStrategy.Vulkan) {
       _device.CreateBuffer(_bufferSize, _usageFlags, _memoryPropertyFlags, out _buffer, out _memory);
+      _deviceApi = deviceApi;
       return;
     }
 
@@ -94,7 +98,8 @@ public unsafe class DwarfBuffer : IDisposable {
     MemoryProperty propertyFlags,
     bool stagingBuffer = false,
     bool cpuAccessible = true,
-    AllocationStrategy allocationStrategy = AllocationStrategy.VulkanMemoryAllocator
+    AllocationStrategy allocationStrategy = AllocationStrategy.VulkanMemoryAllocator,
+    VkDeviceApi deviceApi = null!
   ) {
     _device = device;
     _instanceSize = bufferSize;
@@ -109,6 +114,7 @@ public unsafe class DwarfBuffer : IDisposable {
 
     if (allocationStrategy == AllocationStrategy.Vulkan) {
       _device.CreateBuffer(_bufferSize, _usageFlags, _memoryPropertyFlags, out _buffer, out _memory);
+      _deviceApi = deviceApi;
       return;
     }
 
@@ -167,7 +173,7 @@ public unsafe class DwarfBuffer : IDisposable {
           vmaMapMemory(_allocator, _allocation, ptr);
           break;
         case AllocationStrategy.Vulkan:
-          vkMapMemory(_device.LogicalDevice, _memory, offset, size, VkMemoryMapFlags.None, ptr).CheckResult();
+          _deviceApi?.vkMapMemory(_device.LogicalDevice, _memory, offset, size, VkMemoryMapFlags.None, ptr).CheckResult();
           break;
       }
     }
@@ -188,7 +194,7 @@ public unsafe class DwarfBuffer : IDisposable {
           vmaUnmapMemory(_allocator, _allocation);
           break;
         case AllocationStrategy.Vulkan:
-          vkUnmapMemory(_device.LogicalDevice, _memory);
+          _deviceApi?.vkUnmapMemory(_device.LogicalDevice, _memory);
           break;
       }
       _mapped = null;
@@ -216,7 +222,7 @@ public unsafe class DwarfBuffer : IDisposable {
     };
     return _allocationStrategy switch {
       AllocationStrategy.VulkanMemoryAllocator => vmaFlushAllocation(_allocator, _allocation, offset, size),
-      AllocationStrategy.Vulkan => vkFlushMappedMemoryRanges(_device.LogicalDevice, 1, &mappedRange),
+      AllocationStrategy.Vulkan => _deviceApi!.vkFlushMappedMemoryRanges(_device.LogicalDevice, 1, &mappedRange),
       _ => throw new NotImplementedException(),
     };
   }
@@ -238,7 +244,7 @@ public unsafe class DwarfBuffer : IDisposable {
     };
     return _allocationStrategy switch {
       AllocationStrategy.VulkanMemoryAllocator => vmaInvalidateAllocation(_allocator, _allocation, offset, size),
-      AllocationStrategy.Vulkan => vkInvalidateMappedMemoryRanges(_device.LogicalDevice, 1, &mappedRange),
+      AllocationStrategy.Vulkan => _deviceApi!.vkInvalidateMappedMemoryRanges(_device.LogicalDevice, 1, &mappedRange),
       _ => throw new NotImplementedException(),
     };
   }
@@ -314,7 +320,7 @@ public unsafe class DwarfBuffer : IDisposable {
         vmaFreeMemory(_allocator, _allocation);
         break;
       case AllocationStrategy.Vulkan:
-        vkFreeMemory(_device.LogicalDevice, _memory);
+        _deviceApi?.vkFreeMemory(_device.LogicalDevice, _memory);
         break;
     }
   }
@@ -326,7 +332,7 @@ public unsafe class DwarfBuffer : IDisposable {
         vmaDestroyBuffer(_allocator, _buffer, _allocation);
         break;
       case AllocationStrategy.Vulkan:
-        vkDestroyBuffer(_device.LogicalDevice, _buffer);
+        _deviceApi?.vkDestroyBuffer(_device.LogicalDevice, _buffer);
         break;
     }
   }

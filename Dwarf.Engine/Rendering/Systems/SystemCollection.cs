@@ -229,7 +229,7 @@ public class SystemCollection : IDisposable {
     _render3DSystem = new Render3DSystem(
       app,
       allocator,
-      device,
+      (VulkanDevice)device,
       renderer,
       textureManager,
       externalLayouts,
@@ -294,7 +294,7 @@ public class SystemCollection : IDisposable {
     _particleSystem = new ParticleSystem(
       app,
       allocator,
-      device,
+      (VulkanDevice)device,
       renderer,
       textureManager,
       globalLayout,

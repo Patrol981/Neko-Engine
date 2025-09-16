@@ -75,7 +75,7 @@ public class VkStorageCollection : IStorageCollection {
       var bufferInfo = mapWholeBuffer ?
         storage.Buffers[i].GetDescriptorBufferInfo() :
         storage.Buffers[i].GetDescriptorBufferInfo(bufferSize * bufferCount);
-      _ = new VulkanDescriptorWriter((VulkanDescriptorSetLayout)layout, (VulkanDescriptorPool)pool)
+      _ = new VulkanDescriptorWriter(_device, (VulkanDescriptorSetLayout)layout, (VulkanDescriptorPool)pool)
         .WriteBuffer(0, &bufferInfo)
         .Build(out storage.Descriptors[i]);
     }
@@ -111,7 +111,7 @@ public class VkStorageCollection : IStorageCollection {
       _dynamicPool.FreeDescriptors([Storages[key].Descriptors[index]]);
 
       var bufferInfo = Storages[key].Buffers[index].GetDescriptorBufferInfo();
-      _ = new VulkanDescriptorWriter((VulkanDescriptorSetLayout)layout, _dynamicPool)
+      _ = new VulkanDescriptorWriter(_device, (VulkanDescriptorSetLayout)layout, _dynamicPool)
         .WriteBuffer(0, &bufferInfo)
         .Build(out Storages[key].Descriptors[index]);
 

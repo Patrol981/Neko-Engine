@@ -28,7 +28,7 @@ public class Render2DSystem : SystemBase {
   public Render2DSystem(
     Application app,
     nint allocator,
-    IDevice device,
+    VulkanDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     Dictionary<string, IDescriptorSetLayout> externalLayouts,
@@ -146,9 +146,9 @@ public class Render2DSystem : SystemBase {
 
     BindPipeline(frameInfo.CommandBuffer);
 
-    Descriptor.BindDescriptorSet(frameInfo.GlobalDescriptorSet, frameInfo, PipelineLayout, 0, 1);
-    Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, PipelineLayout, 2, 1);
-    Descriptor.BindDescriptorSet(frameInfo.SpriteDataDescriptorSet, frameInfo, PipelineLayout, 1, 1);
+    Descriptor.BindDescriptorSet(_device, frameInfo.GlobalDescriptorSet, frameInfo, PipelineLayout, 0, 1);
+    Descriptor.BindDescriptorSet(_device, _textureManager.AllTexturesDescriptor, frameInfo, PipelineLayout, 2, 1);
+    Descriptor.BindDescriptorSet(_device, frameInfo.SpriteDataDescriptorSet, frameInfo, PipelineLayout, 1, 1);
 
     _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer, 0);
 
@@ -168,9 +168,9 @@ public class Render2DSystem : SystemBase {
 
   public unsafe void Render_(FrameInfo frameInfo, ReadOnlySpan<IDrawable2D> drawables) {
     BindPipeline(frameInfo.CommandBuffer);
-    Descriptor.BindDescriptorSet(frameInfo.GlobalDescriptorSet, frameInfo, PipelineLayout, 0, 1);
-    Descriptor.BindDescriptorSet(_textureManager.AllTexturesDescriptor, frameInfo, PipelineLayout, 2, 1);
-    Descriptor.BindDescriptorSet(frameInfo.SpriteDataDescriptorSet, frameInfo, PipelineLayout, 1, 1);
+    Descriptor.BindDescriptorSet(_device, frameInfo.GlobalDescriptorSet, frameInfo, PipelineLayout, 0, 1);
+    Descriptor.BindDescriptorSet(_device, _textureManager.AllTexturesDescriptor, frameInfo, PipelineLayout, 2, 1);
+    Descriptor.BindDescriptorSet(_device, frameInfo.SpriteDataDescriptorSet, frameInfo, PipelineLayout, 1, 1);
     // _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _globalVertexBuffer, 0);
     _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
 

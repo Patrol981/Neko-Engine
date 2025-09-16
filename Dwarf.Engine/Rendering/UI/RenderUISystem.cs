@@ -19,7 +19,7 @@ public class RenderUISystem : SystemBase {
   public RenderUISystem(
     Application app,
     nint allocator,
-    IDevice device,
+    VulkanDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,

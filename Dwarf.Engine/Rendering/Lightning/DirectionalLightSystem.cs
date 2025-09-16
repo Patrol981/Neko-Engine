@@ -13,7 +13,7 @@ public class DirectionalLightSystem : SystemBase {
   public DirectionalLightSystem(
     Application app,
     nint allocator,
-    IDevice device,
+    VulkanDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
@@ -41,7 +41,7 @@ public class DirectionalLightSystem : SystemBase {
 
     BindPipeline(frameInfo.CommandBuffer);
     unsafe {
-      vkCmdBindDescriptorSets(
+      _device.DeviceApi.vkCmdBindDescriptorSets(
         frameInfo.CommandBuffer,
         VkPipelineBindPoint.Graphics,
         PipelineLayout,
@@ -53,7 +53,7 @@ public class DirectionalLightSystem : SystemBase {
       );
     }
 
-    vkCmdDraw(frameInfo.CommandBuffer, 6, 1, 0, 0);
+    _device.DeviceApi.vkCmdDraw(frameInfo.CommandBuffer, 6, 1, 0, 0);
   }
 
   public override unsafe void Dispose() {

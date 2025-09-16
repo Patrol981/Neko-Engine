@@ -7,7 +7,7 @@ using static Vortice.Vulkan.Vulkan;
 namespace Dwarf.Vulkan;
 
 public class VulkanPipeline : IPipeline {
-  private readonly IDevice _device;
+  private readonly VulkanDevice _device;
 
   private VkPipeline _graphicsPipeline;
   private VkShaderModule _vertexShaderModule;
@@ -18,7 +18,7 @@ public class VulkanPipeline : IPipeline {
   private readonly Lock _pipelineLock = new();
 
   public VulkanPipeline(
-    IDevice device,
+    VulkanDevice device,
     IPipelineConfigInfo configInfo,
     VkPipelineProvider pipelineProvider,
     VkFormat depthFormat,
@@ -38,7 +38,7 @@ public class VulkanPipeline : IPipeline {
   }
 
   public VulkanPipeline(
-    IDevice device,
+    VulkanDevice device,
     IPipelineConfigInfo configInfo,
     VkPipelineProvider pipelineProvider,
     VkFormat depthFormat,
@@ -61,7 +61,7 @@ public class VulkanPipeline : IPipeline {
 
   public void Bind(nint commandBuffer) {
     lock (_pipelineLock) {
-      vkCmdBindPipeline(commandBuffer, VkPipelineBindPoint.Graphics, _graphicsPipeline);
+      _device.DeviceApi.vkCmdBindPipeline(commandBuffer, VkPipelineBindPoint.Graphics, _graphicsPipeline);
     }
   }
 
@@ -177,7 +177,7 @@ public class VulkanPipeline : IPipeline {
 
     VkPipeline graphicsPipeline = VkPipeline.Null;
 
-    var result = vkCreateGraphicsPipelines(
+    var result = _device.DeviceApi.vkCreateGraphicsPipelines(
       _device.LogicalDevice,
       VkPipelineCache.Null,
       1,
@@ -191,15 +191,15 @@ public class VulkanPipeline : IPipeline {
   }
 
   private unsafe void CreateShaderModule(byte[] data, out VkShaderModule module) {
-    vkCreateShaderModule(_device.LogicalDevice, data, null, out module).CheckResult();
+    _device.DeviceApi.vkCreateShaderModule(_device.LogicalDevice, data, null, out module).CheckResult();
   }
 
   public unsafe void Dispose() {
-    vkDestroyShaderModule(_device.LogicalDevice, _vertexShaderModule, null);
-    vkDestroyShaderModule(_device.LogicalDevice, _fragmentShaderModule, null);
+    _device.DeviceApi.vkDestroyShaderModule(_device.LogicalDevice, _vertexShaderModule, null);
+    _device.DeviceApi.vkDestroyShaderModule(_device.LogicalDevice, _fragmentShaderModule, null);
     if (_geometryShaderModule.IsNotNull) {
-      vkDestroyShaderModule(_device.LogicalDevice, _geometryShaderModule, null);
+      _device.DeviceApi.vkDestroyShaderModule(_device.LogicalDevice, _geometryShaderModule, null);
     }
-    vkDestroyPipeline(_device.LogicalDevice, _graphicsPipeline);
+    _device.DeviceApi.vkDestroyPipeline(_device.LogicalDevice, _graphicsPipeline);
   }
 }

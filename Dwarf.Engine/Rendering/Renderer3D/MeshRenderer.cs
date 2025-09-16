@@ -254,7 +254,7 @@ public class MeshRenderer : IRender3DElement, ICollision {
       var range = Ssbo.GetDescriptorBufferInfo(Ssbo.GetAlignmentSize());
       range.range = Ssbo.GetAlignmentSize();
 
-      _ = new VulkanDescriptorWriter((VulkanDescriptorSetLayout)descriptorSetLayout, (VulkanDescriptorPool)descriptorPool)
+      _ = new VulkanDescriptorWriter((VulkanDevice)_device, (VulkanDescriptorSetLayout)descriptorSetLayout, (VulkanDescriptorPool)descriptorPool)
       .WriteBuffer(0, &range)
       .Build(out _skinDescriptor);
     }

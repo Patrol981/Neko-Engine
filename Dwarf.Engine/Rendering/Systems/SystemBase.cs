@@ -15,11 +15,11 @@ public class PipelineData {
   public ulong PipelineLayout;
   public IPipeline Pipeline = null!;
 
-  public unsafe void Dispose(IDevice device) {
+  public unsafe void Dispose(VulkanDevice device) {
     Pipeline.Dispose();
 
     if (PipelineLayout != 0) {
-      vkDestroyPipelineLayout(device.LogicalDevice, PipelineLayout);
+      device.DeviceApi.vkDestroyPipelineLayout(device.LogicalDevice, PipelineLayout);
     }
   }
 }
@@ -51,7 +51,7 @@ public abstract class SystemBase {
 
   protected readonly Application _application;
 
-  protected readonly IDevice _device = null!;
+  protected readonly VulkanDevice _device = null!;
   protected readonly nint _allocator = IntPtr.Zero;
   protected readonly IRenderer _renderer = null!;
   protected readonly TextureManager _textureManager = null!;
@@ -69,7 +69,7 @@ public abstract class SystemBase {
   public SystemBase(
     Application app,
     nint allocator,
-    IDevice device,
+    VulkanDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     IPipelineConfigInfo configInfo = null!
@@ -139,7 +139,7 @@ public abstract class SystemBase {
     VkPipelineLayoutCreateInfo* pipelineInfo,
     out VkPipelineLayout pipelineLayout
   ) {
-    vkCreatePipelineLayout(
+    _device.DeviceApi.vkCreatePipelineLayout(
       _device.LogicalDevice,
       pipelineInfo,
       null,

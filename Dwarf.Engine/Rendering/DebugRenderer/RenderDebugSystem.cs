@@ -18,7 +18,7 @@ public class RenderDebugSystem : SystemBase, IRenderSystem {
   public RenderDebugSystem(
     Application app,
     nint allocator,
-    IDevice device,
+    VulkanDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
@@ -43,7 +43,7 @@ public class RenderDebugSystem : SystemBase, IRenderSystem {
 
     BindPipeline(frameInfo.CommandBuffer);
 
-    vkCmdBindDescriptorSets(
+    _device.DeviceApi.vkCmdBindDescriptorSets(
       frameInfo.CommandBuffer,
       VkPipelineBindPoint.Graphics,
       PipelineLayout,
@@ -61,7 +61,7 @@ public class RenderDebugSystem : SystemBase, IRenderSystem {
         ModelMatrix = colliderMeshes[i].Owner?.GetTransform()?.MatrixWithAngleYRotationWithoutScale() ?? Matrix4x4.Identity
       };
 
-      vkCmdPushConstants(
+      _device.DeviceApi.vkCmdPushConstants(
         frameInfo.CommandBuffer,
         PipelineLayout,
         VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,

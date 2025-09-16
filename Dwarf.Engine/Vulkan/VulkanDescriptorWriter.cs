@@ -5,10 +5,16 @@ using static Vortice.Vulkan.Vulkan;
 namespace Dwarf.Vulkan;
 
 public class VulkanDescriptorWriter {
+  private readonly VulkanDevice _device;
   private readonly unsafe VulkanDescriptorSetLayout _setLayout;
   private readonly unsafe VulkanDescriptorPool _pool;
   private VkWriteDescriptorSet[] _writes = [];
-  public VulkanDescriptorWriter(VulkanDescriptorSetLayout setLayout, VulkanDescriptorPool pool) {
+  public VulkanDescriptorWriter(
+    VulkanDevice device,
+    VulkanDescriptorSetLayout setLayout,
+    VulkanDescriptorPool pool
+  ) {
+    _device = device;
     _setLayout = setLayout;
     _pool = pool;
   }
@@ -92,7 +98,7 @@ public class VulkanDescriptorWriter {
       _writes[i].dstSet = set;
     }
 
-    vkUpdateDescriptorSets(_pool.Device.LogicalDevice, _writes);
+    _device.DeviceApi.vkUpdateDescriptorSets(_pool.Device.LogicalDevice, _writes);
   }
 
   public void Free() {
