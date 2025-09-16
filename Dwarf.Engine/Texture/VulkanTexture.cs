@@ -151,7 +151,7 @@ public class VulkanTexture : ITexture {
     };
     var setLayout = descriptorSetLayout.GetDescriptorSetLayoutPointer();
     allocInfo.pSetLayouts = (VkDescriptorSetLayout*)&setLayout;
-    vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
+    _device.DeviceApi.vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
 
     VkWriteDescriptorSet* writes = stackalloc VkWriteDescriptorSet[2];
 
@@ -171,7 +171,7 @@ public class VulkanTexture : ITexture {
       dstSet = descriptorSet
     };
 
-    vkUpdateDescriptorSets(_device.LogicalDevice, 2, writes, 0, null);
+    _device.DeviceApi.vkUpdateDescriptorSets(_device.LogicalDevice, 2, writes, 0, null);
 
     _textureDescriptor = descriptorSet;
   }
@@ -197,7 +197,7 @@ public class VulkanTexture : ITexture {
     };
     var setLayout = descriptorSetLayout.GetDescriptorSetLayout();
     allocInfo.pSetLayouts = &setLayout;
-    vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
+    _device.DeviceApi.vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
 
     VkWriteDescriptorSet* writes = stackalloc VkWriteDescriptorSet[2];
 
@@ -217,7 +217,7 @@ public class VulkanTexture : ITexture {
       dstSet = descriptorSet
     };
 
-    vkUpdateDescriptorSets(_device.LogicalDevice, 2, writes, 0, null);
+    _device.DeviceApi.vkUpdateDescriptorSets(_device.LogicalDevice, 2, writes, 0, null);
 
     _textureDescriptor = descriptorSet;
 
@@ -239,7 +239,7 @@ public class VulkanTexture : ITexture {
     allocInfo.descriptorSetCount = 1;
     var setLayout = descriptorSetLayout.GetDescriptorSetLayoutPointer();
     allocInfo.pSetLayouts = (VkDescriptorSetLayout*)setLayout;
-    vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
+    _device.DeviceApi.vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
 
     VkDescriptorImageInfo descriptorImageInfo = new() {
       imageLayout = VkImageLayout.ShaderReadOnlyOptimal,
@@ -268,7 +268,7 @@ public class VulkanTexture : ITexture {
     };
 
 
-    vkUpdateDescriptorSets(_device.LogicalDevice, 2, writes, 0, null);
+    _device.DeviceApi.vkUpdateDescriptorSets(_device.LogicalDevice, 2, writes, 0, null);
 
     _textureDescriptor = descriptorSet;
   }
@@ -283,7 +283,7 @@ public class VulkanTexture : ITexture {
     allocInfo.descriptorSetCount = 1;
     var setLayout = descriptorSetLayout.GetDescriptorSetLayout();
     allocInfo.pSetLayouts = &setLayout;
-    vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
+    _device.DeviceApi.vkAllocateDescriptorSets(_device.LogicalDevice, &allocInfo, &descriptorSet);
 
     VkDescriptorImageInfo descriptorImageInfo = new() {
       imageLayout = VkImageLayout.ShaderReadOnlyOptimal,
@@ -312,7 +312,7 @@ public class VulkanTexture : ITexture {
     };
 
 
-    vkUpdateDescriptorSets(_device.LogicalDevice, 2, writes, 0, null);
+    _device.DeviceApi.vkUpdateDescriptorSets(_device.LogicalDevice, 2, writes, 0, null);
 
     //VkDescriptorImageInfo descImage = new();
     //VkWriteDescriptorSet writeDesc = new();
@@ -336,12 +336,12 @@ public class VulkanTexture : ITexture {
     unsafe {
       if (_textureSampler.TextureImage.IsNotNull) {
         _device.WaitDevice();
-        vkDestroyImage(_device.LogicalDevice, _textureSampler.TextureImage);
+        _device.DeviceApi.vkDestroyImage(_device.LogicalDevice, _textureSampler.TextureImage);
       }
 
       if (_textureSampler.TextureImageMemory.IsNotNull) {
         _device.WaitDevice();
-        vkFreeMemory(_device.LogicalDevice, _textureSampler.TextureImageMemory);
+        _device.DeviceApi.vkFreeMemory(_device.LogicalDevice, _textureSampler.TextureImageMemory);
       }
     }
 
@@ -517,6 +517,7 @@ public class VulkanTexture : ITexture {
     subresourceRange.layerCount = 1;
 
     VkUtils.SetImageLayout(
+      _device,
       copyCmd,
       _textureSampler.TextureImage,
       VkImageLayout.Undefined,
@@ -524,7 +525,7 @@ public class VulkanTexture : ITexture {
       subresourceRange
     );
 
-    vkCmdCopyBufferToImage(
+    _device.DeviceApi.vkCmdCopyBufferToImage(
       copyCmd,
       stagingBuffer,
       _textureSampler.TextureImage,
@@ -534,6 +535,7 @@ public class VulkanTexture : ITexture {
     );
 
     VkUtils.SetImageLayout(
+      _device,
       copyCmd,
       _textureSampler.TextureImage,
       VkImageLayout.TransferDstOptimal,
@@ -572,15 +574,15 @@ public class VulkanTexture : ITexture {
     imageInfo.samples = VkSampleCountFlags.Count1;
     imageInfo.flags = createFlags;
 
-    vkCreateImage(device.LogicalDevice, &imageInfo, null, out textureImage).CheckResult();
-    vkGetImageMemoryRequirements(device.LogicalDevice, textureImage, out VkMemoryRequirements memRequirements);
+    device.DeviceApi.vkCreateImage(device.LogicalDevice, &imageInfo, null, out textureImage).CheckResult();
+    device.DeviceApi.vkGetImageMemoryRequirements(device.LogicalDevice, textureImage, out VkMemoryRequirements memRequirements);
 
     VkMemoryAllocateInfo allocInfo = new();
     allocInfo.allocationSize = memRequirements.size;
     allocInfo.memoryTypeIndex = device.FindMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
 
-    vkAllocateMemory(device.LogicalDevice, &allocInfo, null, out textureImageMemory).CheckResult();
-    vkBindImageMemory(device.LogicalDevice, textureImage, textureImageMemory, 0).CheckResult();
+    device.DeviceApi.vkAllocateMemory(device.LogicalDevice, &allocInfo, null, out textureImageMemory).CheckResult();
+    device.DeviceApi.vkBindImageMemory(device.LogicalDevice, textureImage, textureImageMemory, 0).CheckResult();
   }
 
   private static void CreateTextureImageView(VulkanDevice device, VkImage textureImage, out VkImageView imageView) {
@@ -599,13 +601,13 @@ public class VulkanTexture : ITexture {
     viewInfo.subresourceRange.layerCount = 1;
 
     VkImageView view;
-    vkCreateImageView(device.LogicalDevice, &viewInfo, null, out view).CheckResult();
+    device.DeviceApi.vkCreateImageView(device.LogicalDevice, &viewInfo, null, out view).CheckResult();
     return view;
   }
 
   private static unsafe void CreateSampler(VulkanDevice device, out VkSampler imageSampler) {
     VkPhysicalDeviceProperties2 properties = new();
-    vkGetPhysicalDeviceProperties2(device.PhysicalDevice, &properties);
+    device.InstanceApi.vkGetPhysicalDeviceProperties2(device.PhysicalDevice, &properties);
 
     VkSamplerCreateInfo samplerInfo = new() {
       magFilter = VkFilter.Nearest,
@@ -622,15 +624,15 @@ public class VulkanTexture : ITexture {
       mipmapMode = VkSamplerMipmapMode.Nearest
     };
 
-    vkCreateSampler(device.LogicalDevice, &samplerInfo, null, out imageSampler).CheckResult();
+    device.DeviceApi.vkCreateSampler(device.LogicalDevice, &samplerInfo, null, out imageSampler).CheckResult();
   }
 
   public virtual unsafe void Dispose(bool disposing) {
     if (disposing) {
-      vkFreeMemory(_device.LogicalDevice, _textureSampler.TextureImageMemory);
-      vkDestroyImage(_device.LogicalDevice, _textureSampler.TextureImage);
-      vkDestroyImageView(_device.LogicalDevice, _textureSampler.ImageView);
-      vkDestroySampler(_device.LogicalDevice, _textureSampler.ImageSampler);
+      _device.DeviceApi.vkFreeMemory(_device.LogicalDevice, _textureSampler.TextureImageMemory);
+      _device.DeviceApi.vkDestroyImage(_device.LogicalDevice, _textureSampler.TextureImage);
+      _device.DeviceApi.vkDestroyImageView(_device.LogicalDevice, _textureSampler.ImageView);
+      _device.DeviceApi.vkDestroySampler(_device.LogicalDevice, _textureSampler.ImageSampler);
     }
   }
 

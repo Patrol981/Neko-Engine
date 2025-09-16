@@ -5,6 +5,7 @@ using Dwarf.Math;
 using Dwarf.Physics;
 using Dwarf.Physics.Interfaces;
 using Dwarf.Rendering;
+using Dwarf.Vulkan;
 
 namespace Dwarf.EntityComponentSystem;
 
@@ -101,7 +102,7 @@ public class Rigidbody2D : IDisposable, ICloneable {
     };
 
     // Owner.AddComponent(new ColliderMesh(_app.Allocator, _app.Device, _collisionShape!));
-    Owner.AddComponent(new ColliderMesh(Owner, _app.Allocator, _app.Device, _collisionShape!));
+    Owner.AddComponent(new ColliderMesh(Owner, _app.Allocator, (VulkanDevice)_app.Device, _collisionShape!));
     Application.Mutex.ReleaseMutex();
   }
 

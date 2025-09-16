@@ -9,21 +9,16 @@ using static Vortice.Vulkan.Vulkan;
 namespace Dwarf.Vulkan;
 
 public static unsafe class DeviceHelper {
-  public static VkPhysicalDevice GetPhysicalDevice(VkInstance instance, VkSurfaceKHR surface) {
+  public static VkPhysicalDevice GetPhysicalDevice(VulkanDevice device, VkInstance instance, VkSurfaceKHR surface) {
     VkPhysicalDevice returnDevice = VkPhysicalDevice.Null;
 
     uint count = 0;
-    vkEnumeratePhysicalDevices(instance, &count, null).CheckResult();
+    device.InstanceApi.vkEnumeratePhysicalDevices(instance, out count).CheckResult();
     if (count == 0) {
       Logger.Error("Failed to find any Vulkan capable GPU");
     }
-
-    vkEnumeratePhysicalDevices(instance, &count, null);
-
-    VkPhysicalDevice[] physicalDevices = new VkPhysicalDevice[count];
-    fixed (VkPhysicalDevice* ptr = physicalDevices) {
-      vkEnumeratePhysicalDevices(instance, &count, ptr);
-    }
+    Span<VkPhysicalDevice> physicalDevices = stackalloc VkPhysicalDevice[(int)count];
+    device.InstanceApi.vkEnumeratePhysicalDevices(instance, physicalDevices);
 
     VkPhysicalDeviceProperties gpuInfo = new();
 
@@ -31,11 +26,11 @@ public static unsafe class DeviceHelper {
 
     for (int i = 0; i < count; i++) {
       VkPhysicalDevice physicalDevice = physicalDevices[i];
-      if (IsDeviceSuitable(physicalDevice, surface) == false)
+      if (IsDeviceSuitable(device, physicalDevice, surface) == false)
         continue;
 
       VkPhysicalDeviceProperties2 checkProperties = new();
-      vkGetPhysicalDeviceProperties2(physicalDevice, &checkProperties);
+      device.InstanceApi.vkGetPhysicalDeviceProperties2(physicalDevice, &checkProperties);
       var deviceName = ByteConverter.BytePointerToStringUTF8(checkProperties.properties.deviceName);
       Logger.Info(deviceName);
       bool discrete = checkProperties.properties.deviceType == VkPhysicalDeviceType.DiscreteGpu;
@@ -160,15 +155,15 @@ public static unsafe class DeviceHelper {
     return true;
   }
 
-  private static bool IsDeviceSuitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
-    var checkQueueFamilies = FindQueueFamilies2(physicalDevice, surface);
+  private static bool IsDeviceSuitable(VulkanDevice device, VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
+    var checkQueueFamilies = FindQueueFamilies2(device, physicalDevice, surface);
     if (checkQueueFamilies.graphicsFamily == VK_QUEUE_FAMILY_IGNORED)
       return false;
 
     if (checkQueueFamilies.presentFamily == VK_QUEUE_FAMILY_IGNORED)
       return false;
 
-    SwapChainSupportDetails2 swapChainSupport = VkUtils.QuerySwapChainSupport2(physicalDevice, surface);
+    SwapChainSupportDetails2 swapChainSupport = VkUtils.QuerySwapChainSupport2(device, physicalDevice, surface);
     return !swapChainSupport.Formats.IsEmpty && !swapChainSupport.PresentModes.IsEmpty;
   }
 
@@ -228,54 +223,57 @@ public static unsafe class DeviceHelper {
     VkPhysicalDevice physicalDevice,
     params VkUtf8String[] extensions
   ) {
-    var availableDeviceExtensions = vkEnumerateDeviceExtensionProperties(physicalDevice);
-    var extList = new List<VkUtf8String>();
+    //var availableDeviceExtensions = vkEnumerateDeviceExtensionProperties(physicalDevice);
+    // var extList = new List<VkUtf8String>();
 
-    foreach (var ext in extensions) {
-      if (CheckDeviceExtensionSupport(ext, availableDeviceExtensions)) {
-        extList.Add(ext);
-      }
-    }
+    // foreach (var ext in extensions) {
+    //   if (CheckDeviceExtensionSupport(ext, availableDeviceExtensions)) {
+    //     extList.Add(ext);
+    //   }
+    // }
 
     // return extList;
     return [.. extensions];
   }
 
-  public unsafe static List<VkUtf8String> CreateEnabledExtensionsList(
-    List<VkUtf8String> availableExtensions,
-    VkPhysicalDevice physicalDevice,
-    params VkUtf8String[] extensions
-  ) {
-    // var enabledExtensions = new List<VkUtf8String>();
-    // var instanceExtensions = GetInstanceExtensions();
+  // public unsafe static List<VkUtf8String> CreateEnabledExtensionsList(
+  //   List<VkUtf8String> availableExtensions,
+  //   VkPhysicalDevice physicalDevice,
+  //   params VkUtf8String[] extensions
+  // ) {
+  //   // var enabledExtensions = new List<VkUtf8String>();
+  //   // var instanceExtensions = GetInstanceExtensions();
 
-    // foreach (var ext in extensions) {
-    //   if (availableExtensions.IsExtenstionPresent(ext)) {
-    //     enabledExtensions.Add(ext);
-    //   }
-    // }
+  //   // foreach (var ext in extensions) {
+  //   //   if (availableExtensions.IsExtenstionPresent(ext)) {
+  //   //     enabledExtensions.Add(ext);
+  //   //   }
+  //   // }
 
-    uint count = 0;
-    vkEnumerateDeviceExtensionProperties(physicalDevice, null, &count, null).CheckResult();
+  //   uint count = 0;
+  //   vkEnumerateDeviceExtensionProperties(physicalDevice, null, &count, null).CheckResult();
 
-    var extProperties = stackalloc VkExtensionProperties[(int)count];
-    vkEnumerateDeviceExtensionProperties(physicalDevice, null, &count, extProperties).CheckResult();
+  //   var extProperties = stackalloc VkExtensionProperties[(int)count];
+  //   vkEnumerateDeviceExtensionProperties(physicalDevice, null, &count, extProperties).CheckResult();
 
-    List<string> names = [];
-    Span<byte> dest;
-    for (int i = 0; i < count; i++) {
-      var ext = extProperties[i];
+  //   List<string> names = [];
+  //   Span<byte> dest;
+  //   for (int i = 0; i < count; i++) {
+  //     var ext = extProperties[i];
 
-      var str = ext.extensionName->ToString();
-      names.Add(str);
-    }
+  //     var str = ext.extensionName->ToString();
+  //     names.Add(str);
+  //   }
 
-    return availableExtensions;
-  }
+  //   return availableExtensions;
+  // }
 
   public static (uint graphicsFamily, uint presentFamily) FindQueueFamilies(
-      VkPhysicalDevice device, VkSurfaceKHR surface) {
-    ReadOnlySpan<VkQueueFamilyProperties> queueFamilies = vkGetPhysicalDeviceQueueFamilyProperties(device);
+      VulkanDevice device, VkSurfaceKHR surface) {
+
+    device.InstanceApi.vkGetPhysicalDeviceQueueFamilyProperties(device.PhysicalDevice, out uint famCount);
+    Span<VkQueueFamilyProperties> queueFamilies = stackalloc VkQueueFamilyProperties[(int)famCount];
+    device.InstanceApi.vkGetPhysicalDeviceQueueFamilyProperties(device.PhysicalDevice, queueFamilies);
 
     uint graphicsFamily = VK_QUEUE_FAMILY_IGNORED;
     uint presentFamily = VK_QUEUE_FAMILY_IGNORED;
@@ -285,7 +283,7 @@ public static unsafe class DeviceHelper {
         graphicsFamily = i;
       }
 
-      vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, out VkBool32 presentSupport);
+      device.InstanceApi.vkGetPhysicalDeviceSurfaceSupportKHR(device.PhysicalDevice, i, surface, out VkBool32 presentSupport);
       if (presentSupport) {
         presentFamily = i;
       }
@@ -302,20 +300,21 @@ public static unsafe class DeviceHelper {
   }
 
   public static (uint graphicsFamily, uint presentFamily) FindQueueFamilies2(
-    VkPhysicalDevice device,
+    VulkanDevice device,
+    VkPhysicalDevice physicalDevice,
     VkSurfaceKHR surface
   ) {
     // var queueFamilies = vkGetPhysicalDeviceQueueFamilyProperties2(device);
 
     uint propCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties2(device, &propCount, null);
+    device.InstanceApi.vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &propCount, null);
     var props = new VkQueueFamilyProperties2[propCount];
     for (int x = 0; x < props.Length; x++) {
       props[x].sType = VkStructureType.QueueFamilyProperties2;
       props[x].pNext = null;
     }
     fixed (VkQueueFamilyProperties2* propPtr = props) {
-      vkGetPhysicalDeviceQueueFamilyProperties2(device, &propCount, propPtr);
+      device.InstanceApi.vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &propCount, propPtr);
     }
 
     uint graphicsFamily = VK_QUEUE_FAMILY_IGNORED;
@@ -327,7 +326,7 @@ public static unsafe class DeviceHelper {
         graphicsFamily = i;
       }
 
-      vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, out VkBool32 presentSupport);
+      device.InstanceApi.vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, out VkBool32 presentSupport);
       if (presentSupport) {
         presentFamily = i;
       }

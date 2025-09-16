@@ -297,7 +297,7 @@ public class Skybox : IDisposable {
   public unsafe void Render(FrameInfo frameInfo) {
     _pipeline.Bind(frameInfo.CommandBuffer);
 
-    vkCmdBindDescriptorSets(
+    _device.DeviceApi.vkCmdBindDescriptorSets(
       frameInfo.CommandBuffer,
       VkPipelineBindPoint.Graphics,
       _pipelineLayout,
@@ -313,14 +313,14 @@ public class Skybox : IDisposable {
       SkyboxColor = _material.Color
     };
 
-    vkCmdPushConstants(
-      frameInfo.CommandBuffer,
-      _pipelineLayout,
-      VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
-      0,
-      (uint)Unsafe.SizeOf<SkyboxBufferObject>(),
-       &pushConstantData
-    );
+    _device.DeviceApi.vkCmdPushConstants(
+     frameInfo.CommandBuffer,
+     _pipelineLayout,
+     VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
+     0,
+     (uint)Unsafe.SizeOf<SkyboxBufferObject>(),
+      &pushConstantData
+   );
 
     Bind(frameInfo.CommandBuffer);
     BindTexture(frameInfo);
@@ -328,7 +328,7 @@ public class Skybox : IDisposable {
   }
 
   private unsafe void BindTexture(FrameInfo frameInfo) {
-    Descriptor.BindDescriptorSet(_textureSet, frameInfo, _pipelineLayout, 0, 1);
+    Descriptor.BindDescriptorSet(_device, _textureSet, frameInfo, _pipelineLayout, 0, 1);
   }
 
   private unsafe void BindDescriptorTexture() {
@@ -337,7 +337,7 @@ public class Skybox : IDisposable {
       imageLayout = VkImageLayout.ShaderReadOnlyOptimal,
       imageView = _cubemapTexture.ImageView
     };
-    _ = new VulkanDescriptorWriter(_textureSetLayout, _texturePool)
+    _ = new VulkanDescriptorWriter(_device, _textureSetLayout, _texturePool)
       .WriteImage(0, &imageInfo)
       .Build(out VkDescriptorSet set);
     _textureSet = set;
@@ -348,12 +348,12 @@ public class Skybox : IDisposable {
     ulong[] offsets = [0];
     fixed (VkBuffer* buffersPtr = buffers)
     fixed (ulong* offsetsPtr = offsets) {
-      vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffersPtr, offsetsPtr);
+      _device.DeviceApi.vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffersPtr, offsetsPtr);
     }
   }
 
   private void Draw(VkCommandBuffer commandBuffer, uint stride) {
-    vkCmdDraw(commandBuffer, stride, 1, 0, 0);
+    _device.DeviceApi.vkCmdDraw(commandBuffer, stride, 1, 0, 0);
   }
 
   private void CreateVertexBuffer(TexturedVertex[] vertices) {
@@ -430,7 +430,7 @@ public class Skybox : IDisposable {
     };
     pipelineInfo.pushConstantRangeCount = 1;
     pipelineInfo.pPushConstantRanges = &pushConstantRange;
-    vkCreatePipelineLayout(_device.LogicalDevice, &pipelineInfo, null, out _pipelineLayout).CheckResult();
+    _device.DeviceApi.vkCreatePipelineLayout(_device.LogicalDevice, &pipelineInfo, null, out _pipelineLayout).CheckResult();
   }
 
   private unsafe void CreatePipeline(
@@ -467,7 +467,7 @@ public class Skybox : IDisposable {
       _pipeline?.Dispose();
       _vertexBuffer?.Dispose();
       _skyboxBuffer?.Dispose();
-      vkDestroyPipelineLayout(_device.LogicalDevice, _pipelineLayout);
+      _device.DeviceApi.vkDestroyPipelineLayout(_device.LogicalDevice, _pipelineLayout);
       _cubemapTexture.Dispose();
     }
   }

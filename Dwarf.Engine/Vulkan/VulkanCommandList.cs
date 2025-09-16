@@ -7,6 +7,12 @@ using static Vortice.Vulkan.Vulkan;
 namespace Dwarf.Vulkan;
 
 public class VulkanCommandList : CommandList {
+  private readonly VulkanDevice _device;
+
+  public VulkanCommandList(VulkanDevice device) {
+    _device = device;
+  }
+
   public override void BindVertex(
     nint commandBuffer,
     uint meshIndex,
@@ -17,7 +23,7 @@ public class VulkanCommandList : CommandList {
     unsafe {
       fixed (VkBuffer* buffersPtr = vBuffers)
       fixed (ulong* offsetsPtr = vertexOffsets) {
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffersPtr, offsetsPtr);
+        _device.DeviceApi.vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffersPtr, offsetsPtr);
       }
     }
   }
@@ -32,17 +38,17 @@ public class VulkanCommandList : CommandList {
       ulong[] offsets = [vertexOffset];
       fixed (VkBuffer* buffersPtr = vBuffers)
       fixed (ulong* offsetsPtr = offsets) {
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffersPtr, offsetsPtr);
+        _device.DeviceApi.vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffersPtr, offsetsPtr);
       }
     }
   }
 
   public override void BindIndex(nint commandBuffer, uint meshIndex, DwarfBuffer[] indexBuffers, ulong offset = 0) {
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffers[meshIndex].GetBuffer(), offset, VkIndexType.Uint32);
+    _device.DeviceApi.vkCmdBindIndexBuffer(commandBuffer, indexBuffers[meshIndex].GetBuffer(), offset, VkIndexType.Uint32);
   }
 
   public override void BindIndex(nint commandBuffer, DwarfBuffer indexBuffer, ulong offset = 0) {
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer.GetBuffer(), offset, VkIndexType.Uint32);
+    _device.DeviceApi.vkCmdBindIndexBuffer(commandBuffer, indexBuffer.GetBuffer(), offset, VkIndexType.Uint32);
   }
 
   public override void Draw(
@@ -53,7 +59,7 @@ public class VulkanCommandList : CommandList {
     uint firstVertex,
     uint firstInstance
   ) {
-    vkCmdDraw(commandBuffer, (uint)vertexCount[meshIndex], instanceCount, firstVertex, firstInstance);
+    _device.DeviceApi.vkCmdDraw(commandBuffer, (uint)vertexCount[meshIndex], instanceCount, firstVertex, firstInstance);
   }
 
   public override void Draw(
@@ -63,7 +69,7 @@ public class VulkanCommandList : CommandList {
     uint firstVertex,
     uint firstInstance
   ) {
-    vkCmdDraw(commandBuffer, (uint)vertexCount, instanceCount, firstVertex, firstInstance);
+    _device.DeviceApi.vkCmdDraw(commandBuffer, (uint)vertexCount, instanceCount, firstVertex, firstInstance);
   }
 
   public override void DrawIndirect(
@@ -73,7 +79,7 @@ public class VulkanCommandList : CommandList {
     uint drawCount,
     uint stride
   ) {
-    vkCmdDrawIndirect(commandBuffer, indirectBuffer, offset, drawCount, stride);
+    _device.DeviceApi.vkCmdDrawIndirect(commandBuffer, indirectBuffer, offset, drawCount, stride);
   }
 
   public override void DrawIndexed(
@@ -85,7 +91,7 @@ public class VulkanCommandList : CommandList {
     int vertexOffset,
     uint firstInstance
   ) {
-    vkCmdDrawIndexed(commandBuffer, (uint)indexCount[meshIndex], instanceCount, firstIndex, vertexOffset, firstInstance);
+    _device.DeviceApi.vkCmdDrawIndexed(commandBuffer, (uint)indexCount[meshIndex], instanceCount, firstIndex, vertexOffset, firstInstance);
   }
 
   public override void DrawIndexed(
@@ -96,7 +102,7 @@ public class VulkanCommandList : CommandList {
     int vertexOffset,
     uint firstInstance
   ) {
-    vkCmdDrawIndexed(commandBuffer, (uint)indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+    _device.DeviceApi.vkCmdDrawIndexed(commandBuffer, (uint)indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
   }
 
   public override void DrawIndexedIndirect(
@@ -106,7 +112,7 @@ public class VulkanCommandList : CommandList {
     uint drawCount,
     uint stride
   ) {
-    vkCmdDrawIndexedIndirect(commandBuffer, indirectBuffer, offset, drawCount, stride);
+    _device.DeviceApi.vkCmdDrawIndexedIndirect(commandBuffer, indirectBuffer, offset, drawCount, stride);
   }
 
   public override void SetViewport(
@@ -116,6 +122,6 @@ public class VulkanCommandList : CommandList {
     float minDepth, float maxDepth
   ) {
     var viewport = VkUtils.Viewport(x, y, width, height, minDepth, maxDepth);
-    vkCmdSetViewport(commandBuffer, viewport);
+    _device.DeviceApi.vkCmdSetViewport(commandBuffer, viewport);
   }
 }

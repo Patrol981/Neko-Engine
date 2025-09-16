@@ -17,16 +17,26 @@ public ref struct SwapChainSupportDetails2 {
 }
 
 public static class VkUtils {
-  public static SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
+  public static SwapChainSupportDetails QuerySwapChainSupport(VulkanDevice device, VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
     SwapChainSupportDetails details = new SwapChainSupportDetails();
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, out details.Capabilities).CheckResult();
+    device.InstanceApi.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, out details.Capabilities).CheckResult();
 
-    details.Formats = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface);
-    details.PresentModes = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface);
+    device.InstanceApi.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, out uint formatCount).CheckResult();
+    Span<VkSurfaceFormatKHR> formats = stackalloc VkSurfaceFormatKHR[(int)formatCount]; ;
+    device.InstanceApi.vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, formats).CheckResult();
+
+    device.InstanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, out uint presentModeCount).CheckResult();
+    Span<VkPresentModeKHR> presentModes = stackalloc VkPresentModeKHR[(int)presentModeCount];
+    device.InstanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, presentModes).CheckResult();
+
+    details.Formats = formats.ToArray();
+    details.PresentModes = presentModes.ToArray();
+
     return details;
   }
 
   public static unsafe SwapChainSupportDetails2 QuerySwapChainSupport2(
+    VulkanDevice device,
     VkPhysicalDevice physicalDevice,
     VkSurfaceKHR surface) {
     var details = new SwapChainSupportDetails2 {
@@ -40,21 +50,23 @@ public static class VkUtils {
       pNext = null,
       surface = surface
     };
-    vkGetPhysicalDeviceSurfaceCapabilities2KHR(physicalDevice, &surfaceInfo, &details.Capabilities);
+    device.InstanceApi.vkGetPhysicalDeviceSurfaceCapabilities2KHR(physicalDevice, &surfaceInfo, &details.Capabilities);
 
     uint formatCount = 0;
-    vkGetPhysicalDeviceSurfaceFormats2KHR(physicalDevice, &surfaceInfo, &formatCount, null);
+    device.InstanceApi.vkGetPhysicalDeviceSurfaceFormats2KHR(physicalDevice, &surfaceInfo, &formatCount, null);
     var formats = new VkSurfaceFormat2KHR[formatCount];
     for (int i = 0; i < formats.Length; i++) {
       formats[i] = new();
     }
     fixed (VkSurfaceFormat2KHR* pFormats = formats) {
-      vkGetPhysicalDeviceSurfaceFormats2KHR(physicalDevice, &surfaceInfo, &formatCount, pFormats);
+      device.InstanceApi.vkGetPhysicalDeviceSurfaceFormats2KHR(physicalDevice, &surfaceInfo, &formatCount, pFormats);
     }
     details.Formats = formats;
 
     // uint presentCount = 0;
-    details.PresentModes = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface);
+    device.InstanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, out uint presentModeCount).CheckResult();
+    Span<VkPresentModeKHR> presentModes = stackalloc VkPresentModeKHR[(int)presentModeCount];
+    device.InstanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, presentModes).CheckResult();
     // vkGetPhysicalDeviceSurfacePresentModes2EXT(physicalDevice, &surfaceInfo, &presentCount, null).CheckResult();
 
     // var presentModes = new VkPresentModeKHR[presentCount];
@@ -67,10 +79,13 @@ public static class VkUtils {
     // }
     // details.PresentModes = presentModes;
 
+    details.PresentModes = presentModes.ToArray();
+
     return details;
   }
 
   public static void SetImageLayout(
+    VulkanDevice device,
     VkCommandBuffer commandBuffer,
     VkImage image,
     VkImageAspectFlags aspectMask,
@@ -84,10 +99,11 @@ public static class VkUtils {
     subresourceRange.baseMipLevel = 0;
     subresourceRange.levelCount = 1;
     subresourceRange.layerCount = 1;
-    SetImageLayout(commandBuffer, image, oldImageLayout, newImageLayout, subresourceRange, srcStageFlags, dstStageFlags);
+    SetImageLayout(device, commandBuffer, image, oldImageLayout, newImageLayout, subresourceRange, srcStageFlags, dstStageFlags);
   }
 
   public static void SetImageLayout(
+    VulkanDevice device,
     VkCommandBuffer commandBuffer,
     VkImage image,
     VkImageLayout oldImageLayout,
@@ -131,7 +147,7 @@ public static class VkUtils {
     }
 
     unsafe {
-      vkCmdPipelineBarrier(
+      device.DeviceApi.vkCmdPipelineBarrier(
         commandBuffer,
         srcStageFlags,
         dstStageFlags,
@@ -388,6 +404,7 @@ public static class VkUtils {
   }
 
   public static unsafe void InsertMemoryBarrier(
+    VulkanDevice device,
     VkCommandBuffer cmdbuffer,
       VkImage image,
       VkAccessFlags srcAccessMask,
@@ -407,7 +424,7 @@ public static class VkUtils {
       subresourceRange = subresourceRange
     };
 
-    vkCmdPipelineBarrier(
+    device.DeviceApi.vkCmdPipelineBarrier(
       cmdbuffer,
       srcStageMask,
       dstStageMask,
@@ -424,6 +441,7 @@ public static class VkUtils {
   }
 
   public static unsafe void InsertMemoryBarrier(
+    VulkanDevice device,
     VkCommandBuffer cmdbuffer,
     VkImage image,
     VkFormat format,
@@ -563,7 +581,7 @@ public static class VkUtils {
       throw new Exception("Unknown error");
     }
 
-    vkCmdPipelineBarrier(cmdbuffer, sourceStage, destinationStage,
+    device.DeviceApi.vkCmdPipelineBarrier(cmdbuffer, sourceStage, destinationStage,
                      0, 0, null, 0, null, 1, &barrier);
   }
 
@@ -578,6 +596,7 @@ public static class VkUtils {
   }
 
   public static unsafe void InsertMemoryBarrier2(
+    VulkanDevice device,
     VkCommandBuffer cmdbuffer,
     VkImage image,
     VkFormat format,
@@ -610,13 +629,14 @@ public static class VkUtils {
       pImageMemoryBarriers = &barrier
     };
 
-    vkCmdPipelineBarrier2(
+    device.DeviceApi.vkCmdPipelineBarrier2(
       cmdbuffer,
       &dep
     );
   }
 
   public static unsafe void ImageLayoutTransition(
+    VulkanDevice device,
     VkCommandBuffer commandBuffer,
     VkImage image,
     VkPipelineStageFlags srcStageMask,
@@ -639,7 +659,7 @@ public static class VkUtils {
       subresourceRange = subresourceRange
     };
 
-    vkCmdPipelineBarrier(
+    device.DeviceApi.vkCmdPipelineBarrier(
       commandBuffer,
       srcStageMask,
       dstStageMask,

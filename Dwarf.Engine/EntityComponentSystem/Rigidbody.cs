@@ -3,6 +3,7 @@ using Dwarf.AbstractionLayer;
 using Dwarf.Math;
 using Dwarf.Physics;
 using Dwarf.Rendering;
+using Dwarf.Vulkan;
 
 namespace Dwarf.EntityComponentSystem;
 
@@ -188,7 +189,7 @@ public class Rigidbody : IDisposable {
     }
 
     if (_useMesh) {
-      Owner!.AddComponent(new ColliderMesh(Owner, _allocator, _device, _collisionShape));
+      Owner!.AddComponent(new ColliderMesh(Owner, _allocator, (VulkanDevice)_device, _collisionShape));
     }
 
   }

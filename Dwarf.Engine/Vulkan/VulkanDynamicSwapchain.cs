@@ -43,14 +43,14 @@ public class VulkanDynamicSwapchain : ISwapchain {
   private unsafe void InitSurface() {
     // Get available queue family properties
     uint queueCount;
-    vkGetPhysicalDeviceQueueFamilyProperties(_device.PhysicalDevice, &queueCount, null);
+    _device.InstanceApi.vkGetPhysicalDeviceQueueFamilyProperties(_device.PhysicalDevice, &queueCount, null);
 
     VkQueueFamilyProperties* queueFamilyProperties = stackalloc VkQueueFamilyProperties[(int)queueCount];
-    vkGetPhysicalDeviceQueueFamilyProperties(_device.PhysicalDevice, &queueCount, queueFamilyProperties);
+    _device.InstanceApi.vkGetPhysicalDeviceQueueFamilyProperties(_device.PhysicalDevice, &queueCount, queueFamilyProperties);
 
     List<VkBool32> supportsPresent = new List<VkBool32>();
     for (uint i = 0; i < queueCount; i++) {
-      vkGetPhysicalDeviceSurfaceSupportKHR(_device.PhysicalDevice, i, _device.Surface, out var supported);
+      _device.InstanceApi.vkGetPhysicalDeviceSurfaceSupportKHR(_device.PhysicalDevice, i, _device.Surface, out var supported);
       supportsPresent.Add(supported);
     }
 
@@ -94,7 +94,7 @@ public class VulkanDynamicSwapchain : ISwapchain {
 
     QueueNodeIndex = graphicsQueueNodeIndex;
 
-    var swapChainSupport = VkUtils.QuerySwapChainSupport(_device.PhysicalDevice, _device.Surface);
+    var swapChainSupport = VkUtils.QuerySwapChainSupport(_device, _device.PhysicalDevice, _device.Surface);
     var selectedFormat = ChooseSwapSurfaceFormat(swapChainSupport.Formats);
 
     _colorFormat = selectedFormat.format;
@@ -138,7 +138,7 @@ public class VulkanDynamicSwapchain : ISwapchain {
     // VkSurfaceCapabilities2KHR surfCaps;
     // vkGetPhysicalDeviceSurfaceCapabilities2KHR(_device.PhysicalDevice, _device.Surface, &surfCaps).CheckResult();
 
-    var support = VkUtils.QuerySwapChainSupport2(_device.PhysicalDevice, _device.Surface);
+    var support = VkUtils.QuerySwapChainSupport2(_device, _device.PhysicalDevice, _device.Surface);
     var surfCaps = support.Capabilities.surfaceCapabilities;
 
     // if (surfCaps.currentExtent.width < 1) {
@@ -159,7 +159,10 @@ public class VulkanDynamicSwapchain : ISwapchain {
     // VkPresentModeKHR* presentModes = stackalloc VkPresentModeKHR[(int)presentModeCount];
     // vkGetPhysicalDeviceSurfacePresentModesKHR(_device.PhysicalDevice, _device.Surface, &presentModeCount, presentModes).CheckResult();
 
-    var vkPresentModes = vkGetPhysicalDeviceSurfacePresentModesKHR(_device.PhysicalDevice, _device.Surface);
+    _device.InstanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(_device.PhysicalDevice, _device.Surface, out uint presentModeCount).CheckResult();
+    Span<VkPresentModeKHR> vkPresentModes = stackalloc VkPresentModeKHR[(int)presentModeCount];
+    _device.InstanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(_device.PhysicalDevice, _device.Surface, vkPresentModes).CheckResult();
+
     VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
     if (!vsync) {
@@ -235,14 +238,14 @@ public class VulkanDynamicSwapchain : ISwapchain {
       pNext = &scalingCreateInfoEXT
     };
 
-    vkCreateSwapchainKHR(_device.LogicalDevice, &swapchainCI, null, out _handle).CheckResult();
+    _device.DeviceApi.vkCreateSwapchainKHR(_device.LogicalDevice, &swapchainCI, null, out _handle).CheckResult();
 
     uint imageCount = 0;
-    vkGetSwapchainImagesKHR(_device.LogicalDevice, _handle, &imageCount, null).CheckResult();
+    _device.DeviceApi.vkGetSwapchainImagesKHR(_device.LogicalDevice, _handle, &imageCount, null).CheckResult();
 
     Images = new ulong[imageCount];
     fixed (ulong* imagesPtr = Images) {
-      vkGetSwapchainImagesKHR(_device.LogicalDevice, _handle, &imageCount, (VkImage*)imagesPtr);
+      _device.DeviceApi.vkGetSwapchainImagesKHR(_device.LogicalDevice, _handle, &imageCount, (VkImage*)imagesPtr);
     }
 
     ImageViews = new ulong[imageCount];
@@ -266,13 +269,13 @@ public class VulkanDynamicSwapchain : ISwapchain {
       colorAttachmentView.viewType = VK_IMAGE_VIEW_TYPE_2D;
       colorAttachmentView.flags = 0;
       colorAttachmentView.image = Images[i];
-      vkCreateImageView(_device.LogicalDevice, &colorAttachmentView, null, out var imageView).CheckResult();
+      _device.DeviceApi.vkCreateImageView(_device.LogicalDevice, &colorAttachmentView, null, out var imageView).CheckResult();
       ImageViews[i] = imageView;
     }
   }
 
   public unsafe VkResult AcquireNextImage(VkSemaphore presentCompleteSemaphore, out uint imageIndex) {
-    return vkAcquireNextImageKHR(
+    return _device.DeviceApi.vkAcquireNextImageKHR(
       _device.LogicalDevice,
       _handle,
       UInt64.MaxValue,
@@ -304,7 +307,7 @@ public class VulkanDynamicSwapchain : ISwapchain {
         presentInfo.pWaitSemaphores = &waitSemaphore;
         presentInfo.waitSemaphoreCount = 1;
       }
-      var result = vkQueuePresentKHR(queue, &presentInfo);
+      var result = _device.DeviceApi.vkQueuePresentKHR(queue, &presentInfo);
       if (Application.Instance.Debug) {
         TracyWrapper.Profiler.HeartBeat();
       }
@@ -317,7 +320,7 @@ public class VulkanDynamicSwapchain : ISwapchain {
       // ).CheckResult();
 
       fixed (VkFence* fencePtr = waitFences) {
-        vkWaitForFences(_device.LogicalDevice, 1, fencePtr, true, ulong.MaxValue);
+        _device.DeviceApi.vkWaitForFences(_device.LogicalDevice, 1, fencePtr, true, ulong.MaxValue);
       }
 
 
@@ -342,10 +345,10 @@ public class VulkanDynamicSwapchain : ISwapchain {
 
     if (_handle != VkSwapchainKHR.Null) {
       for (int i = 0; i < Images.Length; i++) {
-        vkDestroyImageView(_device.LogicalDevice, ImageViews[i], null);
+        _device.DeviceApi.vkDestroyImageView(_device.LogicalDevice, ImageViews[i], null);
         // vkDestroyImage(_device.LogicalDevice, Images[i], null);
       }
-      vkDestroySwapchainKHR(_device.LogicalDevice, _handle, null);
+      _device.DeviceApi.vkDestroySwapchainKHR(_device.LogicalDevice, _handle, null);
     }
     Application.Mutex.ReleaseMutex();
   }

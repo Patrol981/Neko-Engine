@@ -26,7 +26,7 @@ public class ParticleSystem : SystemBase {
   public ParticleSystem(
     Application app,
     nint allocator,
-    IDevice device,
+    VulkanDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     IDescriptorSetLayout globalSetLayout,
@@ -131,6 +131,7 @@ public class ParticleSystem : SystemBase {
 
     BindPipeline(frameInfo.CommandBuffer, "TexturedParticle");
     Descriptor.BindDescriptorSet(
+      _device,
       frameInfo.GlobalDescriptorSet,
       frameInfo,
       _pipelines["TexturedParticle"].PipelineLayout,
@@ -146,7 +147,7 @@ public class ParticleSystem : SystemBase {
         _particlePushConstant->Radius = particles[i].Scale;
         _particlePushConstant->Rotation = particles[i].Rotation;
 
-        vkCmdPushConstants(
+        _device.DeviceApi.vkCmdPushConstants(
           frameInfo.CommandBuffer,
           _pipelines["TexturedParticle"].PipelineLayout,
           VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
@@ -166,6 +167,7 @@ public class ParticleSystem : SystemBase {
           validDesc = false;
         } else {
           Descriptor.BindDescriptorSet(
+            _device,
             prevTexture!.TextureDescriptor,
             frameInfo,
             _pipelines["TexturedParticle"].PipelineLayout,
@@ -176,7 +178,7 @@ public class ParticleSystem : SystemBase {
       }
 
       if (validDesc) {
-        vkCmdDraw(frameInfo.CommandBuffer, 6, 1, 0, 0);
+        _device.DeviceApi.vkCmdDraw(frameInfo.CommandBuffer, 6, 1, 0, 0);
       }
     }
   }
@@ -186,6 +188,7 @@ public class ParticleSystem : SystemBase {
 
     BindPipeline(frameInfo.CommandBuffer, "BaseParticle");
     Descriptor.BindDescriptorSet(
+      _device,
       frameInfo.GlobalDescriptorSet,
       frameInfo,
       _pipelines["BaseParticle"].PipelineLayout,
@@ -200,7 +203,7 @@ public class ParticleSystem : SystemBase {
         _particlePushConstant->Radius = particles[i].Scale;
         _particlePushConstant->Rotation = particles[i].Rotation;
 
-        vkCmdPushConstants(
+        _device.DeviceApi.vkCmdPushConstants(
           frameInfo.CommandBuffer,
           _pipelines["BaseParticle"].PipelineLayout,
           VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
@@ -210,7 +213,7 @@ public class ParticleSystem : SystemBase {
         );
       }
 
-      vkCmdDraw(frameInfo.CommandBuffer, 6, 1, 0, 0);
+      _device.DeviceApi.vkCmdDraw(frameInfo.CommandBuffer, 6, 1, 0, 0);
     }
   }
 

@@ -88,12 +88,12 @@ public class CubeMapTexture : VulkanTexture {
     unsafe {
       if (_textureSampler.TextureImage.IsNotNull) {
         _device.WaitDevice();
-        vkDestroyImage(_device.LogicalDevice, _textureSampler.TextureImage);
+        _device.DeviceApi.vkDestroyImage(_device.LogicalDevice, _textureSampler.TextureImage);
       }
 
       if (_textureSampler.TextureImageMemory.IsNotNull) {
         _device.WaitDevice();
-        vkFreeMemory(_device.LogicalDevice, _textureSampler.TextureImageMemory);
+        _device.DeviceApi.vkFreeMemory(_device.LogicalDevice, _textureSampler.TextureImageMemory);
       }
     }
 
@@ -127,15 +127,15 @@ public class CubeMapTexture : VulkanTexture {
     // This flag is required for cube map images
     imageInfo.flags = VkImageCreateFlags.CubeCompatible;
 
-    vkCreateImage(device.LogicalDevice, &imageInfo, null, out textureImage).CheckResult();
-    vkGetImageMemoryRequirements(device.LogicalDevice, textureImage, out VkMemoryRequirements memRequirements);
+    device.DeviceApi.vkCreateImage(device.LogicalDevice, &imageInfo, null, out textureImage).CheckResult();
+    device.DeviceApi.vkGetImageMemoryRequirements(device.LogicalDevice, textureImage, out VkMemoryRequirements memRequirements);
 
     VkMemoryAllocateInfo allocInfo = new();
     allocInfo.allocationSize = memRequirements.size;
     allocInfo.memoryTypeIndex = device.FindMemoryType(memRequirements.memoryTypeBits, MemoryProperty.DeviceLocal);
 
-    vkAllocateMemory(device.LogicalDevice, &allocInfo, null, out textureImageMemory).CheckResult();
-    vkBindImageMemory(device.LogicalDevice, textureImage, textureImageMemory, 0).CheckResult();
+    device.DeviceApi.vkAllocateMemory(device.LogicalDevice, &allocInfo, null, out textureImageMemory).CheckResult();
+    device.DeviceApi.vkBindImageMemory(device.LogicalDevice, textureImage, textureImageMemory, 0).CheckResult();
   }
 
   private unsafe void HandleCubemap(VkBuffer stagingBuffer, VkFormat format, uint mipLevels) {
@@ -175,6 +175,7 @@ public class CubeMapTexture : VulkanTexture {
     subresourceRange.layerCount = 6;
 
     VkUtils.SetImageLayout(
+      _device,
       copyCmd,
       _textureSampler.TextureImage,
       VkImageLayout.Undefined,
@@ -182,7 +183,7 @@ public class CubeMapTexture : VulkanTexture {
       subresourceRange
     );
     fixed (VkBufferImageCopy* imageCopyPtr = bufferCopyRegions.ToArray()) {
-      vkCmdCopyBufferToImage(
+      _device.DeviceApi.vkCmdCopyBufferToImage(
         copyCmd,
         stagingBuffer,
         _textureSampler.TextureImage,
@@ -193,6 +194,7 @@ public class CubeMapTexture : VulkanTexture {
     }
 
     VkUtils.SetImageLayout(
+      _device,
       copyCmd,
       _textureSampler.TextureImage,
       VkImageLayout.TransferDstOptimal,
@@ -220,7 +222,7 @@ public class CubeMapTexture : VulkanTexture {
       samplerInfo.maxAnisotropy = _device.Properties.properties.limits.maxSamplerAnisotropy;
       samplerInfo.anisotropyEnable = true;
     }
-    vkCreateSampler(_device.LogicalDevice, &samplerInfo, null, out _textureSampler.ImageSampler).CheckResult();
+    _device.DeviceApi.vkCreateSampler(_device.LogicalDevice, &samplerInfo, null, out _textureSampler.ImageSampler).CheckResult();
 
     // create image view
     var viewInfo = new VkImageViewCreateInfo();
@@ -233,6 +235,6 @@ public class CubeMapTexture : VulkanTexture {
     // number of mip levels
     viewInfo.subresourceRange.levelCount = mipLevels;
     viewInfo.image = _textureSampler.TextureImage;
-    vkCreateImageView(_device.LogicalDevice, &viewInfo, null, out _textureSampler.ImageView).CheckResult();
+    _device.DeviceApi.vkCreateImageView(_device.LogicalDevice, &viewInfo, null, out _textureSampler.ImageView).CheckResult();
   }
 }

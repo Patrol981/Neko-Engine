@@ -2,6 +2,7 @@ using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Rendering;
 using Dwarf.Rendering.Renderer3D;
+using Dwarf.Vulkan;
 using ZLinq;
 
 namespace Dwarf.Animations;
@@ -13,7 +14,7 @@ public class AnimationSystem : SystemBase {
   public AnimationSystem(
     Application app,
     nint allocator,
-    IDevice device,
+    VulkanDevice device,
     IRenderer renderer,
     TextureManager textureManager,
     IPipelineConfigInfo configInfo = null!
