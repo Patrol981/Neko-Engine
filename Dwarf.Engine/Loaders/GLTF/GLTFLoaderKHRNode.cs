@@ -46,19 +46,6 @@ public static partial class GLTFLoaderKHR {
         ref meshRenderer,
         ref materials
       );
-      // LoadAnimationNode(
-      //   app,
-      //   app.Allocator,
-      //   app.Device,
-      //   default!,
-      //   node,
-      //   scene.Nodes[i],
-      //   gltf,
-      //   glb,
-      //   1.0f,
-      //   ref meshRenderer,
-      //   ref materials
-      // );
     }
 
     if (gltf.Animations != null && gltf.Animations.Length > 0) {
@@ -69,37 +56,19 @@ public static partial class GLTFLoaderKHR {
 
     foreach (var node in meshRenderer.LinearNodes) {
       if (node.SkinIndex > -1) {
-        // node.Skin = meshRenderer.Skins[node.SkinIndex];
         node.SkinGuid = skinsLocal[node.SkinIndex].Item1;
-        // node.CreateBuffer();
       }
 
       if (node.HasMesh) {
-        // var material = node.Mesh.Material;
-
         node.Update();
       }
     }
 
     meshRenderer.Init(app.Meshes);
 
-    // meshRenderer.BindToTexture(app.TextureManager, textureIds[0], 0);
-    // meshRenderer.BindToTexture(app.TextureManager, textureIds[5], 1);
-    // meshRenderer.BindToTexture(app.TextureManager, textureIds[1], 2);
-
     for (int i = 0; i < meshRenderer.MeshedNodesCount; i++) {
       meshRenderer.BindToTextureMaterial(app.TextureManager, textureIds, app.Meshes, i);
     }
-
-    // if (meshRenderer.MeshedNodes.Length == textureIds.Count) {
-    //   for (int i = 0; i < meshRenderer.MeshedNodes.Length; i++) {
-    //     meshRenderer.BindToTexture(app.TextureManager, textureIds[i], i);
-    //   }
-    // } else {
-    //   for (int i = 0; i < meshRenderer.MeshedNodes.Length; i++) {
-    //     meshRenderer.BindToTexture(app.TextureManager, textureIds[0], i);
-    //   }
-    // }
 
     return Task.FromResult(meshRenderer);
   }
@@ -109,8 +78,8 @@ public static partial class GLTFLoaderKHR {
     if (!gltf.ShouldSerializeSamplers()) return;
     foreach (var sampler in gltf.Samplers) {
       var textureSampler = new TextureSampler {
-        MinFilter = GetFilterMode((int)sampler.MinFilter!),
-        MagFilter = GetFilterMode((int)sampler.MagFilter!),
+        MinFilter = GetFilterMode((int?)sampler.MinFilter),
+        MagFilter = GetFilterMode((int?)sampler.MagFilter),
         AddressModeU = GetWrapMode((int)sampler.WrapS),
         AddressModeV = GetWrapMode((int)sampler.WrapT)
       };
@@ -130,7 +99,6 @@ public static partial class GLTFLoaderKHR {
   ) {
     textureIds = [];
     int i = 0;
-    // if (!gltf.ShouldSerializeTextures()) return;
     foreach (var gltfTexture in gltf.Textures) {
       if (!gltfTexture.Source.HasValue) continue;
       int src = gltfTexture.Source.Value;
@@ -162,9 +130,6 @@ public static partial class GLTFLoaderKHR {
         );
         id = app.TextureManager.AddTextureLocal(texture);
         texture.TextureIndex = i;
-
-        // var path = Path.Combine(DwarfPath.AssemblyDirectory, $"{textureName}_{textureIds.Count}.png");
-        // File.WriteAllBytes(path, texture.TextureData);
       } else {
         texture = app.TextureManager.GetTextureLocal(id);
         texture.TextureIndex = i;
@@ -334,7 +299,6 @@ public static partial class GLTFLoaderKHR {
         }
       }
       if (newSkin.Joints != null) {
-        // newSkin.OutputNodeMatrices = new Matrix4x4[newSkin.Joints.Count];
         newSkin.Init();
       }
 
@@ -351,43 +315,187 @@ public static partial class GLTFLoaderKHR {
       } else {
         skins.Add((guid, newSkin));
       }
-      // meshRenderer.Skins.Add(newSkin);
     }
   }
 
-  private static IFilter GetFilterMode(int filterMode) {
-    switch (filterMode) {
-      case -1:
-      case 9728:
-        return IFilter.Nearest;
-      case 9729:
-        return IFilter.Linear;
-      case 9984:
-        return IFilter.Nearest;
-      case 9985:
-        return IFilter.Nearest;
-      case 9986:
-        return IFilter.Linear;
-      case 9987:
-        return IFilter.Linear;
+  private static IFilter GetFilterMode(int? filterMode) {
+    if (!filterMode.HasValue) {
+      return IFilter.Nearest;
     }
 
-    throw new ArgumentException($"Unknkown filter {filterMode}");
+    return filterMode switch {
+      -1 or 9728 => IFilter.Nearest,
+      9729 => IFilter.Linear,
+      9984 => IFilter.Nearest,
+      9985 => IFilter.Nearest,
+      9986 => IFilter.Linear,
+      9987 => IFilter.Linear,
+      _ => throw new ArgumentException($"Unknkown filter {filterMode}"),
+    };
   }
 
   private static ISamplerAddressMode GetWrapMode(int wrapMode) {
-    switch (wrapMode) {
-      case -1:
-      case 10497:
-        return ISamplerAddressMode.Repeat;
-      case 33071:
-        return ISamplerAddressMode.ClampToEdge;
-      case 33648:
-        return ISamplerAddressMode.MirroredRepeat;
+    return wrapMode switch {
+      -1 or 10497 => ISamplerAddressMode.Repeat,
+      33071 => ISamplerAddressMode.ClampToEdge,
+      33648 => ISamplerAddressMode.MirroredRepeat,
+      _ => throw new ArgumentException($"Unknown wrap mode {wrapMode}"),
+    };
+  }
+  private static void LoadNode(
+    Application app,
+    nint allocator,
+    IDevice device,
+    Dwarf.Rendering.Renderer3D.Node parent,
+    Node node,
+    int nodeIdx,
+    Gltf gltf,
+    byte[] globalBuffer,
+    float globalScale,
+    ref MeshRenderer meshRenderer,
+    ref List<EntityComponentSystem.Material> materials
+  ) {
+    Dwarf.Rendering.Renderer3D.Node newNode = new(app, meshRenderer.Owner.Id) {
+      Index = nodeIdx,
+      Name = node.Name,
+      SkinIndex = node.Skin.HasValue ? node.Skin.Value : -1,
+      NodeMatrix = Matrix4x4.Identity
+    };
+    if (parent != null) {
+      newNode.Parent = parent;
     }
 
-    throw new ArgumentException($"Unknown wrap mode {wrapMode}");
+    // Generate local node matrix
+    var translation = Vector3.Zero;
+    if (node.Translation.Length == 3) {
+      translation = node.Translation.ToVector3();
+      newNode.Translation = translation;
+    }
+    var rotation = Matrix4x4.Identity;
+    if (node.Rotation.Length == 4) {
+      var q = node.Rotation.ToQuat();
+      newNode.Rotation = q;
+    }
+    var scale = Vector3.One;
+    if (node.Scale.Length == 3) {
+      scale = node.Scale.ToVector3();
+      newNode.Scale = scale;
+    }
+    if (node.Matrix.Length == 16) {
+      newNode.NodeMatrix = node.Matrix.ToMatrix4x4();
+    }
+
+    // Node with children
+    if (node.Children?.Length > 0) {
+      for (int i = 0; i < node.Children.Length; i++) {
+        LoadNode(
+          app,
+          allocator,
+          device,
+          newNode,
+          gltf.Nodes[node.Children[i]],
+          node.Children[i],
+          gltf,
+          globalBuffer,
+          globalScale,
+          ref meshRenderer,
+          ref materials
+        );
+      }
+    }
+
+    // Node contains mesh data
+    if (node.Mesh.HasValue) {
+      var gltfMesh = gltf.Meshes[node.Mesh.Value];
+      var newMesh = new Rendering.Mesh(allocator, device, newNode.NodeMatrix);
+
+      var indices = new List<uint>();
+      var vertices = new List<Vertex>();
+      EntityComponentSystem.Material material = null!;
+
+      for (int j = 0; j < gltfMesh.Primitives.Length; j++) {
+        var primitive = gltfMesh.Primitives[j];
+
+        int materialIdx = primitive.Material.HasValue ? primitive.Material.Value : -1;
+        material = materialIdx >= 0 && materialIdx < materials.Count ? materials[materialIdx] : new EntityComponentSystem.Material();
+
+        Vector2[] textureCoords = [];
+        Vector3[] normals = [];
+        Vector4[] weights = [];
+        Vector4I[] joints = [];
+        Vector3[] positions = [];
+
+        // Vertices
+        {
+          if (primitive.Attributes.TryGetValue("TEXCOORD_0", out int coordIdx)) {
+            LoadAccessor<float>(gltf, globalBuffer, gltf.Accessors[coordIdx], out var texFloats);
+            textureCoords = texFloats.ToVector2Array();
+          }
+          if (primitive.Attributes.TryGetValue("POSITION", out int positionIdx)) {
+            LoadAccessor<float>(gltf, globalBuffer, gltf.Accessors[positionIdx], out var posFloats);
+            positions = posFloats.ToVector3Array();
+          }
+          if (primitive.Attributes.TryGetValue("NORMAL", out int normalIdx)) {
+            LoadAccessor<float>(gltf, globalBuffer, gltf.Accessors[normalIdx], out var normFloats);
+            normals = normFloats.ToVector3Array();
+          }
+          if (primitive.Attributes.TryGetValue("WEIGHTS_0", out int weightsIdx)) {
+            LoadAccessor<float>(gltf, globalBuffer, gltf.Accessors[weightsIdx], out var weightFLoats);
+            weights = weightFLoats.ToVector4Array();
+          }
+          if (primitive.Attributes.TryGetValue("JOINTS_0", out int jointsIdx)) {
+            try {
+              LoadAccessor<ushort>(gltf, globalBuffer, gltf.Accessors[jointsIdx], out var jointIndices);
+              joints = jointIndices.ToVec4IArray();
+            } catch {
+              LoadAccessor<byte>(gltf, globalBuffer, gltf.Accessors[jointsIdx], out var jointIndices);
+              joints = jointIndices.ToVec4IArray();
+            }
+          }
+
+          var vertex = new Vertex();
+          for (int v = 0; v < positions.Length; v++) {
+            vertex.Position = positions[v];
+            // vertex.Position = Vector3.Transform(positions[v], newNode.GetLocalMatrix());
+            vertex.Color = Vector3.One;
+            vertex.Normal = normals.Length > 0 ? normals[v] : new Vector3(1, 1, 1);
+            vertex.Uv = textureCoords.Length > 0 ? textureCoords[v] : new Vector2(0, 0);
+
+            vertex.JointWeights = weights.Length > 0 ? weights[v] : new Vector4(0, 0, 0, 0);
+            vertex.JointIndices = joints.Length > 0 ? joints[v] : new Vector4I(0, 0, 0, 0);
+
+            vertices.Add(vertex);
+          }
+        }
+
+        if (primitive.Indices.HasValue) {
+          var idx = primitive.Indices.Value;
+          var idc = GetIndexAccessor(gltf, globalBuffer, idx);
+          indices.AddRange(idc);
+        }
+      }
+
+      newMesh.Vertices = [.. vertices];
+      newMesh.Indices = [.. indices];
+      material ??= new EntityComponentSystem.Material();
+      newMesh.Material = material;
+
+      var guid = Guid.NewGuid();
+      app.Meshes.TryAdd(guid, newMesh);
+
+      newNode.MeshGuid = guid;
+    }
+
+    if (parent != null) {
+      parent.Children.Add(newNode);
+    } else {
+      meshRenderer.AddNode(newNode);
+    }
+    meshRenderer.AddLinearNode(newNode);
   }
+}
+
+/*
 
   private unsafe static void LoadAnimationNode(
     Application app,
@@ -545,155 +653,5 @@ public static partial class GLTFLoaderKHR {
     meshRenderer.AddLinearAnimationNode(newNode);
   }
 
-  private static void LoadNode(
-    Application app,
-    nint allocator,
-    IDevice device,
-    Dwarf.Rendering.Renderer3D.Node parent,
-    Node node,
-    int nodeIdx,
-    Gltf gltf,
-    byte[] globalBuffer,
-    float globalScale,
-    ref MeshRenderer meshRenderer,
-    ref List<EntityComponentSystem.Material> materials
-  ) {
-    Dwarf.Rendering.Renderer3D.Node newNode = new(app, meshRenderer.Owner.Id) {
-      Index = nodeIdx,
-      Name = node.Name,
-      SkinIndex = node.Skin.HasValue ? node.Skin.Value : -1,
-      NodeMatrix = Matrix4x4.Identity
-    };
-    if (parent != null) {
-      newNode.Parent = parent;
-    }
 
-    // Generate local node matrix
-    var translation = Vector3.Zero;
-    if (node.Translation.Length == 3) {
-      translation = node.Translation.ToVector3();
-      newNode.Translation = translation;
-    }
-    var rotation = Matrix4x4.Identity;
-    if (node.Rotation.Length == 4) {
-      var q = node.Rotation.ToQuat();
-      newNode.Rotation = q;
-    }
-    var scale = Vector3.One;
-    if (node.Scale.Length == 3) {
-      scale = node.Scale.ToVector3();
-      newNode.Scale = scale;
-    }
-    if (node.Matrix.Length == 16) {
-      newNode.NodeMatrix = node.Matrix.ToMatrix4x4();
-    }
-
-    // Node with children
-    if (node.Children?.Length > 0) {
-      for (int i = 0; i < node.Children.Length; i++) {
-        LoadNode(
-          app,
-          allocator,
-          device,
-          newNode,
-          gltf.Nodes[node.Children[i]],
-          node.Children[i],
-          gltf,
-          globalBuffer,
-          globalScale,
-          ref meshRenderer,
-          ref materials
-        );
-      }
-    }
-
-    // Node contains mesh data
-    if (node.Mesh.HasValue) {
-      var gltfMesh = gltf.Meshes[node.Mesh.Value];
-      var newMesh = new Rendering.Mesh(allocator, device, newNode.NodeMatrix);
-
-      var indices = new List<uint>();
-      var vertices = new List<Vertex>();
-      EntityComponentSystem.Material material = null!;
-
-      for (int j = 0; j < gltfMesh.Primitives.Length; j++) {
-        var primitive = gltfMesh.Primitives[j];
-
-        int materialIdx = primitive.Material.HasValue ? primitive.Material.Value : -1;
-        material = materialIdx >= 0 && materialIdx < materials.Count ? materials[materialIdx] : new EntityComponentSystem.Material();
-
-        Vector2[] textureCoords = [];
-        Vector3[] normals = [];
-        Vector4[] weights = [];
-        Vector4I[] joints = [];
-        Vector3[] positions = [];
-
-        // Vertices
-        {
-          if (primitive.Attributes.TryGetValue("TEXCOORD_0", out int coordIdx)) {
-            LoadAccessor<float>(gltf, globalBuffer, gltf.Accessors[coordIdx], out var texFloats);
-            textureCoords = texFloats.ToVector2Array();
-          }
-          if (primitive.Attributes.TryGetValue("POSITION", out int positionIdx)) {
-            LoadAccessor<float>(gltf, globalBuffer, gltf.Accessors[positionIdx], out var posFloats);
-            positions = posFloats.ToVector3Array();
-          }
-          if (primitive.Attributes.TryGetValue("NORMAL", out int normalIdx)) {
-            LoadAccessor<float>(gltf, globalBuffer, gltf.Accessors[normalIdx], out var normFloats);
-            normals = normFloats.ToVector3Array();
-          }
-          if (primitive.Attributes.TryGetValue("WEIGHTS_0", out int weightsIdx)) {
-            LoadAccessor<float>(gltf, globalBuffer, gltf.Accessors[weightsIdx], out var weightFLoats);
-            weights = weightFLoats.ToVector4Array();
-          }
-          if (primitive.Attributes.TryGetValue("JOINTS_0", out int jointsIdx)) {
-            try {
-              LoadAccessor<ushort>(gltf, globalBuffer, gltf.Accessors[jointsIdx], out var jointIndices);
-              joints = jointIndices.ToVec4IArray();
-            } catch {
-              LoadAccessor<byte>(gltf, globalBuffer, gltf.Accessors[jointsIdx], out var jointIndices);
-              joints = jointIndices.ToVec4IArray();
-            }
-          }
-
-          var vertex = new Vertex();
-          for (int v = 0; v < positions.Length; v++) {
-            vertex.Position = positions[v];
-            // vertex.Position = Vector3.Transform(positions[v], newNode.GetLocalMatrix());
-            vertex.Color = Vector3.One;
-            vertex.Normal = normals.Length > 0 ? normals[v] : new Vector3(1, 1, 1);
-            vertex.Uv = textureCoords.Length > 0 ? textureCoords[v] : new Vector2(0, 0);
-
-            vertex.JointWeights = weights.Length > 0 ? weights[v] : new Vector4(0, 0, 0, 0);
-            vertex.JointIndices = joints.Length > 0 ? joints[v] : new Vector4I(0, 0, 0, 0);
-
-            vertices.Add(vertex);
-          }
-        }
-
-        if (primitive.Indices.HasValue) {
-          var idx = primitive.Indices.Value;
-          var idc = GetIndexAccessor(gltf, globalBuffer, idx);
-          indices.AddRange(idc);
-        }
-      }
-
-      newMesh.Vertices = [.. vertices];
-      newMesh.Indices = [.. indices];
-      material ??= new EntityComponentSystem.Material();
-      newMesh.Material = material;
-
-      var guid = Guid.NewGuid();
-      app.Meshes.TryAdd(guid, newMesh);
-
-      newNode.MeshGuid = guid;
-    }
-
-    if (parent != null) {
-      parent.Children.Add(newNode);
-    } else {
-      meshRenderer.AddNode(newNode);
-    }
-    meshRenderer.AddLinearNode(newNode);
-  }
-}
+*/

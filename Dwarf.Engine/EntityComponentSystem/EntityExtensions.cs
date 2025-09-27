@@ -159,7 +159,12 @@ public static class EntityExtensions {
     }
   }
 
-  public static async void AddModel(this Entity entity, string modelPath, int flip = 1) {
+  public static async void AddModel(
+    this Entity entity,
+    string modelPath,
+    int flip = 0,
+    bool useRig = true
+  ) {
     var app = Application.Instance;
 
     if (!modelPath.Contains("glb")) {
@@ -168,15 +173,14 @@ public static class EntityExtensions {
 
     entity.AddDrawable3D(await GLTFLoaderKHR.LoadGLTF(entity, app, modelPath, flip));
     var meshRenderer = entity.GetDrawable3D()!;
-    if (meshRenderer.Animations.Count > 0) {
+    if (meshRenderer.Animations.Count > 0 && useRig) {
       entity.AddAnimationController(
         new AnimationController(
           entity,
-          meshRenderer.Animations.ToArray(),
+          [.. meshRenderer.Animations],
           (meshRenderer as MeshRenderer)!
         )
       );
-      // entity.GetAnimationController()?.Init((entity.GetDrawable3D() as MeshRenderer)!);
     }
   }
 

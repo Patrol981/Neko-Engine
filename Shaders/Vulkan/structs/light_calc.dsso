@@ -42,7 +42,8 @@ vec3 calc_dir_light(
   float spec = pow(max(dot(viewDir, reflectDir), 0.0), pShininess);
   // combine results
   vec3 ambient  = directionalLight.ambientLightColor.xyz;
-  vec3 diffuse  = directionalLight.lightColor.xyz * (diff * pDiffuse);
+  // vec3 diffuse  = (diff * pDiffuse) * directionalLight.lightColor.xyz;
+  vec3 diffuse = (diff * pDiffuse) * directionalLight.lightColor.xyz;
   vec3 specular = directionalLight.lightColor.xyz * (spec * pSpecular) * directionalLight.lightIntensity;
   // vec3 specular = directionalLight.lightIntensity * spec;
   return (ambient + diffuse + specular);
