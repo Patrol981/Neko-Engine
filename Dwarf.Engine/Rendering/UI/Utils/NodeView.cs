@@ -13,7 +13,7 @@ public partial class EditorUtils {
 
     var nodes = target.GetDrawable3D()!.Nodes;
 
-    ImGui.Begin("Node View");
+    ImGui.Begin("Node View - " + target.Name);
 
     foreach (var node in nodes) {
       HandleNode(node, "");

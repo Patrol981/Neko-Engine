@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Dwarf.AbstractionLayer;
 using Dwarf.Math;
 using Dwarf.Rendering.Renderer3D.Animations;
@@ -71,11 +72,20 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
   [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public Matrix4x4 GetLocalMatrix() {
     if (!UseCachedMatrix) {
-      CachedLocalMatrix =
-        NodeMatrix *
-        Matrix4x4.CreateScale(Scale) *
-        Matrix4x4.CreateFromQuaternion(Rotation) *
-        Matrix4x4.CreateTranslation(Translation);
+      bool hasBakedMatrix =
+        !Matrix4x4.Identity.Equals(NodeMatrix);
+
+      CachedLocalMatrix = hasBakedMatrix
+        ? NodeMatrix
+        : Matrix4x4.CreateScale(Scale)
+          * Matrix4x4.CreateFromQuaternion(Rotation)
+          * Matrix4x4.CreateTranslation(Translation);
+
+      // CachedLocalMatrix =
+      //   NodeMatrix *
+      //   Matrix4x4.CreateScale(Scale) *
+      //   Matrix4x4.CreateFromQuaternion(Rotation) *
+      //   Matrix4x4.CreateTranslation(Translation);
     }
     return CachedLocalMatrix;
   }
@@ -112,10 +122,13 @@ public class Node : ICloneable, IDisposable, IComparable<Node> {
       } catch { }
       if (skin != null) {
         Matrix4x4.Invert(m, out var inTransform);
-        int numJoints = (int)MathF.Min(skin.Joints.Count, CommonConstants.MAX_NUM_JOINTS);
+        var jointsArr = CollectionsMarshal.AsSpan(skin.Joints);
+        var invMatArr = CollectionsMarshal.AsSpan(skin.InverseBindMatrices);
+
+        int numJoints = (int)MathF.Min(jointsArr.Length, CommonConstants.MAX_NUM_JOINTS);
         for (int i = 0; i < numJoints; i++) {
-          var jointNode = skin.Joints[i];
-          var jointMat = skin.InverseBindMatrices[i] * inTransform * jointNode.GetMatrix();
+          var jointNode = jointsArr[i];
+          var jointMat = invMatArr[i] * inTransform * jointNode.GetMatrix();
           skin.OutputNodeMatrices[i] = jointMat;
         }
         skin.JointsCount = numJoints;
