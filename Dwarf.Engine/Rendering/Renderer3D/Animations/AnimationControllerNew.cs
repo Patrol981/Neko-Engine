@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
@@ -36,6 +37,10 @@ public class AnimationController {
     return null;
   }
 
+  public ReadOnlySpan<string> EnumerateAnimations() {
+    return _animations.Keys.ToArray();
+  }
+
   [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public void Update(Node node) {
     if (node == null) return;
@@ -54,14 +59,16 @@ public class AnimationController {
 
   [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public void UpdateAnimation(Animation animation, float time, float weight) {
-    foreach (var channel in animation.Channels) {
+    var channels = CollectionsMarshal.AsSpan(animation.Channels);
+    foreach (var channel in channels) {
       var sampler = animation.Samplers[channel.SamplerIndex];
+      var inputs = CollectionsMarshal.AsSpan(sampler.Inputs);
       if (sampler.Inputs.Count > sampler.OutputsVec4.Count) {
         continue;
       }
-      for (int i = 0; i < sampler.Inputs.Count - 1; i++) {
-        if ((time >= sampler.Inputs[i]) && (time <= sampler.Inputs[i + 1])) {
-          float u = MathF.Max(0.0f, time - sampler.Inputs[i]) / (sampler.Inputs[i + 1] - sampler.Inputs[i]);
+      for (int i = 0; i < inputs.Length - 1; i++) {
+        if ((time >= inputs[i]) && (time <= inputs[i + 1])) {
+          float u = MathF.Max(0.0f, time - inputs[i]) / (inputs[i + 1] - inputs[i]);
           if (u <= 1.0f) {
             switch (channel.Path) {
               case AnimationChannel.PathType.Translation:

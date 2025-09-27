@@ -192,11 +192,11 @@ public static partial class GLTFLoaderKHR {
     }
   }
   public static Vector4[] ToVector4Array(this float[][] vec4Array) {
-    return vec4Array.Select(x => x.ToVector4()).ToArray();
+    return [.. vec4Array.Select(x => x.ToVector4())];
   }
 
   public static float[] ToFloatArray(this float[][] floatArray) {
-    return floatArray.SelectMany(x => x).ToArray();
+    return [.. floatArray.SelectMany(x => x)];
   }
 
   public static Vector4I ToVec4I(this ushort[] batch) {
@@ -206,10 +206,10 @@ public static partial class GLTFLoaderKHR {
     return new Vector4I(batch[0], batch[1], batch[2], batch[3]);
   }
   public static Vector4I[] ToVec4IArray(this ushort[][] ushorts) {
-    return ushorts.Select(x => x.ToVec4I()).ToArray();
+    return [.. ushorts.Select(x => x.ToVec4I())];
   }
   public static Vector4I[] ToVec4IArray(this byte[][] ushorts) {
-    return ushorts.Select(x => x.ToVec4I()).ToArray();
+    return [.. ushorts.Select(x => x.ToVec4I())];
   }
 
   public static Matrix4x4 ToMatrix4x4(this float[] floats) {
@@ -223,7 +223,7 @@ public static partial class GLTFLoaderKHR {
     return std;
   }
   public static Matrix4x4[] ToMatrix4x4Array(this float[][] floats) {
-    return floats.Select(x => x.ToMatrix4x4()).ToArray();
+    return [.. floats.Select(x => x.ToMatrix4x4())];
   }
 
   public static Quaternion ToQuat(this float[] floats) {
