@@ -14,6 +14,7 @@ public interface IRenderer : IDisposable {
   void EndPostProcess(nint commandBuffer);
   void RecreateSwapchain();
   void CreateCommandBuffers(ulong commandPool, CommandBufferLevel level = CommandBufferLevel.Primary);
+  void SubmitSubCommand(nint commandBuffer) => throw new NotImplementedException();
 
   nint CurrentCommandBuffer { get; }
   int FrameIndex { get; }

@@ -116,7 +116,7 @@ public class Tilemap : IDrawable2D {
       //offset.X += offset.X;
 
       var bgEntity = new Entity($"tilemap-bg-{i}");
-      bgEntity.AddTransform(new(new(offset, -10), default, scale: new(1, 1, 1)));
+      bgEntity.AddTransform(new TransformComponent(new(offset, -10), default, scale: new(1, 1, 1)));
       bgEntity.AddSpriteBuilder().AddSprite(backgrounds[i].ImagePath, LocalSizeY / 10, repeatCount).Build();
 
       // Logger.Info($"Setting offset to {backgrounds[i].PositionOffset}");

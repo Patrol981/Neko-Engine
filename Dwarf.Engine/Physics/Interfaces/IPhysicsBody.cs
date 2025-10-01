@@ -20,4 +20,5 @@ public interface IPhysicsBody : IDisposable {
   void AddForce(Vector3 force);
   void AddLinearVelocity(Vector3 velocity);
   void AddImpulse(Vector3 impulse);
+  void MoveKinematic(float speed, Vector3 position, Quaternion? rotation);
 }

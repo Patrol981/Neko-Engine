@@ -246,7 +246,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     out IEnumerable<Node> animatedNodes,
     bool indirect = true
   ) {
-
     PerfMonitor.Clear3DRendererInfo();
     PerfMonitor.NumberOfObjectsRenderedIn3DRenderer = (uint)LastElemRenderedCount;
     CreateOrUpdateBuffers(renderables, meshes);
@@ -269,8 +268,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
         RenderComplex(frameInfo, _complexBufferNodes, meshes, _simpleBufferNodes.Length);
       }
     }
-
-
   }
 
   public unsafe void RenderSimple(

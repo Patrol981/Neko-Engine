@@ -122,6 +122,6 @@ public class VulkanCommandList : CommandList {
     float minDepth, float maxDepth
   ) {
     var viewport = VkUtils.Viewport(x, y, width, height, minDepth, maxDepth);
-    _device.DeviceApi.vkCmdSetViewport(commandBuffer, viewport);
+    _device.DeviceApi.vkCmdSetViewport(commandBuffer, 0, viewport);
   }
 }
