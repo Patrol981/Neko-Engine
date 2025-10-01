@@ -1,6 +1,6 @@
 
 using System.Runtime.CompilerServices;
-
+using System.Runtime.InteropServices;
 using Dwarf.AbstractionLayer;
 using Dwarf.Rendering;
 using Dwarf.Vulkan;
@@ -66,6 +66,10 @@ public abstract class SystemBase {
 
   protected int _texturesCount = 0;
 
+  protected VkCommandBuffer _systemCommandBuffer = VkCommandBuffer.Null;
+  protected unsafe VkCommandBufferBeginInfo* _systemCommandBufferBeginInfo;
+  protected readonly ulong _cmdPool;
+
   public SystemBase(
     Application app,
     nint allocator,
@@ -82,6 +86,32 @@ public abstract class SystemBase {
     _textureManager = textureManager;
 
     _pipelineConfigInfo = configInfo ?? null!;
+
+    // _systemCommandBuffer = new();
+    // _cmdPool = _device.CreateCommandPool();
+
+    // unsafe {
+    //   var inheritanceInfo = new VkCommandBufferInheritanceInfo {
+    //     sType = VkStructureType.CommandBufferInheritanceInfo
+    //   };
+
+    //   _systemCommandBufferBeginInfo = (VkCommandBufferBeginInfo*)Marshal.AllocHGlobal(Unsafe.SizeOf<VkCommandBufferBeginInfo>());
+    //   _systemCommandBufferBeginInfo->sType = VkStructureType.CommandBufferBeginInfo;
+    //   _systemCommandBufferBeginInfo->pInheritanceInfo = &inheritanceInfo;
+    //   _systemCommandBufferBeginInfo->flags = VkCommandBufferUsageFlags.SimultaneousUse;
+
+    //   var cmdAllocateInfo = new VkCommandBufferAllocateInfo {
+    //     commandPool = _cmdPool,
+    //     level = VkCommandBufferLevel.Secondary,
+    //     commandBufferCount = 1
+    //   };
+
+    //   _device.DeviceApi.vkAllocateCommandBuffer(
+    //     _device.LogicalDevice,
+    //     &cmdAllocateInfo,
+    //     out _systemCommandBuffer
+    //   );
+    // }
   }
 
   #region Pipeline
@@ -265,6 +295,17 @@ public abstract class SystemBase {
 
   #endregion
 
+  protected virtual void BeforeRender() {
+    unsafe {
+      _device.DeviceApi.vkBeginCommandBuffer(_systemCommandBuffer, _systemCommandBufferBeginInfo);
+    }
+  }
+
+  protected virtual void AfterRender() {
+    _application.Renderer.SubmitSubCommand(_systemCommandBuffer);
+    _device.DeviceApi.vkEndCommandBuffer(_systemCommandBuffer);
+  }
+
   public virtual unsafe void Dispose() {
     _device.WaitQueue();
     _setLayout?.Dispose();
@@ -275,6 +316,10 @@ public abstract class SystemBase {
       p.Value.Dispose(_device);
     }
     _pipelines.Clear();
+    Marshal.FreeHGlobal((nint)_systemCommandBufferBeginInfo);
+
+    // _device.DeviceApi.vkFreeCommandBuffers(_device.LogicalDevice, _cmdPool, _systemCommandBuffer);
+    // _device.DeviceApi.vkDestroyCommandPool(_device.LogicalDevice, _cmdPool);
   }
 
   public VkPipelineLayout PipelineLayout => _pipelines.FirstOrDefault().Value.PipelineLayout;

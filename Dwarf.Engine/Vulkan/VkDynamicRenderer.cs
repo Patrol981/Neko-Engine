@@ -219,7 +219,7 @@ public unsafe class VkDynamicRenderer : IRenderer {
     }
 
     FrameIndex = (FrameIndex + 1) % Swapchain.Images.Length;
-    _device.DeviceApi.vkQueueWaitIdle(_device.GraphicsQueue).CheckResult();
+    // _device.DeviceApi.vkQueueWaitIdle(_device.GraphicsQueue).CheckResult();
   }
 
   private unsafe void InitVulkan() {
@@ -434,6 +434,36 @@ public unsafe class VkDynamicRenderer : IRenderer {
       SubmitFrame();
 
       IsFrameInProgress = false;
+    }
+  }
+
+  public void SubmitSubCommand(nint commandBuffer) {
+    var fence = _device.CreateFence(VkFenceCreateFlags.None);
+
+    fixed (VkSemaphore* renderPtr = &_semaphores[_imageIndex].RenderComplete)
+    fixed (VkSemaphore* presentPtr = &_semaphores[Swapchain.CurrentFrame].PresentComplete) {
+      VkSubmitInfo submitInfo = new();
+
+      VkPipelineStageFlags* waitStages = stackalloc VkPipelineStageFlags[1];
+      waitStages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+      submitInfo.waitSemaphoreCount = 1;
+      submitInfo.pWaitSemaphores = presentPtr;
+      submitInfo.pWaitDstStageMask = waitStages;
+
+      submitInfo.commandBufferCount = 1;
+      submitInfo.pCommandBuffers = (VkCommandBuffer*)commandBuffer;
+
+      submitInfo.signalSemaphoreCount = 1;
+      submitInfo.pSignalSemaphores = renderPtr;
+      submitInfo.pNext = null;
+
+      Application.Mutex.WaitOne();
+      var queueResult = _device.DeviceApi.vkQueueSubmit(_device.GraphicsQueue, 1, &submitInfo, _waitFences[Swapchain.CurrentFrame]);
+      Application.Mutex.ReleaseMutex();
+
+      _device.DeviceApi.vkWaitForFences(_device.LogicalDevice, 1, &fence, VkBool32.True, UInt64.MaxValue);
+      _device.DeviceApi.vkDestroyFence(_device.LogicalDevice, fence);
     }
   }
 

@@ -37,6 +37,14 @@ public class AnimationController {
     return null;
   }
 
+  public void ResetAnimationState() {
+    ReadOnlySpan<Node> nodes = _meshRenderer.LinearNodes.ToArray();
+
+    for (ushort i = 0; i < nodes.Length; i++) {
+      nodes[i].AnimationTimer = 0.0f;
+    }
+  }
+
   public ReadOnlySpan<string> EnumerateAnimations() {
     return _animations.Keys.ToArray();
   }
@@ -71,13 +79,13 @@ public class AnimationController {
           float u = MathF.Max(0.0f, time - inputs[i]) / (inputs[i + 1] - inputs[i]);
           if (u <= 1.0f) {
             switch (channel.Path) {
-              case AnimationChannel.PathType.Translation:
+              case PathType.Translation:
                 sampler.Translate(i, time, ref channel.Node);
                 break;
-              case AnimationChannel.PathType.Rotation:
+              case PathType.Rotation:
                 sampler.Rotate(i, time, ref channel.Node);
                 break;
-              case AnimationChannel.PathType.Scale:
+              case PathType.Scale:
                 sampler.Scale(i, time, ref channel.Node);
                 break;
             }

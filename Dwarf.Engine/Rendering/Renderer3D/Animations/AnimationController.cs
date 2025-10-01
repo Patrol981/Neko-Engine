@@ -113,7 +113,7 @@ public class AnimationController_ {
   }
 
   [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-  public void Update(Node node) {
+  public unsafe void Update(Node node) {
     if (node == null) return;
     if (_activeAnimations.Count < 1) return;
     List<(Animation Animation, float Weight)> clone = [.. _activeAnimations];
@@ -157,13 +157,13 @@ public class AnimationController_ {
           float u = MathF.Max(0.0f, time - sampler.Inputs[i]) / (sampler.Inputs[i + 1] - sampler.Inputs[i]);
           if (u <= 1.0f) {
             switch (channel.Path) {
-              case AnimationChannel.PathType.Translation:
+              case PathType.Translation:
                 sampler.Translate_Old(i, time, ref channel.Node, weight);
                 break;
-              case AnimationChannel.PathType.Rotation:
+              case PathType.Rotation:
                 sampler.Rotate_Old(i, time, ref channel.Node, weight);
                 break;
-              case AnimationChannel.PathType.Scale:
+              case PathType.Scale:
                 sampler.Scale_Old(i, time, ref channel.Node, weight);
                 break;
             }
