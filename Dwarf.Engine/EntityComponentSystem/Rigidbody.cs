@@ -1,5 +1,6 @@
 using System.Numerics;
 using Dwarf.AbstractionLayer;
+using Dwarf.Extensions.Logging;
 using Dwarf.Math;
 using Dwarf.Physics;
 using Dwarf.Rendering;
@@ -245,6 +246,7 @@ public class Rigidbody : IDisposable {
 
   public void Update() {
     if (Owner.CanBeDisposed) return;
+    if (_bodyInterface == null) return;
 
     var pos = _bodyInterface.Position;
     var transform = Owner!.GetTransform()!;
@@ -262,6 +264,7 @@ public class Rigidbody : IDisposable {
       var newVel = _bodyInterface.LinearVelocity;
       newVel.X /= 2;
       newVel.Z /= 2;
+
       if (newVel.Y < 0) newVel.Y = 0;
       _bodyInterface.LinearVelocity = newVel;
     } else {
@@ -297,6 +300,19 @@ public class Rigidbody : IDisposable {
     _bodyInterface.AddLinearVelocity(vec3);
   }
 
+  public void MoveKinematic(Vector3 pos, float speed) {
+    if (Owner.CanBeDisposed) return;
+    _bodyInterface.MoveKinematic(speed, pos, default);
+  }
+
+  public void SetHorizontalVelocity(Vector3 desiredXZ) {
+    if (Owner.CanBeDisposed) return;
+    var v = _bodyInterface.LinearVelocity;
+    v.X = desiredXZ.X;
+    v.Z = desiredXZ.Z;
+    _bodyInterface.LinearVelocity = v;
+  }
+
   public void Rotate(Vector3 vec3) {
     if (Owner.CanBeDisposed) return;
     var rot = _bodyInterface.Rotation;
@@ -321,6 +337,15 @@ public class Rigidbody : IDisposable {
     get {
       if (Owner.CanBeDisposed) return Vector3.Zero;
       return _bodyInterface.LinearVelocity;
+    }
+  }
+
+  public bool Moving {
+    get {
+      var vel = _bodyInterface.LinearVelocity;
+      var mag = vel.X * vel.X + vel.Z * vel.Z;
+      const float tol = 0.05f;
+      return mag > tol * tol;
     }
   }
 

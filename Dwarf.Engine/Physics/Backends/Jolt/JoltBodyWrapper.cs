@@ -111,6 +111,10 @@ public class JoltBodyWrapper : IPhysicsBody {
     _bodyInterface.AddImpulse(_bodyID, impulse);
   }
 
+  public void MoveKinematic(float speed, Vector3 position, Quaternion? rotation) {
+    _bodyInterface.MoveKinematic(_bodyID, position, rotation ?? Quaternion.Identity, speed);
+  }
+
   public static (Entity?, Entity?) GetCollisionData(BodyID body1, BodyID body2) {
     var entities = Application.Instance.GetEntitiesEnumerable().Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody>());
     var first = entities.Where(x => (BodyID)x.GetRigidbody()!.BodyInterface.BodyId == body1).FirstOrDefault();

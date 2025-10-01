@@ -9,6 +9,9 @@ using OpenTK.Mathematics;
 namespace Dwarf;
 
 public class ThirdPersonCamera : DwarfScript {
+  public Entity FollowTarget { get; set; }
+  public float YOffset { get; set; } = 1.3f;
+
   private Camera _camera;
   private TransformComponent _transform = null!;
   private float _distanceFromTarget = 2.5f;
@@ -67,7 +70,7 @@ public class ThirdPersonCamera : DwarfScript {
     // Owner!.GetComponent<Transform>().Position.Z = FollowTarget.GetComponent<Transform>().Position.Z - offsetZ;
     // Owner!.GetComponent<Transform>().Position.Y = FollowTarget.GetComponent<Transform>().Position.Y - vertical - 1.3f;
 
-    _transform.Position = new(targetPos.X - offectX, targetPos.Y - vertical - 1.3f, targetPos.Z - offsetZ);
+    _transform.Position = new(targetPos.X - offectX, targetPos.Y - vertical - YOffset, targetPos.Z - offsetZ);
   }
 
   private unsafe void HandleMovement() {
@@ -91,7 +94,4 @@ public class ThirdPersonCamera : DwarfScript {
       _camera.Yaw = 90 - _angleAroundTarget;
     }
   }
-
-  public Entity FollowTarget { get; set; }
-
 }

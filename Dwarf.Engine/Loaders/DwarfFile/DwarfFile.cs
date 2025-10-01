@@ -219,11 +219,11 @@ public class FileSkin {
   }
 
   public static List<FileSkin> ToFileSkins(List<Skin> skins) {
-    return skins.Select(skin => ToFileSkin(skin)).ToList();
+    return [.. skins.Select(skin => ToFileSkin(skin))];
   }
 
   public static List<Skin> FromFileSkins(List<FileSkin> fileSkins) {
-    return fileSkins.Select(skin => FromFileSkin(skin)).ToList();
+    return [.. fileSkins.Select(skin => FromFileSkin(skin))];
   }
 }
 
@@ -251,11 +251,11 @@ public class FileMatrix4x4 {
   }
 
   public static List<FileMatrix4x4> GetFileMatrices(List<Matrix4x4> matrices) {
-    return matrices.Select(mat => { return GetFileMatrix4x4(mat); }).ToList();
+    return [.. matrices.Select(mat => { return GetFileMatrix4x4(mat); })];
   }
 
   public static List<Matrix4x4> FromFileMatrices(List<FileMatrix4x4> matrices) {
-    return matrices.Select(mat => { return FromFileMatrix4x4(mat); }).ToList();
+    return [.. matrices.Select(mat => { return FromFileMatrix4x4(mat); })];
     // return matrices.Select(mat => { return Matrix4x4.Identity; }).ToList();
   }
 }
@@ -305,7 +305,7 @@ public class FileVector4 {
   }
 
   public static List<FileVector4> GetFileVectors4(List<Vector4> vector4s) {
-    return vector4s.Select(x => { return GetFileVector4(x); }).ToList();
+    return [.. vector4s.Select(x => { return GetFileVector4(x); })];
   }
 
   public static Vector4 ParseFileVector4(FileVector4 fileVector4) {
@@ -374,12 +374,12 @@ public class FileAnimationChannel {
   }
 
   public static List<FileAnimationChannel> ToFileAnimationChannels(List<AnimationChannel> animationChannels) {
-    return animationChannels.Select(x => { return ToFileAnimationChannel(x); }).ToList();
+    return [.. animationChannels.Select(x => { return ToFileAnimationChannel(x); })];
   }
 
   public static AnimationChannel FromFileAnimationChannel(FileAnimationChannel fileAnimationChannel) {
     return new AnimationChannel() {
-      Path = (AnimationChannel.PathType)fileAnimationChannel.PathType,
+      Path = (PathType)fileAnimationChannel.PathType,
       SamplerIndex = fileAnimationChannel.SamplerIndex
     };
   }
@@ -405,7 +405,7 @@ public class FileAnimationSampler {
   }
 
   public static List<FileAnimationSampler> ToFileAnimationSamplers(List<AnimationSampler> animationSamplers) {
-    return animationSamplers.Select(x => { return ToFileAnimationSampler(x); }).ToList();
+    return [.. animationSamplers.Select(x => { return ToFileAnimationSampler(x); })];
   }
 
   public static AnimationSampler FromFileAnimationSampler(FileAnimationSampler fileAnimationSampler) {
@@ -418,7 +418,7 @@ public class FileAnimationSampler {
   }
 
   public static List<AnimationSampler> FromFileAnimationSamplers(List<FileAnimationSampler> fileAnimationSamplers) {
-    return fileAnimationSamplers.Select(x => { return FromFileAnimationSampler(x); }).ToList();
+    return [.. fileAnimationSamplers.Select(x => { return FromFileAnimationSampler(x); })];
   }
 }
 

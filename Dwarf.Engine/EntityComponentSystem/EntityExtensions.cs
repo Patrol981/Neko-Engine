@@ -39,6 +39,53 @@ public static class EntityExtensions {
     }
   }
 
+  public static unsafe void AddTransform(
+    this Entity entity,
+    ReadOnlySpan<float> position
+  ) {
+    entity.AddTransform(position, [0, 0, 0], [1, 1, 1]);
+  }
+
+  public static unsafe void AddTransform(
+    this Entity entity,
+    ReadOnlySpan<float> position,
+    ReadOnlySpan<float> rotation
+  ) {
+    entity.AddTransform(position, rotation, [1, 1, 1]);
+  }
+
+  public static unsafe void AddTransform(
+    this Entity entity,
+    ReadOnlySpan<float> position,
+    ReadOnlySpan<float> rotation,
+    float[] scale
+  ) {
+    if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+
+    var guid = Guid.NewGuid();
+    if (position.Length < 1) {
+      position = [0, 0, 0];
+    }
+    if (rotation.Length < 1) {
+      rotation = [0, 0, 0];
+    }
+    if (scale.Length < 1) {
+      scale = [1, 1, 1];
+    } else if (scale.Length == 1) {
+      scale = [scale[0], scale[0], scale[0]];
+    }
+
+    var transform = new TransformComponent(new(position), new(rotation), new(scale));
+    try {
+      entity.Components.TryAdd(typeof(TransformComponent), guid);
+      if (!Application.Instance.TransformComponents.TryAdd(guid, transform)) {
+        throw new Exception("Cannot add transform to list");
+      }
+    } catch {
+      throw;
+    }
+  }
+
   public static MaterialComponent? GetMaterial(this Entity entity) {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
     if (entity.Components.TryGetValue(typeof(MaterialComponent), out var guid)) {

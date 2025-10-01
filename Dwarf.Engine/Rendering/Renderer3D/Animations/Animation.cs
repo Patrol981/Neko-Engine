@@ -10,8 +10,8 @@ public class Animation : ICloneable {
   public object Clone() {
     return new Animation {
       Name = Name,
-      Samplers = Samplers.Select(s => { return (AnimationSampler)s.Clone(); }).ToList(),
-      Channels = Channels.Select(c => { return (AnimationChannel)c.Clone(); }).ToList(),
+      Samplers = [.. Samplers.Select(s => { return s; })],
+      Channels = [.. Channels.Select(c => { return c; })],
       Start = Start,
       End = End
     };

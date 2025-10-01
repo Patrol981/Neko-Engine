@@ -57,11 +57,10 @@
     <!-- <PackageReference Include="glTF2Loader" Version="1.1.4-alpha" /> -->
     <PackageReference Include="ImGui.NET" Version="1.91.6.1" />
     <PackageReference Include="JoltPhysicsSharp" Version="2.17.4" />
-    <PackageReference Include="Vortice.Vulkan" Version="3.0.1" />
+    <PackageReference Include="Vortice.Vulkan" Version="3.0.3" />
     <PackageReference Include="Vortice.VulkanMemoryAllocator" Version="1.6.3" />
     <PackageReference Include="OpenTK" Version="4.9.4" />
     <PackageReference Include="StbImageSharp" Version="2.30.15" />
-	  <PackageReference Include="YamlDotNet" Version="16.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.8" />
     <PackageReference Include="ZLinq" Version="1.5.2" />
     <PackageReference Include="Tracy-CSharp" Version="0.11.1" />

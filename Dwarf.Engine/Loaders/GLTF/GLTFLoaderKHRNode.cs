@@ -240,13 +240,13 @@ public static partial class GLTFLoaderKHR {
         var channel = new Dwarf.Rendering.Renderer3D.Animations.AnimationChannel();
 
         if (source.Target.Path == AnimationChannelTarget.PathEnum.rotation) {
-          channel.Path = Dwarf.Rendering.Renderer3D.Animations.AnimationChannel.PathType.Rotation;
+          channel.Path = Dwarf.Rendering.Renderer3D.Animations.PathType.Rotation;
         }
         if (source.Target.Path == AnimationChannelTarget.PathEnum.translation) {
-          channel.Path = Dwarf.Rendering.Renderer3D.Animations.AnimationChannel.PathType.Translation;
+          channel.Path = Dwarf.Rendering.Renderer3D.Animations.PathType.Translation;
         }
         if (source.Target.Path == AnimationChannelTarget.PathEnum.scale) {
-          channel.Path = Dwarf.Rendering.Renderer3D.Animations.AnimationChannel.PathType.Scale;
+          channel.Path = Dwarf.Rendering.Renderer3D.Animations.PathType.Scale;
         }
         if (source.Target.Path == AnimationChannelTarget.PathEnum.weights) {
           Logger.Warn("Weights not supported, skipping channel");
