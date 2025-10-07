@@ -595,8 +595,29 @@ public partial class Application {
       Renderer.EndFrame();
 
       if (Systems.Render3DSystem != null) {
-        StorageCollection.CheckSize("ObjectStorage", frameIndex, Systems.Render3DSystem.LastKnownElemCount, _descriptorSetLayouts["ObjectData"], default);
-        StorageCollection.CheckSize("JointsStorage", frameIndex, (int)Systems.Render3DSystem.LastKnownSkinnedElemJointsCount, _descriptorSetLayouts["JointsBuffer"], default);
+        StorageCollection.CheckSize(
+          "ObjectStorage",
+          frameIndex,
+          Systems.Render3DSystem.LastKnownElemCount,
+          _descriptorSetLayouts["ObjectData"],
+          default
+        );
+
+        StorageCollection.CheckSize(
+          "JointsStorage",
+          frameIndex,
+          (int)Systems.Render3DSystem.LastKnownSkinnedElemJointsCount,
+          _descriptorSetLayouts["JointsBuffer"],
+          default
+        );
+
+        StorageCollection.CheckSize(
+          "CustomShaderObjectStorage",
+          frameIndex,
+          Systems.CustomShaderRender3DSystem?.LastKnownElemCount ?? 0,
+          _descriptorSetLayouts["CustomShaderObjectData"],
+          default
+        );
       }
 
       if (Systems.Render2DSystem != null) {

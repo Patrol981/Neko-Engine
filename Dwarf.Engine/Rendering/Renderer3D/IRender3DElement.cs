@@ -22,6 +22,9 @@ public interface IRender3DElement : IDisposable {
   void Init(in ConcurrentDictionary<Guid, Mesh> meshes, AABBFilter aabbFilter = AABBFilter.None);
   void EnableNode(Func<Node, bool> predicate, bool enabled);
 
+  ShaderInfo CustomShader { get; }
+  void SetCustomShader(ShaderInfo shaderInfo);
+
   int NodesCount { get; }
   int MeshedNodesCount { get; }
   int LinearNodesCount { get; }

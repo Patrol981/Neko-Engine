@@ -128,6 +128,10 @@ public class ResourceInitializer {
       // .AddBinding(1, VkDescriptorType.StorageBuffer, VkShaderStageFlags.AllGraphics)
       .Build());
 
+    descriptorSetLayouts.TryAdd("CustomShaderObjectData", new VulkanDescriptorSetLayout.Builder((VulkanDevice)device)
+      .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.AllGraphics)
+      .Build());
+
     descriptorSetLayouts.TryAdd("SpriteData", new VulkanDescriptorSetLayout.Builder((VulkanDevice)device)
       .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.AllGraphics)
       .Build());
@@ -213,6 +217,20 @@ public class ResourceInitializer {
         (VulkanDescriptorSetLayout)descriptorSetLayouts["JointsBuffer"],
         null!,
         "JointsStorage",
+        device.MinStorageBufferOffsetAlignment,
+        true
+      );
+
+      storageCollection.CreateStorage(
+        device,
+        DescriptorType.StorageBuffer,
+        BufferUsage.StorageBuffer,
+        renderer.MAX_FRAMES_IN_FLIGHT,
+        (ulong)Unsafe.SizeOf<ObjectData>(),
+        (ulong)systems.Render3DSystem.LastKnownElemCount,
+        (VulkanDescriptorSetLayout)descriptorSetLayouts["CustomShaderObjectData"],
+        null!,
+        "CustomShaderObjectStorage",
         device.MinStorageBufferOffsetAlignment,
         true
       );
