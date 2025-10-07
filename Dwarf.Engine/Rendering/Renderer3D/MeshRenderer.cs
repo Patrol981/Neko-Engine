@@ -23,6 +23,7 @@ public class MeshRenderer : IRender3DElement, ICollision {
   private VkDescriptorSet _skinDescriptor = VkDescriptorSet.Null;
 
   public Entity Owner { get; internal set; }
+  public ShaderInfo CustomShader { get; internal set; } = new();
 
   public MeshRenderer(Entity owner, Application app) {
     _app = app;
@@ -477,6 +478,11 @@ public class MeshRenderer : IRender3DElement, ICollision {
     }
     return height;
   }
+
+  public void SetCustomShader(ShaderInfo shaderInfo) {
+    CustomShader = shaderInfo;
+  }
+
   public Guid GetTextureIdReference(in ConcurrentDictionary<Guid, Mesh> meshes, int index = 0) {
     return MeshedNodes[index].HasMesh ? meshes[MeshedNodes[index].MeshGuid].TextureIdReference : Guid.Empty;
   }

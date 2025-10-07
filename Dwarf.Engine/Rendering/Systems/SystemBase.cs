@@ -245,48 +245,55 @@ public abstract class SystemBase {
   }
 
   protected void AddPipelineData<T>(PipelineInputData<T> pipelineInput) where T : struct {
-    _pipelines.TryAdd(
-      pipelineInput.PipelineName,
-      new()
-    );
+    try {
+      _pipelines.TryAdd(
+        pipelineInput.PipelineName,
+        new()
+      );
 
-    CreatePipelineLayout<T>(
-      pipelineInput.DescriptorSetLayouts,
-      out _pipelines[pipelineInput.PipelineName].PipelineLayout
-    );
+      CreatePipelineLayout<T>(
+        pipelineInput.DescriptorSetLayouts,
+        out _pipelines[pipelineInput.PipelineName].PipelineLayout
+      );
 
-    CreatePipeline(
-      pipelineInput.RenderPass,
-      pipelineInput.VertexName,
-      pipelineInput.FragmentName,
-      pipelineInput.GeometryName,
-      pipelineInput.PipelineProvider,
-      _pipelines[pipelineInput.PipelineName].PipelineLayout,
-      out _pipelines[pipelineInput.PipelineName].Pipeline
-    );
+      CreatePipeline(
+        pipelineInput.RenderPass,
+        pipelineInput.VertexName,
+        pipelineInput.FragmentName,
+        pipelineInput.GeometryName,
+        pipelineInput.PipelineProvider,
+        _pipelines[pipelineInput.PipelineName].PipelineLayout,
+        out _pipelines[pipelineInput.PipelineName].Pipeline
+      );
+    } catch {
+      return;
+    }
   }
 
   protected void AddPipelineData(PipelineInputData pipelineInput) {
-    _pipelines.TryAdd(
-      pipelineInput.PipelineName,
-      new()
-    );
+    try {
+      _pipelines.TryAdd(
+        pipelineInput.PipelineName,
+        new()
+      );
 
-    CreatePipelineLayout(
-      pipelineInput.DescriptorSetLayouts,
-      out _pipelines[pipelineInput.PipelineName].PipelineLayout
-    );
+      CreatePipelineLayout(
+        pipelineInput.DescriptorSetLayouts,
+        out _pipelines[pipelineInput.PipelineName].PipelineLayout
+      );
 
-    CreatePipeline(
-      pipelineInput.RenderPass,
-      pipelineInput.VertexName,
-      pipelineInput.FragmentName,
-      pipelineInput.GeometryName,
-      pipelineInput.PipelineProvider,
-      _pipelines[pipelineInput.PipelineName].PipelineLayout,
-      out _pipelines[pipelineInput.PipelineName].Pipeline
-    );
-
+      CreatePipeline(
+        pipelineInput.RenderPass,
+        pipelineInput.VertexName,
+        pipelineInput.FragmentName,
+        pipelineInput.GeometryName,
+        pipelineInput.PipelineProvider,
+        _pipelines[pipelineInput.PipelineName].PipelineLayout,
+        out _pipelines[pipelineInput.PipelineName].Pipeline
+      );
+    } catch {
+      return;
+    }
   }
 
   protected void BindPipeline(VkCommandBuffer commandBuffer, string pipelineName = DefaultPipelineName) {
