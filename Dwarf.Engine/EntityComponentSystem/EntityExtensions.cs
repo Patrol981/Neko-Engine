@@ -287,16 +287,6 @@ public static class EntityExtensions {
     }
   }
 
-  // public static T? GetScript<T>(this Entity entity) where T : DwarfScript {
-  //   if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
-  //   if (entity.Components.TryGetValue(typeof(DwarfScript[]), out var guid)) {
-  //     var result = Application.Instance.Scripts[guid].Where(x => x.GetType() == typeof(T)).First();
-  //     return (T?)result;
-  //   } else {
-  //     return null;
-  //   }
-  // }
-
   public static DwarfScript[] GetScripts(this Entity entity) {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
 
@@ -310,32 +300,6 @@ public static class EntityExtensions {
       .Cast<DwarfScript>()
       .ToArray();
   }
-
-  //   public static void AddScript(this Entity entity, DwarfScript script) {
-  //   if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
-  //   var guid = Guid.Empty;
-  //   var app = Application.Instance;
-
-  //   if (entity.Components.ContainsKey(typeof(DwarfScript))) {
-  //     guid = entity.Components.Where(x => x.Key.GetType() == typeof(DwarfScript)).First().Value;
-  //   } else {
-  //     guid = Guid.NewGuid();
-  //   }
-
-  //   try {
-  //     entity.Components.TryAdd(typeof(DwarfScript), guid);
-  //     if (app.Scripts.ContainsKey(guid)) {
-  //       app.Scripts[guid].Add(script);
-  //     } else {
-  //       app.Scripts.TryAdd(guid, [script]);
-  //     }
-
-  //     script.Owner = entity;
-  //   } catch {
-  //     throw;
-  //   }
-  // }
-
   public static void AddScript<T>(this Entity entity, T script) where T : DwarfScript {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
     var guid = Guid.NewGuid();
@@ -432,6 +396,10 @@ public static class EntityExtensions {
     } catch {
       throw;
     }
+  }
+
+  public static void WithCustomShader(this IRender3DElement mesh, string shaderName) {
+    mesh.SetCustomShader(new(shaderName));
   }
 
   private sealed class Drawable2DComparer : IComparer<IDrawable2D> {

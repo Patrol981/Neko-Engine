@@ -1,34 +1,27 @@
 using System.Collections.Concurrent;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
 using Dwarf.Globals;
 using Dwarf.Math;
-using Dwarf.Rendering.Renderer3D.Animations;
-using Dwarf.Utils;
 using Dwarf.Vulkan;
 
 using Vortice.Vulkan;
-using static Vortice.Vulkan.Vulkan;
 
 namespace Dwarf.Rendering.Renderer3D;
 
-// NEW: holds the full template commands + the current visible count
 sealed class IndirectData {
-  public readonly List<VkDrawIndexedIndirectCommand> Commands = new();
-  public int VisibleCount;               // how many are visible this frame
-  public uint CurrentIndexOffset;        // (your existing bookkeeping)
+  public readonly List<VkDrawIndexedIndirectCommand> Commands = [];
+  public int VisibleCount;
+  public uint CurrentIndexOffset;
 }
 
-// NEW: stable mapping from Node -> (pool, cmdIndex in the template)
-readonly struct CmdRef {
-  public readonly uint Pool;
-  public readonly int CmdIndex;
-  public CmdRef(uint pool, int cmdIndex) { Pool = pool; CmdIndex = cmdIndex; }
+readonly struct CmdRef(uint pool, int cmdIndex) {
+  public readonly uint Pool = pool;
+  public readonly int CmdIndex = cmdIndex;
 }
 
 public partial class Render3DSystem : SystemBase, IRenderSystem {
@@ -63,16 +56,13 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   private Node[] _flatNodesCache = [];
   private IRender3DElement[] _renderablesCache = [];
 
-  private List<(string, int)> _skinnedGroups = [];
-  private List<(string, int)> _notSkinnedGroups = [];
-
   private ITexture _hatchTexture = null!;
-  private IDescriptorSetLayout _previousTexturesLayout = null!;
+  private readonly IDescriptorSetLayout _previousTexturesLayout = null!;
 
   private BufferPool _simpleBufferPool = null!;
   private BufferPool _complexBufferPool = null!;
-  private List<VertexBinding> _vertexSimpleBindings = [];
-  private List<VertexBinding> _vertexComplexBindings = [];
+  private readonly List<VertexBinding> _vertexSimpleBindings = [];
+  private readonly List<VertexBinding> _vertexComplexBindings = [];
   private bool _cacheMatch = false;
 
   private Node[] _simpleBufferNodes = [];
@@ -80,19 +70,19 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
 
   private readonly Dictionary<string, float> _texIndexCache = new(StringComparer.Ordinal);
-  private ObjectData[] _objectDataScratch = Array.Empty<ObjectData>();
-  private Matrix4x4[] _jointsScratch = Array.Empty<Matrix4x4>();
+  private ObjectData[] _objectDataScratch = [];
+  private Matrix4x4[] _jointsScratch = [];
   private int _totalJointCount = 0;
-  private readonly Dictionary<Node, int> _nodeToObjIndex = new();
-  private readonly Dictionary<Node, int> _nodeToJointsOffset = new();
+  private readonly Dictionary<Node, int> _nodeToObjIndex = [];
+  private readonly Dictionary<Node, int> _nodeToJointsOffset = [];
 
-  // NEWz
+  private readonly Dictionary<Node, CmdRef> _simpleCmdMap = [];
+  private readonly Dictionary<Node, CmdRef> _complexCmdMap = [];
 
-  private readonly Dictionary<Node, CmdRef> _simpleCmdMap = new();
-  private readonly Dictionary<Node, CmdRef> _complexCmdMap = new();
+  private readonly Dictionary<uint, List<VkDrawIndexedIndirectCommand>> _simpleVisibleScratch = [];
+  private readonly Dictionary<uint, List<VkDrawIndexedIndirectCommand>> _complexVisibleScratch = [];
 
-  private readonly Dictionary<uint, List<VkDrawIndexedIndirectCommand>> _simpleVisibleScratch = new();
-  private readonly Dictionary<uint, List<VkDrawIndexedIndirectCommand>> _complexVisibleScratch = new();
+  private readonly IDescriptorSetLayout[] _basicLayouts = [];
 
   public Render3DSystem(
     Application app,
@@ -107,7 +97,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       .AddBinding(0, DescriptorType.UniformBuffer, ShaderStageFlags.AllGraphics)
       .Build();
 
-    IDescriptorSetLayout[] basicLayouts = [
+    _basicLayouts = [
       _textureManager.AllTexturesSetLayout,
       externalLayouts["Global"],
       externalLayouts["ObjectData"],
@@ -115,7 +105,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     ];
 
     IDescriptorSetLayout[] complexLayouts = [
-      .. basicLayouts,
+      .. _basicLayouts,
       externalLayouts["JointsBuffer"],
     ];
 
@@ -125,7 +115,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       FragmentName = "model_fragment",
       GeometryName = "model_geometry",
       PipelineProvider = new PipelineModelProvider(),
-      DescriptorSetLayouts = [.. basicLayouts],
+      DescriptorSetLayouts = [.. _basicLayouts],
       PipelineName = Simple3D
     });
 
@@ -383,7 +373,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
         frameInfo.CommandBuffer,
         _indirectSimpleBuffers[container.Key]!.GetBuffer(),
         0,
-        (uint)container.Value.VisibleCount,                    // CHANGED
+        (uint)container.Value.VisibleCount,
         (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
       );
     }
@@ -412,53 +402,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
         (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
       );
     }
-  }
-
-  public unsafe void RenderIndirect(FrameInfo frameInfo) {
-    BindPipeline(frameInfo.CommandBuffer, Skinned3D);
-
-    Descriptor.BindDescriptorSet(_device, _textureManager.AllTexturesDescriptor, frameInfo, _pipelines[Skinned3D].PipelineLayout, 0, 1);
-    Descriptor.BindDescriptorSet(_device, frameInfo.GlobalDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 1, 1);
-    Descriptor.BindDescriptorSet(_device, frameInfo.ObjectDataDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 2, 1);
-    Descriptor.BindDescriptorSet(_device, frameInfo.PointLightsDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 3, 1);
-    Descriptor.BindDescriptorSet(_device, frameInfo.JointsBufferDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 4, 1);
-
-    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalComplexIndexBuffer!, 0);
-
-    foreach (var container in _indirectComplexes) {
-      var targetVertex = _complexBufferPool.GetVertexBuffer(container.Key);
-      _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, targetVertex, 0);
-
-      _renderer.CommandList.DrawIndexedIndirect(
-        frameInfo.CommandBuffer,
-        _indirectComplexBuffers[container.Key]!.GetBuffer(),
-        0,
-        (uint)container.Value.Commands.Count,
-        (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
-      );
-    }
-  }
-
-  public unsafe void Render_Indirect_BC(FrameInfo frameInfo) {
-    BindPipeline(frameInfo.CommandBuffer, Skinned3D);
-
-    Descriptor.BindDescriptorSet(_device, _textureManager.AllTexturesDescriptor, frameInfo, _pipelines[Skinned3D].PipelineLayout, 0, 1);
-    Descriptor.BindDescriptorSet(_device, frameInfo.GlobalDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 1, 1);
-    Descriptor.BindDescriptorSet(_device, frameInfo.ObjectDataDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 2, 1);
-    Descriptor.BindDescriptorSet(_device, frameInfo.PointLightsDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 3, 1);
-    Descriptor.BindDescriptorSet(_device, frameInfo.JointsBufferDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 4, 1);
-
-    // _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _globalVertexBuffer, 0);
-    // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
-    // _renderer.CommandList.DrawIndexedIndirect(
-    //   frameInfo.CommandBuffer,
-    //   _indirectBuffer!.GetBuffer(),
-    //   0,
-    //   (uint)_indirectDrawCommands.Count,
-    //   (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
-    // );
-
-    // Logger.Info("render");
   }
 
   public bool CheckTextures(ReadOnlySpan<IRender3DElement> renderables) {
@@ -634,7 +577,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       }
     }
 
-    // total visible (for your PerfMonitor)
     uint total = 0;
     foreach (var d in _indirectSimples.Values) total += (uint)d.VisibleCount;
     foreach (var d in _indirectComplexes.Values) total += (uint)d.VisibleCount;
@@ -697,8 +639,8 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     _totalJointCount = jointsOffset;
     _jointsScratch = (_totalJointCount == 0) ? Array.Empty<Matrix4x4>() : new Matrix4x4[_totalJointCount];
 
-    // (optional) reset/trim texture id cache if topology changed a lot
-    // _texIndexCache.Clear();
+    // reset/trim texture id cache if topology changed a lot
+    _texIndexCache.Clear();
 
     // --- GPU buffers that depend on topology/order only ---
     Logger.Info("[RENDER 3D] Recreating Buffers");
@@ -714,7 +656,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     EnsureIndirectBuffers(_indirectSimples, ref _indirectSimpleBuffers);
     EnsureIndirectBuffers(_indirectComplexes, ref _indirectComplexBuffers);
 
-    // remember the inputs we built for
     _renderablesCache = (IRender3DElement[])renderables.Clone();
     _cacheMatch = true;
 
@@ -732,7 +673,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       od.AmbientAndTexId0 = new Vector4(material?.Ambient ?? Vector3.Zero, texId);
       od.DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId);
       od.SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f);
-      // Joints offset is zero for non-skinned; can set once:
       od.JointsBufferOffset = Vector4.Zero;
     }
 
@@ -752,64 +692,27 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       od.DiffuseAndTexId1 = new Vector4(material?.Diffuse ?? Vector3.Zero, texId);
       od.SpecularAndShininess = new Vector4(material?.Specular ?? Vector3.Zero, material?.Shininess ?? 0.0f);
 
-      // You can also set JointsBufferOffset once here, since it's topology-stable:
-      // (we still refresh it in Update to match your requirement list)
       if (_nodeToJointsOffset.TryGetValue(node, out var joff))
         od.JointsBufferOffset = new Vector4(joff, 0, 0, 0);
     }
   }
-
-  // private void CreateOrUpdateBuffers_(IRender3DElement[] renderables) {
-  //   // _cacheMatch = _simpleBufferNodes.SequenceEqual(_notSkinnedNodesCache) && _complexBufferNodes.SequenceEqual(_skinnedNodesCache);
-  //   _cacheMatch = _renderablesCache.SequenceEqual(renderables);
-
-  //   if (_cacheMatch && _complexBufferPool != null && _simpleBufferPool != null) return;
-
-  //   // Node[] items = [.. _notSkinnedNodesCache, .. _skinnedNodesCache];
-
-  //   _instanceIndexSimple = 0;
-  //   _instanceIndexComplex = 0;
-
-  //   Frustum.FlattenNodes(renderables, out var flatNodes);
-  //   _flatNodesCache = [.. flatNodes];
-
-
-
-  //   Logger.Info("[RENDER 3D] Recreating Buffers");
-  //   if (NotSkinnedNodesCache.Length > 0) {
-  //     CreateSimpleVertexBuffer(NotSkinnedNodesCache, meshes);
-  //     CreateSimpleIndexBuffer(NotSkinnedNodesCache, meshes);
-  //   }
-  //   if (SkinnedNodesCache.Length > 0) {
-  //     CreateComplexVertexBuffer(SkinnedNodesCache, meshes);
-  //     CreateComplexIndexBuffer(SkinnedNodesCache, meshes);
-  //   }
-
-
-  //   // CreateIndirectCommands(items);
-  //   CreateIndirectBuffer(ref _indirectSimples, ref _indirectSimpleBuffers);
-  //   CreateIndirectBuffer(ref _indirectComplexes, ref _indirectComplexBuffers);
-
-  //   _cacheMatch = true;
-  // }
-
-  private int AddIndirectCommand(
-  ConcurrentDictionary<Guid, Mesh> meshes,
-  uint index,                    // vertex pool id
-  Node node,
-  VertexBinding vertexBinding,
-  ref Dictionary<uint, IndirectData> pair,
-  ref uint instanceIndex,
-  in uint additionalIndexOffset = 0
-) {
+  private static int AddIndirectCommand(
+    ConcurrentDictionary<Guid, Mesh> meshes,
+    uint index,
+    Node node,
+    VertexBinding vertexBinding,
+    ref Dictionary<uint, IndirectData> pair,
+    ref uint instanceIndex,
+    in uint additionalIndexOffset = 0
+  ) {
     if (!pair.ContainsKey(index)) {
       var id = (uint)pair.Keys.Count;
       pair.Add(id, new IndirectData());
     }
 
     var data = pair[index];
-    var mesh = meshes[node.MeshGuid];
-    if (mesh?.IndexCount < 1) throw new ArgumentNullException("mesh does not have indices", nameof(mesh));
+    var mesh = meshes[node.MeshGuid] ?? throw new NullReferenceException("mesh is null");
+    if (mesh.IndexCount < 1) throw new ArgumentNullException(nameof(meshes), "mesh does not have indices");
 
     var cmd = new VkDrawIndexedIndirectCommand {
       indexCount = (uint)mesh.Indices.Length,
@@ -828,61 +731,13 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     return cmdIdx;
   }
 
-  // private void CreateIndirectCommands(ReadOnlySpan<Node> nodes) {
-  //   _indirectDrawCommands.Clear();
-  //   uint indexOffset = 0;
-  //   uint i = 0;
-
-  //   foreach (var node in nodes) {
-  //     var mesh = node.Mesh;
-  //     if (mesh?.IndexBuffer == null)
-  //       continue;
-
-  //     var cmd = new VkDrawIndexedIndirectCommand {
-  //       indexCount = (uint)mesh.Indices.Length,
-  //       instanceCount = 1,
-  //       firstIndex = indexOffset,
-  //       vertexOffset = 0,
-  //       firstInstance = (uint)i
-  //     };
-
-  //     _indirectDrawCommands.Add(cmd);
-  //     indexOffset += (uint)mesh.Indices.Length;
-  //     i++;
-  //   }
-  // }
-
-  // private void CreateIndirectCommands(ReadOnlySpan<IRender3DElement> drawables) {
-  //   _indirectDrawCommands.Clear();
-  //   uint indexOffset = 0;
-
-  //   for (int i = 0; i < drawables.Length; i++) {
-  //     foreach (var node in drawables[i].MeshedNodes) {
-  //       var mesh = node.Mesh;
-  //       if (mesh?.IndexBuffer == null)
-  //         continue;
-
-  //       var cmd = new VkDrawIndexedIndirectCommand {
-  //         indexCount = (uint)mesh.Indices.Length,
-  //         instanceCount = 1,
-  //         firstIndex = indexOffset,
-  //         vertexOffset = 0,
-  //         firstInstance = (uint)i
-  //       };
-
-  //       _indirectDrawCommands.Add(cmd);
-  //       indexOffset += (uint)mesh.Indices.Length;
-  //     }
-  //   }
-  // }
-
   private unsafe void EnsureIndirectBuffers(
   Dictionary<uint, IndirectData> pair,
   ref DwarfBuffer[] buffArray
 ) {
     // Make sure the array can index directly by 'pool key'
     int maxKey = pair.Count == 0 ? -1 : (int)pair.Keys.Max();
-    if (maxKey < 0) { buffArray = Array.Empty<DwarfBuffer>(); return; }
+    if (maxKey < 0) { buffArray = []; return; }
 
     if (buffArray == null || buffArray.Length <= maxKey) {
       // grow but DO NOT touch existing buffers
@@ -901,71 +756,28 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
       if (!needsAlloc) continue;
 
-      existing?.Dispose(); // only if size insufficient
+      existing?.Dispose();
 
       var inBuff = new DwarfBuffer(
         _allocator,
         _device,
         neededBytes,
-        BufferUsage.IndirectBuffer,                                    // no TransferDst, we write directly
-        MemoryProperty.HostVisible | MemoryProperty.HostCoherent,       // CPU visible, persistent
+        BufferUsage.IndirectBuffer,
+        MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
         stagingBuffer: false,
         cpuAccessible: true
       );
 
-      inBuff.Map(neededBytes); // persistently mapped
+      inBuff.Map(neededBytes);
 
       buffArray[pool] = inBuff;
 
-      // (optional init): pack all commands once; next frames we overwrite head with visible subset
       if (data.Commands.Count > 0) {
         fixed (VkDrawIndexedIndirectCommand* p = data.Commands.ToArray()) {
           inBuff.WriteToBuffer((nint)p, neededBytes, 0);
           inBuff.Flush(neededBytes, 0);
         }
       }
-    }
-  }
-
-  private unsafe void CreateIndirectBufferXD(ref Dictionary<uint, IndirectData> pair, ref DwarfBuffer[] buffArray) {
-    foreach (var buff in buffArray) {
-      buff?.Dispose();
-    }
-    Array.Clear(buffArray);
-    buffArray = new DwarfBuffer[pair.Keys.Count];
-    int i = 0;
-
-    foreach (var commands in pair) {
-      var size = commands.Value.Commands.Count * Unsafe.SizeOf<VkDrawIndexedIndirectCommand>();
-
-      var stagingBuffer = new DwarfBuffer(
-        _allocator,
-        _device,
-        (ulong)size,
-        BufferUsage.TransferSrc,
-        MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-        stagingBuffer: true,
-        cpuAccessible: true
-      );
-
-      stagingBuffer.Map((ulong)size);
-      fixed (VkDrawIndexedIndirectCommand* pIndirectCommands = commands.Value.Commands.ToArray()) {
-        stagingBuffer.WriteToBuffer((nint)pIndirectCommands, (ulong)size);
-      }
-
-      var inBuff = new DwarfBuffer(
-        _allocator,
-        _device,
-        (ulong)size,
-        BufferUsage.TransferDst | BufferUsage.IndirectBuffer,
-        MemoryProperty.DeviceLocal
-      );
-
-      _device.CopyBuffer(stagingBuffer.GetBuffer(), inBuff.GetBuffer(), (ulong)size);
-      stagingBuffer.Dispose();
-
-      buffArray[i] = inBuff;
-      i++;
     }
   }
 
@@ -1113,7 +925,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
           _simpleBufferPool.AddToBuffer(currentPool, (nint)p, byteSize, previousSize, out byteOffset, out reason);
           // Logger.Info($"[{r}] Creating {currentPool} for {node.Name} offseting by [{byteOffset}] with [{byteSize}] bytes");
         } else {
-          // Logger.Info($"[{reason}] Adding {node.Name} to buffer {currentPool} offseting by [{byteOffset}] with [{byteSize}] bytes");
+          // Logger.Warn($"[{reason}] Adding {node.Name} to buffer {currentPool} offseting by [{byteOffset}] with [{byteSize}] bytes");
         }
         previousSize += byteSize;
 
@@ -1195,7 +1007,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
           _vertexComplexBindings.Last(),
           ref _indirectComplexes,
           ref _instanceIndexComplex,
-          in _instanceIndexSimple  // keep your base offset for skinned
+          in _instanceIndexSimple
         );
         _complexCmdMap[node] = new CmdRef(currentPool, cmdIdx);
 
@@ -1231,8 +1043,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     SkinnedNodesCache = [];
     NotSkinnedNodesCache = [];
     _cacheMatch = false;
-    _skinnedGroups = [];
-    _notSkinnedGroups = [];
     _indirectSimples.Clear();
     _indirectComplexes.Clear();
     base.Dispose();

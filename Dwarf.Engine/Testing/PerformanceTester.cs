@@ -14,16 +14,14 @@ public class PerformanceTester {
   public static Task CreateNewModel(Application app, bool addTexture = false) {
     // if (!addTexture) return Task.CompletedTask;
 
-    // var entity = new Entity {
-    //   Name = "test"
-    // };
-    // entity.AddTransform(new(-5, 0, 0), new(90, 0, 0));
-    // entity.AddMaterial();
+    var entity = new Entity("test");
+    entity.AddTransform([-5, 0, 0], [90, 0, 0], [.25f]);
+    entity.AddMaterial();
     // entity.AddPrimitive("./Resources/gigachad.png", PrimitiveType.Cylinder);
-    // // entity.AddModel("./Resources/tks.glb");
-    // // entity.AddRigidbody(PrimitiveType.Cylinder, false, 1);
-    // // entity.GetComponent<Rigidbody>().Init(Application.Instance.Systems.PhysicsSystem.BodyInterface);
-    // app.AddEntity(entity);
+    entity.AddModel("./Resources/fox2.glb"); ;
+    // entity.AddRigidbody(PrimitiveType.Cylinder, false, 1);
+    // entity.GetComponent<Rigidbody>().Init(Application.Instance.Systems.PhysicsSystem.BodyInterface);
+    app.AddEntity(entity);
     return Task.CompletedTask;
   }
 

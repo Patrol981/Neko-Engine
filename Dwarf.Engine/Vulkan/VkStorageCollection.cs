@@ -122,9 +122,9 @@ public class VkStorageCollection : IStorageCollection {
   public void WriteBuffer(string key, int index, nint data, ulong size = VK_WHOLE_SIZE) {
     if (!Storages.TryGetValue(key, out var storage)) return;
     if (storage.Buffers[index] == null) return;
-    Application.Mutex.WaitOne();
+    // Application.Mutex.WaitOne();
     Storages[key].Buffers[index].WriteToBuffer(data, size);
-    Application.Mutex.ReleaseMutex();
+    // Application.Mutex.ReleaseMutex();
   }
 
   public ulong GetDescriptor(string key, int index) {

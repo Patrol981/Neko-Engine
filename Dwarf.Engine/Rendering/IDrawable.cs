@@ -1,4 +1,5 @@
 namespace Dwarf.Rendering;
+
 public interface IDrawable : IDisposable {
   public Task Bind(IntPtr commandBuffer, uint index);
   // public void Bind(VkCommandBuffer commandBuffer);
