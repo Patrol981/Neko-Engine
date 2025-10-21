@@ -24,13 +24,13 @@ public class BufferPool : IDisposable {
   public BufferPool(Application app) {
     _device = app.Device;
     _allocator = app.Allocator;
-    _maxBufferSize = _device.MaxBufferSize / 2;
+    _maxBufferSize = _device.MaxBufferSize / 32ul;
   }
 
   public BufferPool(IDevice device, nint allocator) {
     _device = device;
     _allocator = allocator;
-    _maxBufferSize = _device.MaxBufferSize / 2;
+    _maxBufferSize = _device.MaxBufferSize / 32ul;
   }
 
   public bool CanAddToVertexBuffer(
