@@ -16,8 +16,8 @@ public class BufferPool : IDisposable {
   };
 
   private readonly ConcurrentDictionary<uint, BufferData> _buffers = [];
-  private const ulong MAX_BUFF_SIZE = 2500000;
-  private const ulong MAX_HEAP_SIZE = 268435456;
+  // private const ulong MAX_BUFF_SIZE = 2500000;
+  // private readonly ulong MAX_HEAP_SIZE = 268435456;
   // 2500000
   private ulong _maxBufferSize = 0;
 
@@ -31,6 +31,50 @@ public class BufferPool : IDisposable {
     _device = device;
     _allocator = allocator;
     _maxBufferSize = _device.MaxBufferSize / 2;
+  }
+
+  public bool CanAddToVertexBuffer(
+    uint index,
+    ulong byteSize,
+    ulong prevSize
+  ) {
+    if (!_buffers.ContainsKey(index)) {
+      return false;
+    }
+
+    _buffers.TryGetValue(index, out var buffer);
+
+    if (buffer is null) throw new NullReferenceException("Buffer is null");
+    if (buffer!.VertexBuffer == null) return false;
+
+    var sumSize = prevSize + byteSize;
+    if (sumSize >= _maxBufferSize) return false;
+    if (prevSize > buffer.VertexBuffer.GetBufferSize()) return false;
+    if (byteSize > buffer.VertexBuffer.GetBufferSize()) return false;
+
+    return true;
+  }
+
+  public bool CanAddToIndexBuffer(
+    uint index,
+    ulong byteSize,
+    ulong prevSize
+  ) {
+    if (!_buffers.ContainsKey(index)) return false;
+
+    _buffers.TryGetValue(index, out var buffer);
+    if (buffer!.IndexBuffer == null) return false;
+
+    try {
+      var sumSize = prevSize + byteSize;
+      if (sumSize >= _maxBufferSize) return false;
+      if (prevSize > buffer.IndexBuffer.GetBufferSize()) return false;
+      if (byteSize > buffer.IndexBuffer.GetBufferSize()) return false;
+    } catch (OverflowException) {
+      return false;
+    }
+
+    return true;
   }
 
   public unsafe bool AddToBuffer(
@@ -56,50 +100,56 @@ public class BufferPool : IDisposable {
       return CreateNewVertexBuffer(index, data, byteSize);
     } else {
       offset = prevSize;
+      // return AddToExistingBufferWithRebuild(index, ref buffer.VertexBuffer, data, byteSize, prevSize, ref reason);
       return AddToExistingBuffer(ref buffer.VertexBuffer, data, byteSize, prevSize, ref reason);
     }
   }
 
-  public unsafe bool AddToIndex(uint index, uint[] data, out ulong offset, out string reason) {
+  public unsafe bool AddToIndex(
+    uint index,
+    nint data,
+    ulong byteSize,
+    ulong prevSize,
+    out ulong offset,
+    out string reason
+  ) {
     offset = 0;
     reason = "";
-    if (!_buffers.ContainsKey(index)) return false;
+    if (!_buffers.ContainsKey(index)) {
+      reason = "Key not found";
+      return false;
+    }
 
     _buffers.TryGetValue(index, out var buffer);
 
     if (buffer!.IndexBuffer == null) {
-      return CreateNewIndexBuffer(index, data);
+      reason = "Created new buff";
+      return CreateNewIndexBuffer(index, data, byteSize);
     } else {
-      fixed (uint* pData = data) {
-        offset = buffer.IndexBuffer.GetBufferSize();
-        return AddToExistingBuffer(ref buffer.IndexBuffer, (nint)pData, (ulong)data.Length * sizeof(uint), 0, ref reason);
-      }
+      offset = prevSize;
+      return AddToExistingIndex(in index, ref buffer.IndexBuffer, data, byteSize, prevSize, ref reason);
     }
-
   }
 
-  private unsafe bool CreateNewIndexBuffer(in uint index, uint[] data) {
+  public unsafe bool CreateNewIndexBuffer(in uint index, nint data, ulong byteSize) {
     var stagingBuffer = new DwarfBuffer(
       _allocator,
       _device,
-      (ulong)data.Length * sizeof(uint),
+      byteSize,
       BufferUsage.TransferSrc,
       MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
       stagingBuffer: true,
       cpuAccessible: true
     );
 
-    stagingBuffer.Map((ulong)data.Length * sizeof(uint));
-    fixed (uint* pSrc = data.ToArray()) {
-      stagingBuffer.WriteToBuffer((nint)pSrc, (ulong)data.Length * sizeof(uint));
-    }
+    stagingBuffer.Map();
+    stagingBuffer.WriteToBuffer(data, byteSize);
     stagingBuffer.Unmap();
 
     var indexBuffer = new DwarfBuffer(
       _allocator,
       _device,
-      (ulong)Unsafe.SizeOf<uint>(),
-      (uint)data.Length,
+      _maxBufferSize,
       BufferUsage.IndexBuffer | BufferUsage.TransferDst,
       MemoryProperty.DeviceLocal
     );
@@ -107,7 +157,7 @@ public class BufferPool : IDisposable {
     _device.CopyBuffer(
       stagingBuffer.GetBuffer(),
       indexBuffer.GetBuffer(),
-      (ulong)data.Length * sizeof(uint)
+      stagingBuffer.GetBufferSize()
     );
     stagingBuffer.Dispose();
 
@@ -118,7 +168,7 @@ public class BufferPool : IDisposable {
 
   private bool CreateNewVertexBuffer(in uint index, nint data, ulong byteSize) {
     if (byteSize > _maxBufferSize) {
-      throw new ArgumentOutOfRangeException(nameof(byteSize), $"input is larger than max size by {byteSize - MAX_BUFF_SIZE} bytes");
+      throw new ArgumentOutOfRangeException(nameof(byteSize), $"input is larger than max size by {byteSize - _maxBufferSize} bytes");
     }
 
     var stagingBuffer = new DwarfBuffer(
@@ -138,7 +188,7 @@ public class BufferPool : IDisposable {
     var newBuffer = new DwarfBuffer(
       _allocator,
       _device,
-      MAX_HEAP_SIZE,
+      _maxBufferSize,
       BufferUsage.TransferDst | BufferUsage.VertexBuffer,
       MemoryProperty.DeviceLocal
     );
@@ -149,9 +199,129 @@ public class BufferPool : IDisposable {
     return true;
   }
 
+  private unsafe bool AddToExistingIndex(in uint index, ref DwarfBuffer buffer, in nint data, in ulong byteSize, in ulong prevSize, ref string reason) {
+    var sumSize = prevSize + byteSize;
+    if (sumSize >= _maxBufferSize) {
+      reason = $"sumSize of [{sumSize}] bytes is too large compared to maximum [{_maxBufferSize}] bytes";
+      return false;
+    }
+
+    if (prevSize > buffer.GetBufferSize()) {
+      reason = $"offset size is larger than the buffer itself [{prevSize}-{buffer.GetBufferSize()}={prevSize - buffer.GetBufferSize()}]";
+      return false;
+    }
+
+    if (byteSize > buffer.GetBufferSize()) {
+      reason = $"byte size is larger than the buffer itself [{byteSize}-{buffer.GetBufferSize()}={byteSize - buffer.GetBufferSize()}]";
+      return false;
+    }
+
+    var stagingBuffer = new DwarfBuffer(
+      _allocator,
+      _device,
+      sumSize,
+      BufferUsage.TransferSrc,
+      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
+      stagingBuffer: true,
+      cpuAccessible: true
+    );
+
+    stagingBuffer.Map();
+    stagingBuffer.WriteToBuffer(data, byteSize);
+    stagingBuffer.Unmap();
+
+    var newBuffer = new DwarfBuffer(
+      _allocator,
+      _device,
+      sumSize,
+      BufferUsage.TransferDst | BufferUsage.IndexBuffer,
+      MemoryProperty.DeviceLocal
+    );
+
+    _device.CopyBuffer(
+      srcBuffer: buffer.GetBuffer(),
+      dstBuffer: newBuffer.GetBuffer(),
+      size: prevSize,
+      srcOffset: 0,
+      dstOffset: 0
+    );
+    _device.CopyBuffer(
+      srcBuffer: stagingBuffer.GetBuffer(),
+      dstBuffer: newBuffer.GetBuffer(),
+      size: byteSize,
+      srcOffset: 0,
+      dstOffset: prevSize
+    );
+    stagingBuffer.Dispose();
+    buffer.Dispose();
+    _buffers[index].IndexBuffer = newBuffer;
+
+    return true;
+  }
+
+  private unsafe bool AddToExistingBufferWithRebuild(in uint index, ref DwarfBuffer buffer, in nint data, in ulong byteSize, in ulong prevSize, ref string reason) {
+    var sumSize = prevSize + byteSize;
+    if (sumSize >= _maxBufferSize) {
+      reason = $"sumSize of [{sumSize}] bytes is too large compared to maximum [{_maxBufferSize}] bytes";
+      return false;
+    }
+
+    if (prevSize > buffer.GetBufferSize()) {
+      reason = $"offset size is larger than the buffer itself [{prevSize}-{buffer.GetBufferSize()}={prevSize - buffer.GetBufferSize()}]";
+      return false;
+    }
+
+    if (byteSize > buffer.GetBufferSize()) {
+      reason = $"byte size is larger than the buffer itself [{byteSize}-{buffer.GetBufferSize()}={byteSize - buffer.GetBufferSize()}]";
+      return false;
+    }
+
+    var stagingBuffer = new DwarfBuffer(
+      _allocator,
+      _device,
+      sumSize,
+      BufferUsage.TransferSrc,
+      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
+      stagingBuffer: true,
+      cpuAccessible: true
+    );
+
+    stagingBuffer.Map();
+    stagingBuffer.WriteToBuffer(data, byteSize);
+    stagingBuffer.Unmap();
+
+    var newBuffer = new DwarfBuffer(
+      _allocator,
+      _device,
+      sumSize,
+      BufferUsage.TransferDst | BufferUsage.VertexBuffer,
+      MemoryProperty.DeviceLocal
+    );
+
+    _device.CopyBuffer(
+      srcBuffer: buffer.GetBuffer(),
+      dstBuffer: newBuffer.GetBuffer(),
+      size: prevSize,
+      srcOffset: 0,
+      dstOffset: 0
+    );
+    _device.CopyBuffer(
+      srcBuffer: stagingBuffer.GetBuffer(),
+      dstBuffer: newBuffer.GetBuffer(),
+      size: byteSize,
+      srcOffset: 0,
+      dstOffset: prevSize
+    );
+    stagingBuffer.Dispose();
+    buffer.Dispose();
+    _buffers[index].VertexBuffer = newBuffer;
+
+    return true;
+  }
+
   private unsafe bool AddToExistingBuffer(ref DwarfBuffer buffer, in nint data, in ulong byteSize, in ulong prevSize, ref string reason) {
     var sumSize = prevSize + byteSize;
-    if (sumSize >= MAX_HEAP_SIZE) {
+    if (sumSize >= _maxBufferSize) {
       reason = $"sumSize of [{sumSize}] bytes is too large compared to maximum [{_maxBufferSize}] bytes";
       return false;
     }
@@ -170,6 +340,7 @@ public class BufferPool : IDisposable {
     buffer.WriteToBuffer(data, byteSize, prevSize);
     buffer.Unmap();
 
+    reason = "Success";
     return true;
   }
 
@@ -199,6 +370,6 @@ public class BufferPool : IDisposable {
       buff?.IndexBuffer?.Dispose();
     }
     _buffers.Clear();
-    GC.SuppressFinalize(this);
+    // GC.SuppressFinalize(this);
   }
 }

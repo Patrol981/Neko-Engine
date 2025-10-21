@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-
+using System.Runtime.InteropServices;
 using Dwarf.AbstractionLayer;
 using Dwarf.EntityComponentSystem;
 using Dwarf.Extensions.Logging;
@@ -37,9 +37,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   public ulong LastKnownSkinnedElemCount { get; private set; }
   public ulong LastKnownSkinnedElemJointsCount { get; private set; }
 
-  private DwarfBuffer? _globalSimpleIndexBuffer;
-  private DwarfBuffer? _globalComplexIndexBuffer;
-
   private DwarfBuffer[] _indirectSimpleBuffers = [];
   private DwarfBuffer[] _indirectComplexBuffers = [];
 
@@ -52,7 +49,6 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
   public Node[] NotSkinnedNodesCache { get; private set; } = [];
   public Node[] SkinnedNodesCache { get; private set; } = [];
-  private ObjectData[] _objectDataCache = [];
   private Node[] _flatNodesCache = [];
   private IRender3DElement[] _renderablesCache = [];
 
@@ -68,8 +64,9 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   private Node[] _simpleBufferNodes = [];
   private Node[] _complexBufferNodes = [];
 
+  // private readonly Dictionary<string, float> _texIndexCache = new(StringComparer.Ordinal);
+  private readonly Dictionary<Guid, float> _texIndexCache = new();
 
-  private readonly Dictionary<string, float> _texIndexCache = new(StringComparer.Ordinal);
   private ObjectData[] _objectDataScratch = [];
   private Matrix4x4[] _jointsScratch = [];
   private int _totalJointCount = 0;
@@ -78,6 +75,9 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
   private readonly Dictionary<Node, CmdRef> _simpleCmdMap = [];
   private readonly Dictionary<Node, CmdRef> _complexCmdMap = [];
+
+  private List<Node> _visSimple = [];
+  private List<Node> _visComplex = [];
 
   private readonly Dictionary<uint, List<VkDrawIndexedIndirectCommand>> _simpleVisibleScratch = [];
   private readonly Dictionary<uint, List<VkDrawIndexedIndirectCommand>> _complexVisibleScratch = [];
@@ -275,7 +275,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     uint lastBuffer = uint.MaxValue;
     uint indexOffset = 0;
 
-    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalSimpleIndexBuffer!, 0);
+    // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalSimpleIndexBuffer!, 0);
 
     for (int i = 0; i < nodes.Length; i++) {
       if (nodes[i].ParentRenderer.Owner.CanBeDisposed || !nodes[i].ParentRenderer.Owner.Active) continue;
@@ -284,9 +284,11 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       uint thisCount = (uint)meshes[nodes[i].MeshGuid].Indices.Length;
       var bindInfo = _vertexSimpleBindings[i];
 
-      var buffer = _simpleBufferPool.GetVertexBuffer(bindInfo.BufferIndex);
-      _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, buffer, 0);
-      // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
+      var vertexBuffer = _simpleBufferPool.GetVertexBuffer(bindInfo.BufferIndex);
+      var indexBuffer = _simpleBufferPool.GetIndexBuffer(bindInfo.BufferIndex);
+
+      _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, vertexBuffer, 0);
+      _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, indexBuffer!, 0);
 
       // Bind the mesh’s index buffer and draw
       // nodes[i].BindNode(frameInfo.CommandBuffer);
@@ -322,7 +324,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     uint lastBuffer = uint.MaxValue;
     uint indexOffset = 0;
 
-    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalComplexIndexBuffer!, 0);
+    // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalComplexIndexBuffer!, 0);
 
     for (int i = 0; i < nodes.Length; i++) {
       uint thisCount = (uint)meshes[nodes[i].MeshGuid].Indices.Length;
@@ -339,7 +341,9 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       }
 
       var vertexBuffer = _complexBufferPool.GetVertexBuffer(bindInfo.BufferIndex);
+      var indexBuffer = _complexBufferPool.GetIndexBuffer(bindInfo.BufferIndex);
 
+      _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, indexBuffer, 0);
       _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, vertexBuffer, 0);
 
       _renderer.CommandList.DrawIndexed(
@@ -363,10 +367,14 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     Descriptor.BindDescriptorSet(_device, frameInfo.ObjectDataDescriptorSet, frameInfo, _pipelines[Simple3D].PipelineLayout, 2, 1);
     Descriptor.BindDescriptorSet(_device, frameInfo.PointLightsDescriptorSet, frameInfo, _pipelines[Simple3D].PipelineLayout, 3, 1);
 
-    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalSimpleIndexBuffer!, 0);
+    // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalSimpleIndexBuffer!, 0);
+    // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalSimpleIndexPool!.GetIndexBuffer(0), 0);
 
     foreach (var container in _indirectSimples) {
+      var targetIndex = _simpleBufferPool.GetIndexBuffer(container.Key);
       var targetVertex = _simpleBufferPool.GetVertexBuffer(container.Key);
+
+      _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, targetIndex, 0);
       _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, targetVertex, 0);
 
       _renderer.CommandList.DrawIndexedIndirect(
@@ -388,10 +396,13 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     Descriptor.BindDescriptorSet(_device, frameInfo.PointLightsDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 3, 1);
     Descriptor.BindDescriptorSet(_device, frameInfo.JointsBufferDescriptorSet, frameInfo, _pipelines[Skinned3D].PipelineLayout, 4, 1);
 
-    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalComplexIndexBuffer!, 0);
+    // _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalComplexIndexBuffer!, 0);
 
     foreach (var container in _indirectComplexes) {
+      var targetIndex = _complexBufferPool.GetIndexBuffer(container.Key);
       var targetVertex = _complexBufferPool.GetVertexBuffer(container.Key);
+
+      _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, targetIndex, 0);
       _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, targetVertex, 0);
 
       _renderer.CommandList.DrawIndexedIndirect(
@@ -479,19 +490,48 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
   [MethodImpl(MethodImplOptions.AggressiveInlining)]
   private float GetOrAddTextureIndex(Guid textureId) {
-    // if TextureIdReference is a value type, using ToString() for dict key is fine,
-    // otherwise you can change the dictionary key to Guid directly
-    var key = textureId.ToString();
-    if (_texIndexCache.TryGetValue(key, out var texId))
-      return texId;
+    ref float texId = ref CollectionsMarshal.GetValueRefOrAddDefault(
+      _texIndexCache,
+      textureId,
+      out var exists
+    );
 
-    var targetTexture = _textureManager.GetTextureLocal(textureId);
-    texId = GetIndexOfMyTexture(targetTexture.TextureName);
-    _texIndexCache[key] = texId;
+    if (!exists) {
+      var targetTexture = _textureManager.GetTextureLocal(textureId);
+      texId = GetIndexOfMyTexture(targetTexture.TextureName);
+    }
+
     return texId;
   }
 
-  // NEW
+  private static unsafe void CopyCmdListToBuffer(List<VkDrawIndexedIndirectCommand> list, DwarfBuffer buf) {
+    var span = CollectionsMarshal.AsSpan(list);
+    if (span.Length == 0) return;
+
+    ref var first = ref MemoryMarshal.GetReference(span);
+    fixed (VkDrawIndexedIndirectCommand* p = &first) {
+      ulong bytes = (ulong)span.Length * (ulong)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>();
+      buf.WriteToBuffer((nint)p, bytes, 0);
+      buf.Flush(bytes, 0);
+    }
+  }
+
+  private void EnsureVisibleScratchCapacity() {
+    foreach (var (pool, data) in _indirectSimples) {
+      if (!_simpleVisibleScratch.TryGetValue(pool, out var list))
+        _simpleVisibleScratch[pool] = list = new List<VkDrawIndexedIndirectCommand>(data.Commands.Count);
+      else if (list.Capacity < data.Commands.Count)
+        list.Capacity = data.Commands.Count;
+    }
+
+    foreach (var (pool, data) in _indirectComplexes) {
+      if (!_complexVisibleScratch.TryGetValue(pool, out var list))
+        _complexVisibleScratch[pool] = list = new List<VkDrawIndexedIndirectCommand>(data.Commands.Count);
+      else if (list.Capacity < data.Commands.Count)
+        list.Capacity = data.Commands.Count;
+    }
+  }
+
   private unsafe uint RefillIndirectBuffersWithCulling(ConcurrentDictionary<Guid, Mesh> meshes, out IEnumerable<Node> animatedNodes) {
     // clear scratch
     foreach (var s in _simpleVisibleScratch.Values) s.Clear();
@@ -500,11 +540,11 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     var planes = Frustum.BuildFromCamera(CameraState.GetCamera());
 
     // --- SIMPLE (non-skinned) ---
-    List<Node> visSimpleIn;
-    Frustum.FilterNodesByFog([.. _simpleBufferNodes], out visSimpleIn); // your culling
+    _visSimple.Clear();
+    Frustum.FilterNodesByFog(_simpleBufferNodes, out _visSimple); // your culling
     // Frustum.FilterNodesByPlanes(in planes, [.. _simpleBufferNodes], out visSimpleIn);
 
-    foreach (var n in visSimpleIn) {
+    foreach (var n in _visSimple) {
       var owner = n.ParentRenderer.Owner;
       if (owner.CanBeDisposed || !owner.Active) continue;
       if (meshes[n.MeshGuid]?.IndexCount < 1) continue;
@@ -521,30 +561,19 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
     // write packed commands to buffers (front of buffer)
     foreach (var kv in _simpleVisibleScratch) {
-      uint pool = kv.Key;
+      var pool = kv.Key;
       var list = kv.Value;
-      var buf = _indirectSimpleBuffers[pool];
-      var data = _indirectSimples[pool];
-
-      int count = list.Count;
-      data.VisibleCount = count;
-
-      if (count == 0) continue;
-
-      fixed (VkDrawIndexedIndirectCommand* p = list.ToArray()) {
-        ulong bytes = (ulong)count * (ulong)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>();
-        buf.WriteToBuffer((nint)p, bytes, 0);
-        buf.Flush(bytes, 0);
-      }
+      _indirectSimples[pool].VisibleCount = list.Count;
+      CopyCmdListToBuffer(list, _indirectSimpleBuffers[pool]);
     }
 
     // --- COMPLEX (skinned) ---
-    List<Node> visComplexIn;
-    Frustum.FilterNodesByFog(new List<Node>(_complexBufferNodes), out visComplexIn);
-    animatedNodes = visComplexIn;
+    _visComplex.Clear();
+    Frustum.FilterNodesByFog(new List<Node>(_complexBufferNodes), out _visComplex);
+    animatedNodes = _visComplex;
     // Frustum.FilterNodesByPlanes(in planes, [.. _complexBufferNodes], out visComplexIn);
 
-    foreach (var n in visComplexIn) {
+    foreach (var n in _visComplex) {
       var owner = n.ParentRenderer.Owner;
       if (owner.CanBeDisposed || !owner.Active) continue;
       if (meshes[n.MeshGuid]?.IndexCount < 1) continue;
@@ -560,21 +589,10 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     }
 
     foreach (var kv in _complexVisibleScratch) {
-      uint pool = kv.Key;
+      var pool = kv.Key;
       var list = kv.Value;
-      var buf = _indirectComplexBuffers[pool];
-      var data = _indirectComplexes[pool];
-
-      int count = list.Count;
-      data.VisibleCount = count;
-
-      if (count == 0) continue;
-
-      fixed (VkDrawIndexedIndirectCommand* p = list.ToArray()) {
-        ulong bytes = (ulong)count * (ulong)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>();
-        buf.WriteToBuffer((nint)p, bytes, 0);
-        buf.Flush(bytes, 0);
-      }
+      _indirectComplexes[pool].VisibleCount = list.Count;
+      CopyCmdListToBuffer(list, _indirectComplexBuffers[pool]);
     }
 
     uint total = 0;
@@ -645,12 +663,14 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     // --- GPU buffers that depend on topology/order only ---
     Logger.Info("[RENDER 3D] Recreating Buffers");
     if (notCount > 0) {
-      CreateSimpleVertexBuffer(NotSkinnedNodesCache, meshes);
-      CreateSimpleIndexBuffer(NotSkinnedNodesCache, meshes);
+      // CreateSimpleVertexBuffer(NotSkinnedNodesCache, meshes);
+      // CreateSimpleIndexBuffer(NotSkinnedNodesCache, meshes);
+      CreateSimpleVertexIndexBuffer(NotSkinnedNodesCache, meshes);
     }
     if (skinCount > 0) {
-      CreateComplexVertexBuffer(SkinnedNodesCache, meshes);
-      CreateComplexIndexBuffer(SkinnedNodesCache, meshes);
+      // CreateComplexVertexBuffer(SkinnedNodesCache, meshes);
+      // CreateComplexIndexBuffer(SkinnedNodesCache, meshes);
+      CreateComplexVertexIndexBuffer(SkinnedNodesCache, meshes);
     }
 
     EnsureIndirectBuffers(_indirectSimples, ref _indirectSimpleBuffers);
@@ -695,7 +715,10 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
       if (_nodeToJointsOffset.TryGetValue(node, out var joff))
         od.JointsBufferOffset = new Vector4(joff, 0, 0, 0);
     }
+
+    EnsureVisibleScratchCapacity();
   }
+
   private static int AddIndirectCommand(
     ConcurrentDictionary<Guid, Mesh> meshes,
     uint index,
@@ -705,12 +728,11 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
     ref uint instanceIndex,
     in uint additionalIndexOffset = 0
   ) {
-    if (!pair.ContainsKey(index)) {
-      var id = (uint)pair.Keys.Count;
-      pair.Add(id, new IndirectData());
+    if (!pair.TryGetValue(index, out var data)) {
+      data = new IndirectData();
+      pair[index] = data;
     }
 
-    var data = pair[index];
     var mesh = meshes[node.MeshGuid] ?? throw new NullReferenceException("mesh is null");
     if (mesh.IndexCount < 1) throw new ArgumentNullException(nameof(meshes), "mesh does not have indices");
 
@@ -772,257 +794,304 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
       buffArray[pool] = inBuff;
 
-      if (data.Commands.Count > 0) {
-        fixed (VkDrawIndexedIndirectCommand* p = data.Commands.ToArray()) {
+      var span = CollectionsMarshal.AsSpan(data.Commands);
+      if (span.Length > 0) {
+        ref var first = ref MemoryMarshal.GetReference(span);
+        fixed (VkDrawIndexedIndirectCommand* p = &first) {
           inBuff.WriteToBuffer((nint)p, neededBytes, 0);
           inBuff.Flush(neededBytes, 0);
         }
       }
     }
   }
-
-  private unsafe void CreateSimpleIndexBuffer(ReadOnlySpan<Node> nodes, ConcurrentDictionary<Guid, Mesh> meshes) {
-    _globalSimpleIndexBuffer?.Dispose();
-
-    var adjustedIndices = new List<uint>();
-    uint vertexOffset = 0;
-    uint indexOffset = 0;
-
-    foreach (var node in nodes) {
-      var mesh = meshes[node.MeshGuid];
-      if (mesh?.IndexCount < 1) continue;
-
-      foreach (var idx in mesh!.Indices) {
-        adjustedIndices.Add(idx + vertexOffset);
-      }
-
-      vertexOffset += (uint)mesh.Vertices.Length;
-      indexOffset += (uint)mesh.Indices.Length;
+  private static bool CheckForOverflow(uint a, uint b) {
+    if (a > uint.MaxValue - b) {
+      return true;
     }
-
-
-    var indexByteSize = (ulong)adjustedIndices.Count * sizeof(uint);
-
-    var stagingBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      indexByteSize,
-      BufferUsage.TransferSrc,
-      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      stagingBuffer: true,
-      cpuAccessible: true
-    );
-
-    stagingBuffer.Map(indexByteSize);
-    fixed (uint* pSrc = adjustedIndices.ToArray()) {
-      stagingBuffer.WriteToBuffer((nint)pSrc, indexByteSize);
-    }
-
-    _globalSimpleIndexBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      (ulong)Unsafe.SizeOf<uint>(),
-      (uint)adjustedIndices.Count,
-      BufferUsage.IndexBuffer | BufferUsage.TransferDst,
-      MemoryProperty.DeviceLocal
-    );
-
-    _device.CopyBuffer(
-      stagingBuffer.GetBuffer(),
-      _globalSimpleIndexBuffer.GetBuffer(),
-      indexByteSize
-    );
-    stagingBuffer.Dispose();
+    return false;
   }
 
-  private unsafe void CreateComplexIndexBuffer(ReadOnlySpan<Node> nodes, ConcurrentDictionary<Guid, Mesh> meshes) {
-    _globalComplexIndexBuffer?.Dispose();
+  private unsafe void CreateComplexVertexIndexBuffer(
+    ReadOnlySpan<Node> nodes,
+    ConcurrentDictionary<Guid, Mesh> meshes
+  ) {
+    _vertexComplexBindings.Clear();
+    _complexBufferPool.Dispose();
+    _complexBufferPool = new BufferPool(_device, _allocator);
+    _indirectComplexes.Clear();
+
+    var currentPool = 0u;
+    var indexOffset = 0u;
+    var vertexOffset = 0u;
 
     var adjustedIndices = new List<uint>();
-    uint vertexOffset = 0;
-    uint indexOffset = 0;
+    var previousVertexSize = 0ul;
+    var previousIndexSize = 0ul;
 
+    _complexBufferNodes = nodes.ToArray();
     foreach (var node in nodes) {
-      var mesh = meshes[node.MeshGuid];
-      if (mesh?.IndexCount < 1) continue;
+      ReadOnlySpan<Vertex> verts = meshes[node.MeshGuid].Vertices;
+      ReadOnlySpan<uint> indices = meshes[node.MeshGuid].Indices;
 
-      foreach (var idx in mesh!.Indices) {
+      var vertexByteSize = (ulong)verts.Length * (ulong)Unsafe.SizeOf<Vertex>();
+      var indexByteSize = (ulong)indices.Length * sizeof(uint);
+
+      ulong vertexByteOffset;
+      var canAddVertex = _complexBufferPool.CanAddToVertexBuffer(
+        index: currentPool,
+        byteSize: vertexByteSize,
+        prevSize: previousVertexSize
+      );
+      var canAddIndex = _complexBufferPool.CanAddToIndexBuffer(
+        index: currentPool,
+        byteSize: indexByteSize,
+        prevSize: previousIndexSize
+      );
+
+      var localIndices = new List<uint>();
+      foreach (var idx in meshes[node.MeshGuid].Indices) {
         adjustedIndices.Add(idx + vertexOffset);
+        localIndices.Add(idx + vertexOffset);
+      }
+      var localIndicesByteSize = (ulong)localIndices.Count * sizeof(uint);
+
+      var isOverflowingOnNextStep = CheckForOverflow(indexOffset, (uint)indices.Length);
+      // Logger.Info($"[{canAddIndex}][{canAddVertex}][{isOverflowingOnNextStep}]");
+      if (!canAddVertex || !canAddIndex || isOverflowingOnNextStep) {
+        Logger.Info($"Adding to pool [{canAddVertex}][{canAddIndex}][{isOverflowingOnNextStep}]");
+        currentPool = (uint)_complexBufferPool.AddToPool();
+        previousVertexSize = 0;
+        previousIndexSize = 0;
+        indexOffset = 0;
+        vertexOffset = 0;
+      }
+      fixed (Vertex* pVertex = verts) {
+        _complexBufferPool.AddToBuffer(currentPool, (nint)pVertex, vertexByteSize, previousVertexSize, out vertexByteOffset, out var reason);
       }
 
-      vertexOffset += (uint)mesh.Vertices.Length;
-      indexOffset += (uint)mesh.Indices.Length;
+      fixed (uint* pIndicesToPool = localIndices.ToArray()) {
+        _complexBufferPool.AddToIndex(
+          currentPool,
+          (nint)pIndicesToPool,
+          localIndicesByteSize,
+          previousIndexSize,
+          out var indexByteOffset,
+          out var idxReason
+        );
+      }
+
+      previousVertexSize += vertexByteSize;
+      previousIndexSize += localIndicesByteSize;
+
+      _vertexComplexBindings.Add(new VertexBinding {
+        BufferIndex = currentPool,
+        FirstVertexOffset = (uint)(vertexByteOffset / (ulong)Unsafe.SizeOf<Vertex>()),
+        FirstIndexOffset = indexOffset
+      });
+
+      int cmdIdx = AddIndirectCommand(
+        meshes,
+        currentPool,
+        node,
+        _vertexComplexBindings.Last(),
+        ref _indirectComplexes,
+        ref _instanceIndexComplex,
+        in _instanceIndexSimple
+      );
+
+      _complexCmdMap[node] = new CmdRef(currentPool, cmdIdx);
+
+      indexOffset += (uint)indices.Length;
+      vertexOffset += (uint)meshes[node.MeshGuid].Vertices.Length;
     }
-
-
-    var indexByteSize = (ulong)adjustedIndices.Count * sizeof(uint);
-
-    var stagingBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      indexByteSize,
-      BufferUsage.TransferSrc,
-      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      stagingBuffer: true,
-      cpuAccessible: true
-    );
-
-    stagingBuffer.Map(indexByteSize);
-    fixed (uint* pSrc = adjustedIndices.ToArray()) {
-      stagingBuffer.WriteToBuffer((nint)pSrc, indexByteSize);
-    }
-
-    _globalComplexIndexBuffer = new DwarfBuffer(
-      _allocator,
-      _device,
-      (ulong)Unsafe.SizeOf<uint>(),
-      (uint)adjustedIndices.Count,
-      BufferUsage.IndexBuffer | BufferUsage.TransferDst,
-      MemoryProperty.DeviceLocal
-    );
-
-    _device.CopyBuffer(
-      stagingBuffer.GetBuffer(),
-      _globalComplexIndexBuffer.GetBuffer(),
-      indexByteSize
-    );
-    stagingBuffer.Dispose();
   }
-  private unsafe void CreateSimpleVertexBuffer(ReadOnlySpan<Node> nodes, ConcurrentDictionary<Guid, Mesh> meshes) {
+
+  private unsafe void CreateSimpleVertexIndexBuffer(
+    ReadOnlySpan<Node> nodes,
+    ConcurrentDictionary<Guid, Mesh> meshes
+  ) {
+    _vertexSimpleBindings.Clear();
+    _simpleBufferPool.Dispose();
+    _simpleBufferPool = new BufferPool(_device, _allocator);
+    _indirectSimples.Clear();
+
+    var currentPool = 0u;
+    var indexOffset = 0u;
+    var vertexOffset = 0u;
+
+    var adjustedIndices = new List<uint>();
+    var previousVertexSize = 0ul;
+    var previousIndexSize = 0ul;
+
+    _simpleBufferNodes = nodes.ToArray();
+    foreach (var node in nodes) {
+      ReadOnlySpan<Vertex> verts = meshes[node.MeshGuid].Vertices;
+      ReadOnlySpan<uint> indices = meshes[node.MeshGuid].Indices;
+
+      var vertexByteSize = (ulong)verts.Length * (ulong)Unsafe.SizeOf<Vertex>();
+      var indexByteSize = (ulong)indices.Length * sizeof(uint);
+
+      ulong vertexByteOffset;
+      var canAddVertex = _simpleBufferPool.CanAddToVertexBuffer(
+        index: currentPool,
+        byteSize: vertexByteSize,
+        prevSize: previousVertexSize
+      );
+      var canAddIndex = _simpleBufferPool.CanAddToIndexBuffer(
+        index: currentPool,
+        byteSize: indexByteSize,
+        prevSize: previousIndexSize
+      );
+
+      var localIndices = new List<uint>();
+      foreach (var idx in meshes[node.MeshGuid].Indices) {
+        adjustedIndices.Add(idx + vertexOffset);
+        localIndices.Add(idx + vertexOffset);
+      }
+      var localIndicesByteSize = (ulong)localIndices.Count * sizeof(uint);
+
+      var isOverflowingOnNextStep = CheckForOverflow(indexOffset, (uint)indices.Length);
+      // Logger.Info($"[{canAddIndex}][{canAddVertex}][{isOverflowingOnNextStep}]");
+      if (!canAddVertex || !canAddIndex || isOverflowingOnNextStep) {
+        Logger.Info($"Adding to pool [{canAddVertex}][{canAddIndex}][{isOverflowingOnNextStep}]");
+        currentPool = (uint)_simpleBufferPool.AddToPool();
+        previousVertexSize = 0;
+        previousIndexSize = 0;
+        indexOffset = 0;
+        vertexOffset = 0;
+      }
+      fixed (Vertex* pVertex = verts) {
+        _simpleBufferPool.AddToBuffer(currentPool, (nint)pVertex, vertexByteSize, previousVertexSize, out vertexByteOffset, out var reason);
+      }
+
+      fixed (uint* pIndicesToPool = localIndices.ToArray()) {
+        _simpleBufferPool.AddToIndex(
+          currentPool,
+          (nint)pIndicesToPool,
+          localIndicesByteSize,
+          previousIndexSize,
+          out var indexByteOffset,
+          out var idxReason
+        );
+      }
+
+      previousVertexSize += vertexByteSize;
+      previousIndexSize += localIndicesByteSize;
+
+      _vertexSimpleBindings.Add(new VertexBinding {
+        BufferIndex = currentPool,
+        FirstVertexOffset = (uint)(vertexByteOffset / (ulong)Unsafe.SizeOf<Vertex>()),
+        FirstIndexOffset = indexOffset
+      });
+
+      int cmdIdx = AddIndirectCommand(
+        meshes,
+        currentPool,
+        node,
+        _vertexSimpleBindings.Last(),
+        ref _indirectSimples,
+        ref _instanceIndexSimple
+      );
+      _simpleCmdMap[node] = new CmdRef(currentPool, cmdIdx);
+
+      indexOffset += (uint)indices.Length;
+      vertexOffset += (uint)meshes[node.MeshGuid].Vertices.Length;
+    }
+  }
+
+  private unsafe void CreateSimpleVertexIndexBuffer_Clean_Ref(ReadOnlySpan<Node> nodes, ConcurrentDictionary<Guid, Mesh> meshes) {
     _vertexSimpleBindings.Clear();
     _simpleBufferPool.Dispose();
     _simpleBufferPool = new BufferPool(_device, _allocator);
     _indirectSimples.Clear();
     _indirectSimples = [];
-    uint currentPool = 0;
-    uint indexOffset = 0;
-    uint vertexOffset = 0;
+    var currentPool = 0u;
+    var indexOffset = 0u;
+    var vertexOffset = 0u;
 
-    var previousSize = 0ul;
+    var adjustedIndices = new List<uint>();
+    var previousVertexSize = 0ul;
 
     _simpleBufferNodes = nodes.ToArray();
     foreach (var node in nodes) {
-      var verts = meshes[node.MeshGuid].Vertices;
-      var byteSize = (ulong)verts.Length * (ulong)Unsafe.SizeOf<Vertex>();
+      ReadOnlySpan<Vertex> verts = meshes[node.MeshGuid].Vertices;
+      ReadOnlySpan<uint> indices = meshes[node.MeshGuid].Indices;
 
-      var indices = meshes[node.MeshGuid].Indices;
-      var byteSizeIndices = (ulong)indices.Length * sizeof(uint);
+      var vertexByteSize = (ulong)verts.Length * (ulong)Unsafe.SizeOf<Vertex>();
+      var indexByteSize = (ulong)indices.Length * sizeof(uint);
 
-
-      var staging = new DwarfBuffer(
-                _allocator, _device, byteSize,
-                BufferUsage.TransferSrc,
-                MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-                stagingBuffer: true, cpuAccessible: true
-              );
-      staging.Map(byteSize);
-      fixed (Vertex* p = verts) {
-        staging.WriteToBuffer((nint)p, byteSize);
-
-        if (!_simpleBufferPool.AddToBuffer(currentPool, (nint)p, byteSize, previousSize, out var byteOffset, out var reason)) {
-          var r = reason;
-          currentPool = (uint)_simpleBufferPool.AddToPool();
-          _simpleBufferPool.AddToBuffer(currentPool, (nint)p, byteSize, previousSize, out byteOffset, out reason);
-          // Logger.Info($"[{r}] Creating {currentPool} for {node.Name} offseting by [{byteOffset}] with [{byteSize}] bytes");
-        } else {
-          // Logger.Warn($"[{reason}] Adding {node.Name} to buffer {currentPool} offseting by [{byteOffset}] with [{byteSize}] bytes");
-        }
-        previousSize += byteSize;
-
-        _vertexSimpleBindings.Add(new VertexBinding {
-          BufferIndex = currentPool,
-          FirstVertexOffset = (uint)(byteOffset / (ulong)Unsafe.SizeOf<Vertex>()),
-          FirstIndexOffset = indexOffset
-        });
-
-        int cmdIdx = AddIndirectCommand(
-          meshes,
-          currentPool,
-          node,
-          _vertexSimpleBindings.Last(),
-          ref _indirectSimples,
-          ref _instanceIndexSimple
-        );
-        _simpleCmdMap[node] = new CmdRef(currentPool, cmdIdx);
-
-        indexOffset += (uint)indices.Length;
-        vertexOffset += (uint)verts.Length;
-
-        staging.Dispose();
+      ulong vertexByteOffset;
+      var canAddVertex = _simpleBufferPool.CanAddToVertexBuffer(currentPool, vertexByteSize, previousVertexSize);
+      if (!canAddVertex) {
+        currentPool = (uint)_simpleBufferPool.AddToPool();
+        previousVertexSize = 0;
       }
-    }
-  }
-
-  private unsafe void CreateComplexVertexBuffer(ReadOnlySpan<Node> nodes, ConcurrentDictionary<Guid, Mesh> meshes) {
-    _vertexComplexBindings.Clear();
-    _complexBufferPool.Dispose();
-    _complexBufferPool = new BufferPool(_device, _allocator);
-    _indirectComplexes.Clear();
-    _indirectComplexes = [];
-    uint currentPool = 0;
-    uint indexOffset = 0;
-    uint vertexOffset = 0;
-
-    var previousSize = 0ul;
-
-    _complexBufferNodes = nodes.ToArray();
-    foreach (var node in nodes) {
-      var verts = meshes[node.MeshGuid].Vertices;
-      var byteSize = (ulong)verts.Length * (ulong)Unsafe.SizeOf<Vertex>();
-
-      var indices = meshes[node.MeshGuid].Indices;
-      var byteSizeIndices = (ulong)indices.Length * sizeof(uint);
-
-
-      var staging = new DwarfBuffer(
-                _allocator, _device, byteSize,
-                BufferUsage.TransferSrc,
-                MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-                stagingBuffer: true, cpuAccessible: true
-              );
-      staging.Map(byteSize);
-      fixed (Vertex* p = verts) {
-        staging.WriteToBuffer((nint)p, byteSize);
-
-        if (!_complexBufferPool.AddToBuffer(currentPool, (nint)p, byteSize, previousSize, out var byteOffset, out var reason)) {
-          var r = reason;
-          currentPool = (uint)_complexBufferPool.AddToPool();
-          _complexBufferPool.AddToBuffer(currentPool, (nint)p, byteSize, previousSize, out byteOffset, out reason);
-          // Logger.Info($"[{r}] Creating {currentPool} for {node.Name} offseting by [{byteOffset}] with [{byteSize}] bytes");
-        } else {
-          // Logger.Info($"[{reason}] Adding {node.Name} to buffer {currentPool} offseting by [{byteOffset}] with [{byteSize}] bytes");
-        }
-        previousSize += byteSize;
-
-        _vertexComplexBindings.Add(new VertexBinding {
-          BufferIndex = currentPool,
-          FirstVertexOffset = (uint)(byteOffset / (ulong)Unsafe.SizeOf<Vertex>()),
-          FirstIndexOffset = indexOffset
-        });
-
-        int cmdIdx = AddIndirectCommand(
-          meshes,
-          currentPool,
-          node,
-          _vertexComplexBindings.Last(),
-          ref _indirectComplexes,
-          ref _instanceIndexComplex,
-          in _instanceIndexSimple
-        );
-        _complexCmdMap[node] = new CmdRef(currentPool, cmdIdx);
-
-        indexOffset += (uint)indices.Length;
-        vertexOffset += (uint)verts.Length;
-
-        staging.Dispose();
+      fixed (Vertex* pVertex = verts) {
+        _simpleBufferPool.AddToBuffer(currentPool, (nint)pVertex, vertexByteSize, previousVertexSize, out vertexByteOffset, out var reason);
       }
+
+      foreach (var idx in meshes[node.MeshGuid].Indices) {
+        adjustedIndices.Add(idx + vertexOffset);
+      }
+
+      previousVertexSize += vertexByteSize;
+
+      _vertexSimpleBindings.Add(new VertexBinding {
+        BufferIndex = currentPool,
+        FirstVertexOffset = (uint)(vertexByteOffset / (ulong)Unsafe.SizeOf<Vertex>()),
+        FirstIndexOffset = indexOffset
+      });
+
+      int cmdIdx = AddIndirectCommand(
+        meshes,
+        currentPool,
+        node,
+        _vertexSimpleBindings.Last(),
+        ref _indirectSimples,
+        ref _instanceIndexSimple
+      );
+      _simpleCmdMap[node] = new CmdRef(currentPool, cmdIdx);
+
+      indexOffset += (uint)indices.Length;
+      vertexOffset += (uint)meshes[node.MeshGuid].Vertices.Length;
     }
+
+    var adjustedIndicesByteSize = (ulong)adjustedIndices.Count * sizeof(uint);
+    var indexStagingBuffer = new DwarfBuffer(
+      _allocator,
+      _device,
+      adjustedIndicesByteSize,
+      BufferUsage.TransferSrc,
+      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
+      stagingBuffer: true,
+      cpuAccessible: true
+    );
+
+    indexStagingBuffer.Map(adjustedIndicesByteSize);
+    fixed (uint* pIndices = adjustedIndices.ToArray()) {
+      indexStagingBuffer.WriteToBuffer((nint)pIndices, adjustedIndicesByteSize);
+    }
+    indexStagingBuffer.Unmap();
+
+    // _globalSimpleIndexBuffer = new DwarfBuffer(
+    //   _allocator,
+    //   _device,
+    //   (ulong)Unsafe.SizeOf<uint>(),
+    //   (uint)adjustedIndices.Count,
+    //   BufferUsage.IndexBuffer | BufferUsage.TransferDst,
+    //   MemoryProperty.DeviceLocal
+    // );
+
+    // _device.CopyBuffer(
+    //   indexStagingBuffer.GetBuffer(),
+    //   _globalSimpleIndexBuffer.GetBuffer(),
+    //   adjustedIndicesByteSize
+    // );
+    indexStagingBuffer.Dispose();
   }
 
   public override unsafe void Dispose() {
     _device.WaitQueue();
-    _globalComplexIndexBuffer?.Dispose();
-    _globalSimpleIndexBuffer?.Dispose();
     foreach (var buff in _indirectSimpleBuffers) {
       buff.Dispose();
     }
