@@ -92,6 +92,24 @@ public static class Frustum {
   }
 
   [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+  public static void FilterNodesByFog(ReadOnlySpan<Node> inNodes, out List<Node> outNodes) {
+    outNodes = [];
+    var globalUbo = Application.Instance.GlobalUbo;
+    var iep = globalUbo.CameraPosition;
+    var fogValue = Application.Instance.FogValue.X;
+    foreach (var node in inNodes) {
+      var owner = node.ParentRenderer.Owner;
+      if (owner.CanBeDisposed) continue;
+      var transform = owner.GetTransform();
+      var matrix = node.GetMatrix() * transform!.Rotation() * transform!.Position() * transform!.Scale();
+      var position = matrix.Translation;
+      if (Vector2.Distance(new(position.X, position.Z), new(iep.X, iep.Z)) <= fogValue + (node.Radius * 4)) {
+        outNodes.Add(node);
+      }
+    }
+  }
+
+  [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public static FrustumPlanes BuildFromCamera(Camera cam) {
     // Use the camera's view matrix and projection matrix to calculate the frustum
     var view = cam.GetViewMatrix();
