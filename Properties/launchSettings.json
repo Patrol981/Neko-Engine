@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "Dwarf": {
+    "Neko": {
       "commandName": "Project",
       "nativeDebugging": true
     }

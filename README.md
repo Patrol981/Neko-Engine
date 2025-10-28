@@ -1,6 +1,6 @@
-# What's Dwarf Engine?
+# What's Neko Engine?
 
-Dwarf is a game engine targeting C-RPG and RTS genres because author is
+Neko is a game engine targeting C-RPG and RTS genres because author is
 passionate about theese :relaxed:, so it will work best with this type of games
 but do feel free to create any other game with it!
 
@@ -18,7 +18,7 @@ but do feel free to create any other game with it!
 | -------- | ------------------ |
 | Windows  | :white_check_mark: |
 | Linux    | :white_check_mark: |
-| MacOS    | :white_check_mark:                |
+| MacOS    | :white_check_mark: |
 | Android  | :x:                |
 | iOS      | :x:                |
 
@@ -48,18 +48,18 @@ be using:
 
 ```xml
 <ItemGroup>
-	<Reference  Include="Dwarf">
-		<HintPath>dlls\Dwarf.dll</HintPath>
+	<Reference  Include="Neko">
+		<HintPath>dlls\Neko.dll</HintPath>
 	</Reference>
-	<Reference  Include="Dwarf.AbstractionLayer">
-		<HintPath>dlls\Dwarf.AbstractionLayer.dll</HintPath>
+	<Reference  Include="Neko.AbstractionLayer">
+		<HintPath>dlls\Neko.AbstractionLayer.dll</HintPath>
 	</Reference>
 </ItemGroup>
 ```
 
-## 3. Using Dwarf Foundry (WIP)
+## 3. Using Neko Foundry (WIP)
 
-You may got the feeling that creating project with Dwarf.dll can be a bit tricky
+You may got the feeling that creating project with Neko.dll can be a bit tricky
 to get it right, hence there is an official launcher in development that will
 improve your experience. When it will be ready You will find link to download
 <b>here</b>

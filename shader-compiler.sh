@@ -6,8 +6,8 @@ mkdir -p CompiledShaders/Vulkan
 mkdir -p TranspiledShaders
 mkdir -p TranspiledShaders/Vulkan
 
-# Navigate to the Dwarf.ShaderLanguage directory
-cd ./Dwarf.ShaderLanguage/ || exit
+# Navigate to the Neko.ShaderLanguage directory
+cd ./Neko.ShaderLanguage/ || exit
 
 # Run cargo with the given arguments
 cargo run ../Shaders/Vulkan ../TranspiledShaders/Vulkan
