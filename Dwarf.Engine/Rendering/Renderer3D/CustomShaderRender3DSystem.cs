@@ -1,22 +1,37 @@
 using System.Collections.Concurrent;
+using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Dwarf;
 using Dwarf.AbstractionLayer;
+using Dwarf.EntityComponentSystem;
+using Dwarf.Extensions.Logging;
 using Dwarf.Rendering;
 using Dwarf.Vulkan;
+using ZLinq;
 
 namespace Dwarf.Rendering.Renderer3D;
 
 public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
   private struct CustomShaderBuffer {
-    private DwarfBuffer VertexBuffer { get; set; }
-    private DwarfBuffer IndexBuffer { get; set; }
+    public required Guid EntityId { get; set; }
+    public required Guid BufferId { get; set; }
+    public required Guid MeshId { get; set; }
+
+    public DwarfBuffer VertexBuffer { get; set; }
+    public DwarfBuffer IndexBuffer { get; set; }
+
+    public required uint IndexCount { get; set; }
+
+    public required string PipelineName { get; set; }
   };
 
   private readonly IDescriptorSetLayout[] _basicLayouts = [];
 
   public int LastKnownElemCount { get; set; } = 0;
-  private readonly Dictionary<Guid, CustomShaderBuffer> _buffers = [];
+  // private readonly Dictionary<Guid, CustomShaderBuffer> _buffers = [];
+  private List<CustomShaderBuffer> _buffers = [];
+  private Dictionary<Guid, ObjectData> _objectDataArray = [];
 
   public CustomShaderRender3DSystem(
     Application app,
@@ -48,20 +63,121 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
         DescriptorSetLayouts = [.. _basicLayouts],
         PipelineName = pipelineName
       });
-
-
-
-      // _buffers.Add(renderable.Owner.Id, )
     }
   }
 
   [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-  public void Update(FrameInfo frameInfo, ConcurrentDictionary<Guid, Mesh> meshes) {
+  public void Update(
+    FrameInfo frameInfo,
+    ReadOnlySpan<IRender3DElement> renderablesWithCustomShaders,
+    in ConcurrentDictionary<Guid, Mesh> meshes,
+    in HashSet<Entity> entities
+  ) {
+    AddOrUpdateBuffers(renderablesWithCustomShaders, meshes);
 
+    for (ushort i = 0; i < _buffers.Count; i++) {
+      var entity = entities.Where(x => x.Id == _buffers[i].EntityId).First();
+      var transform = entity.GetTransform();
+      var mesh = meshes[_buffers[i].MeshId];
+
+      ref ObjectData objectData = ref CollectionsMarshal.GetValueRefOrAddDefault(
+        _objectDataArray,
+        _buffers[i].BufferId,
+        out var exists
+      );
+
+      if (!exists) continue;
+
+      objectData.ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity;
+      objectData.NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity;
+      objectData.NodeMatrix = mesh.Matrix;
+      objectData.JointsBufferOffset = Vector4.Zero;
+    }
+
+    unsafe {
+      fixed (ObjectData* pObjectData = _objectDataArray.Values.AsValueEnumerable().ToArray()) {
+        _application.StorageCollection.WriteBuffer(
+          "CustomShaderObjectStorage",
+          frameInfo.FrameIndex,
+          (nint)pObjectData,
+          (ulong)Unsafe.SizeOf<ObjectData>() * (ulong)_objectDataArray.Values.Count
+        );
+      }
+    }
   }
 
-  public void Render() {
+  public void Render(FrameInfo frameInfo) {
+    int count = 0;
+    string currentPipelineName = "";
+    foreach (var buffer in _buffers) {
+      if (currentPipelineName != buffer.PipelineName) {
+        currentPipelineName = buffer.PipelineName;
+        BindPipeline(frameInfo.CommandBuffer, buffer.PipelineName);
 
+        Descriptor.BindDescriptorSet(_device, _textureManager.AllTexturesDescriptor, frameInfo, _pipelines[currentPipelineName].PipelineLayout, 0, 1);
+        Descriptor.BindDescriptorSet(_device, frameInfo.GlobalDescriptorSet, frameInfo, _pipelines[currentPipelineName].PipelineLayout, 1, 1);
+        Descriptor.BindDescriptorSet(_device, frameInfo.CustomShaderObjectDataDescriptorSet, frameInfo, _pipelines[currentPipelineName].PipelineLayout, 2, 1);
+        Descriptor.BindDescriptorSet(_device, frameInfo.PointLightsDescriptorSet, frameInfo, _pipelines[currentPipelineName].PipelineLayout, 3, 1);
+
+        count++;
+      }
+
+      _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, buffer.IndexBuffer, 0);
+      _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, buffer.VertexBuffer, 0);
+
+      _renderer.CommandList.DrawIndexed(
+        commandBuffer: frameInfo.CommandBuffer,
+        indexCount: buffer.IndexCount,
+        instanceCount: 1,
+        firstIndex: 0,
+        vertexOffset: 0,
+        firstInstance: 0
+      );
+    }
+
+    // Logger.Info("Custom Render Binds: " + count);
+  }
+
+  private void AddOrUpdateBuffers(
+    ReadOnlySpan<IRender3DElement> renderablesWithCustomShaders,
+    ConcurrentDictionary<Guid, Mesh> meshes
+  ) {
+    if (LastKnownElemCount == renderablesWithCustomShaders.Length) {
+      return;
+    }
+    LastKnownElemCount = renderablesWithCustomShaders.Length;
+
+    foreach (var buff in _buffers) {
+      buff.VertexBuffer?.Dispose();
+      buff.IndexBuffer?.Dispose();
+    }
+    _buffers.Clear();
+    _objectDataArray.Clear();
+
+    foreach (var renderable in renderablesWithCustomShaders) {
+      foreach (var meshNode in renderable.MeshedNodes) {
+        if (meshNode.HasSkin) {
+          throw new NotSupportedException("This system does not support skinned meshes");
+        }
+
+        CreateIndexBuffer(meshes[meshNode.MeshGuid], out var indexBuffer);
+        CreateVertexBuffer(meshes[meshNode.MeshGuid], out var vertexBuffer);
+
+        var bufferId = Guid.NewGuid();
+
+        _buffers.Add(new CustomShaderBuffer() {
+          EntityId = renderable.Owner.Id,
+          BufferId = bufferId,
+          MeshId = meshNode.MeshGuid,
+          VertexBuffer = vertexBuffer,
+          IndexBuffer = indexBuffer,
+          IndexCount = (uint)meshes[meshNode.MeshGuid].IndexCount,
+          PipelineName = renderable.CustomShader.Name
+        });
+
+        _objectDataArray.TryAdd(bufferId, default);
+      }
+    }
   }
 
   private unsafe void CreateVertexBuffer(in Mesh mesh, out DwarfBuffer vertexBuffer) {
@@ -133,6 +249,10 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
   }
 
   public override void Dispose() {
+    foreach (var buff in _buffers) {
+      buff.VertexBuffer?.Dispose();
+      buff.IndexBuffer?.Dispose();
+    }
     base.Dispose();
   }
 }

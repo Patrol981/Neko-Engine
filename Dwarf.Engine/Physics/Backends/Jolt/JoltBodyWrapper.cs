@@ -32,6 +32,12 @@ public class JoltBodyWrapper : IPhysicsBody {
     set => _bodyInterface.SetLinearVelocity(_bodyID, value);
   }
 
+  public void SetLinearVelocity(float value, int index = 0) {
+    _bodyInterface.GetLinearVelocity(_bodyID, out var velocity);
+    velocity[index] = value;
+    _bodyInterface.SetLinearVelocity(_bodyID, velocity);
+  }
+
   public Vector3 AngularVelocity {
     get => _bodyInterface.GetAngularVelocity(_bodyID);
     set => _bodyInterface.SetAngularVelocity(_bodyID, value);

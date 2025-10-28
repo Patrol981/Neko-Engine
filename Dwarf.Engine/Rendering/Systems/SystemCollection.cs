@@ -53,7 +53,9 @@ public class SystemCollection : IDisposable {
 
     if (Render3DSystem != null) {
       Render3DSystem.Render(
-        app.Drawables3D.Values.AsValueEnumerable().ToArray(),
+        app.Drawables3D.Values.AsValueEnumerable()
+          .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+          .ToArray(),
         app.Meshes,
         frameInfo,
         out var animatedNodes
@@ -61,6 +63,8 @@ public class SystemCollection : IDisposable {
       AnimationSystem?.Update(animatedNodes);
       // _animationSystem?.Update(_render3DSystem.SkinnedNodesCache);
     }
+
+    CustomShaderRender3DSystem?.Render(frameInfo);
 
     Render2DSystem?.Render(frameInfo, app.Sprites.Values.AsValueEnumerable().ToArray());
 
@@ -185,7 +189,18 @@ public class SystemCollection : IDisposable {
     // _subpassConnectorSystem = new(allocator, device, renderer, layouts, new SecondSubpassPipeline());
     // _postProcessingSystem = new(allocator, device, renderer, textureManager, systemConfiguration, layouts, new PostProcessingPipeline());
 
-    Render3DSystem?.Setup(app.Drawables3D.Values.ToArray(), ref textureManager);
+    Render3DSystem?.Setup(
+      app.Drawables3D.Values.AsValueEnumerable()
+        .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+        .ToArray(),
+      ref textureManager
+    );
+
+    CustomShaderRender3DSystem?.Setup(
+      app.Drawables3D.Values.AsValueEnumerable()
+        .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
+        .ToArray()
+      );
 
     var drawables = app.Entities.FlattenDrawable2D();
     Render2DSystem?.Setup(drawables, ref textureManager);
@@ -307,6 +322,7 @@ public class SystemCollection : IDisposable {
   public void Dispose() {
     PostProcessingSystem?.Dispose();
     Render3DSystem?.Dispose();
+    CustomShaderRender3DSystem?.Dispose();
     Render2DSystem?.Dispose();
     RenderUISystem?.Dispose();
     PhysicsSystem?.Dispose();
