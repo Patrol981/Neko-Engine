@@ -19,7 +19,7 @@ using Dwarf.Utils;
 using Dwarf.Vulkan;
 using Dwarf.Windowing;
 using Microsoft.OpenApi.Extensions;
-
+using ZLinq;
 using Entity = Dwarf.EntityComponentSystem.Entity;
 
 namespace Dwarf;
@@ -489,6 +489,7 @@ public partial class Application {
       _currentFrame.GlobalDescriptorSet = StorageCollection.GetDescriptor("GlobalStorage", frameIndex);
       _currentFrame.PointLightsDescriptorSet = StorageCollection.GetDescriptor("PointStorage", frameIndex);
       _currentFrame.ObjectDataDescriptorSet = StorageCollection.GetDescriptor("ObjectStorage", frameIndex);
+      _currentFrame.CustomShaderObjectDataDescriptorSet = StorageCollection.GetDescriptor("CustomShaderObjectStorage", frameIndex);
       _currentFrame.SpriteDataDescriptorSet = StorageCollection.GetDescriptor("SpriteStorage", frameIndex);
       _currentFrame.JointsBufferDescriptorSet = StorageCollection.GetDescriptor("JointsStorage", frameIndex);
       _currentFrame.TextureManager = _textureManager;
@@ -536,6 +537,17 @@ public partial class Application {
         Systems.Render3DSystem.Update(
           FrameInfo,
           Meshes
+        );
+      }
+
+      if (Systems.CustomShaderRender3DSystem != null) {
+        Systems.CustomShaderRender3DSystem.Update(
+          FrameInfo,
+          Drawables3D.Values.AsValueEnumerable()
+          .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
+          .ToArray(),
+          Meshes,
+          Entities
         );
       }
 

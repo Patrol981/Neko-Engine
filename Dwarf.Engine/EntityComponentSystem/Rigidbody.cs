@@ -261,19 +261,12 @@ public class Rigidbody : IDisposable {
     }
 
     if (_motionType == MotionType.Dynamic) {
-      var newVel = _bodyInterface.LinearVelocity;
-      newVel.X /= 2;
-      newVel.Z /= 2;
+      _bodyInterface.LinearVelocity /= 2;
 
-      if (newVel.Y < 0) newVel.Y = 0;
-      _bodyInterface.LinearVelocity = newVel;
+      if (_bodyInterface.LinearVelocity.Y < 0) _bodyInterface.SetLinearVelocity(0, 1);
     } else {
-      var newVel = _bodyInterface.LinearVelocity;
-      newVel.X /= 2;
-      newVel.Z /= 2;
-      // newVel.Y = transform.Position.Y;
-      newVel.Y = 0;
-      _bodyInterface.LinearVelocity = newVel;
+      _bodyInterface.LinearVelocity /= 2;
+      _bodyInterface.SetLinearVelocity(0, 1);
     }
 
     // freeze rigidbody to X an Z axis
