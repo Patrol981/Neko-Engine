@@ -10,6 +10,7 @@ public struct FrameInfo {
   public VkDescriptorSet GlobalDescriptorSet;
   public VkDescriptorSet PointLightsDescriptorSet;
   public VkDescriptorSet ObjectDataDescriptorSet;
+  public VkDescriptorSet CustomShaderObjectDataDescriptorSet;
   public VkDescriptorSet JointsBufferDescriptorSet;
   public VkDescriptorSet SpriteDataDescriptorSet;
   public TextureManager TextureManager;
