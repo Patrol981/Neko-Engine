@@ -23,7 +23,8 @@ public class MeshRenderer : IRender3DElement, ICollision {
   private VkDescriptorSet _skinDescriptor = VkDescriptorSet.Null;
 
   public Entity Owner { get; internal set; }
-  public ShaderInfo CustomShader { get; internal set; } = new();
+  private ShaderInfo _customShader = new();
+  public ShaderInfo CustomShader => _customShader;
 
   public MeshRenderer(Entity owner, Application app) {
     _app = app;
@@ -480,7 +481,11 @@ public class MeshRenderer : IRender3DElement, ICollision {
   }
 
   public void SetCustomShader(ShaderInfo shaderInfo) {
-    CustomShader = shaderInfo;
+    _customShader = shaderInfo;
+  }
+
+  public void SetShaderTextureInfo(Guid textureId) {
+    _customShader.ShaderTextureId = textureId;
   }
 
   public Guid GetTextureIdReference(in ConcurrentDictionary<Guid, Mesh> meshes, int index = 0) {

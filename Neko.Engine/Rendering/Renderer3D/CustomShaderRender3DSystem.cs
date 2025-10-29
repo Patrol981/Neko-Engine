@@ -24,6 +24,8 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
     public required uint IndexCount { get; set; }
 
     public required string PipelineName { get; set; }
+
+    public Guid ShaderTextureId { get; set; }
   };
 
   private readonly IDescriptorSetLayout[] _basicLayouts = [];
@@ -66,6 +68,11 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
     }
   }
 
+  private static int GetIndexOfMyTexture(string texName) {
+    var texturePair = Application.Instance.TextureManager.PerSceneLoadedTextures.Where(x => x.Value.TextureName == texName).Single();
+    return texturePair.Value.TextureManagerIndex;
+  }
+
   [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public void Update(
     FrameInfo frameInfo,
@@ -79,6 +86,18 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
       var entity = entities.Where(x => x.Id == _buffers[i].EntityId).First();
       var transform = entity.GetTransform();
       var mesh = meshes[_buffers[i].MeshId];
+      var material = entity.GetMaterial();
+
+      var texture = _textureManager.GetTextureLocal(mesh.TextureIdReference);
+      var shaderTexture = _textureManager.GetTextureLocal(_buffers[i].ShaderTextureId);
+
+      var texId = GetIndexOfMyTexture(texture.TextureName);
+      int shaderTextureId = 0;
+      if (shaderTexture is not null) {
+        shaderTextureId = GetIndexOfMyTexture(shaderTexture.TextureName);
+      } else {
+        Logger.Warn($"shader texture returned null [{_buffers[i].ShaderTextureId}]");
+      }
 
       ref ObjectData objectData = ref CollectionsMarshal.GetValueRefOrAddDefault(
         _objectDataArray,
@@ -92,6 +111,8 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
       objectData.NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity;
       objectData.NodeMatrix = mesh.Matrix;
       objectData.JointsBufferOffset = Vector4.Zero;
+      objectData.AmbientAndTexId0.W = texId;
+      objectData.DiffuseAndTexId1.W = shaderTextureId;
     }
 
     unsafe {
@@ -107,7 +128,6 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
   }
 
   public void Render(FrameInfo frameInfo) {
-    int count = 0;
     string currentPipelineName = "";
     foreach (var buffer in _buffers) {
       if (currentPipelineName != buffer.PipelineName) {
@@ -119,7 +139,7 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
         Descriptor.BindDescriptorSet(_device, frameInfo.CustomShaderObjectDataDescriptorSet, frameInfo, _pipelines[currentPipelineName].PipelineLayout, 2, 1);
         Descriptor.BindDescriptorSet(_device, frameInfo.PointLightsDescriptorSet, frameInfo, _pipelines[currentPipelineName].PipelineLayout, 3, 1);
 
-        count++;
+        // Descriptor.BindDescriptorSet(_device, _hatch)
       }
 
       _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, buffer.IndexBuffer, 0);
@@ -134,8 +154,6 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
         firstInstance: 0
       );
     }
-
-    // Logger.Info("Custom Render Binds: " + count);
   }
 
   private void AddOrUpdateBuffers(
@@ -172,7 +190,8 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
           VertexBuffer = vertexBuffer,
           IndexBuffer = indexBuffer,
           IndexCount = (uint)meshes[meshNode.MeshGuid].IndexCount,
-          PipelineName = renderable.CustomShader.Name
+          PipelineName = renderable.CustomShader.Name,
+          ShaderTextureId = renderable.CustomShader.ShaderTextureId
         });
 
         _objectDataArray.TryAdd(bufferId, default);

@@ -24,6 +24,7 @@ public interface IRender3DElement : IDisposable {
 
   ShaderInfo CustomShader { get; }
   void SetCustomShader(ShaderInfo shaderInfo);
+  void SetShaderTextureInfo(Guid textureId);
 
   int NodesCount { get; }
   int MeshedNodesCount { get; }
