@@ -97,6 +97,7 @@ public static class Time {
   public static double LastFrame => s_lastFrame;
   public static double STime => s_time;
   public static DateTime StartTime => s_startTime;
+  public static float ElapsedTicks => s_stopwatch.ElapsedTicks;
 
   public static float DeltaTimeRender => s_renderStopwatchDelta;
 }
