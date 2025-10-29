@@ -6,6 +6,7 @@ using Neko;
 using Neko.AbstractionLayer;
 using Neko.EntityComponentSystem;
 using Neko.Extensions.Logging;
+using Neko.Globals;
 using Neko.Rendering;
 using Neko.Vulkan;
 using ZLinq;
@@ -113,6 +114,7 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
       objectData.JointsBufferOffset = Vector4.Zero;
       objectData.AmbientAndTexId0.W = texId;
       objectData.DiffuseAndTexId1.W = shaderTextureId;
+      objectData.DiffuseAndTexId1.X = Time.DeltaTime;
     }
 
     unsafe {

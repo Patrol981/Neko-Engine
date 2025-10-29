@@ -34,34 +34,66 @@ layout(std140, set = 3, binding = 0) readonly buffer PointLightBuffer {
   PointLight pointLights[];
 } pointLightBuffer;
 
-// layout(set = 4, binding = 0) uniform texture2D _spatialTexture;
-// layout(set = 4, binding = 0) uniform sampler _spatialSampler;
+// holo specific
+const vec4 hologram_color = vec4(0.0, 0.6, 1.0, 1.0);
+const float transparency = 0.6;
+const float glitch_strength = 0.3;
+const float glow_intensity  = 0.4;
+const float time_factor = 1.0;
+const float noise_amount = 0.05;
+const float vertical_shift_speed = 0.1;
+
+float random_noise(vec2 in_uv) {
+  return fract(sin(dot(in_uv, vec2(12.9898, 78.233))) * 43758.5453);
+}
 
 void main() {
+  float TIME = objectBuffer.objectData[id].diffuseAndTexId1.x;
+  vec2 cust_uv = texCoord.xy;
+  cust_uv.y += TIME * vertical_shift_speed;
+  float noise = random_noise(cust_uv + TIME * 0.1);
+  cust_uv.x += noise * glitch_strength * 0.05;
+
+  float glitch = sin(cust_uv.x * 10.0 + TIME * time_factor) * glitch_strength;
+  cust_uv.x += glitch * 0.05;
+  float glow = sin(TIME * 2.0) * glow_intensity;
+  // vec4 color = texture(texture_sampler, cust_uv);
+  vec4 color = texture(sampler2D(_texture[int(objectBuffer.objectData[id].diffuseAndTexId1.w)], _sampler), cust_uv).rgba;
+  color.rgb += glow * hologram_color.rgb * 0.5;
+  color.r += sin(TIME + cust_uv.y * 3.0) * 0.1 * glitch_strength; 
+  color.g += cos(TIME + cust_uv.x * 2.0) * 0.1 * glitch_strength;
+  color.rgb *= hologram_color.rgb;
+  color.a *= transparency;
+  color.rgb += random_noise(cust_uv) * noise_amount;
+
+  outColor = color;
+}
+
+void main_() {
   vec3 surfaceNormal = normalize(fragNormalWorld);
   vec3 viewDir = normalize(ubo.cameraPosition - fragPositionWorld);
 
   vec3 result = vec3(0,0,0);
 
-  result += calc_dir_light(
-    ubo.directionalLight,
-    surfaceNormal,
-    viewDir,
-    objectBuffer.objectData[id].specularAndShininess.w,
-    objectBuffer.objectData[id].diffuseAndTexId1.xyz,
-    objectBuffer.objectData[id].specularAndShininess.xyz
-  );
-  for(int i = 0; i < ubo.pointLightLength; i++) {
-    PointLight light = pointLightBuffer.pointLights[i];
-    result += calc_point_light(
-      light,
-      surfaceNormal,
-      viewDir,
-      objectBuffer.objectData[id].specularAndShininess.w,
-      objectBuffer.objectData[id].ambientAndTexId0.xyz,
-      objectBuffer.objectData[id].specularAndShininess.xyz
-    );
-  }
+  // result += calc_dir_light(
+  //   ubo.directionalLight,
+  //   surfaceNormal,
+  //   viewDir,
+  //   objectBuffer.objectData[id].specularAndShininess.w,
+  //   objectBuffer.objectData[id].diffuseAndTexId1.xyz,
+  //   objectBuffer.objectData[id].specularAndShininess.xyz
+  // );
+  // for(int i = 0; i < ubo.pointLightLength; i++) {
+  //   PointLight light = pointLightBuffer.pointLights[i];
+  //   result += calc_point_light(
+  //     light,
+  //     surfaceNormal,
+  //     viewDir,
+  //     objectBuffer.objectData[id].specularAndShininess.w,
+  //     objectBuffer.objectData[id].ambientAndTexId0.xyz,
+  //     objectBuffer.objectData[id].specularAndShininess.xyz
+  //   );
+  // }
 
   float alpha = 1.0;
 
@@ -80,6 +112,6 @@ void main() {
   vec4 shaderColor = texture(sampler2D(_texture[int(objectBuffer.objectData[id].diffuseAndTexId1.w)], _sampler), texCoord).rgba;
   texColor = mix(texColor, shaderColor, 0.5);
 
-  outColor = texColor * vec4(result, alpha);
+  outColor = texColor;
   outColor = mix(ubo.fogColor, outColor, fogVisiblity);
 }
