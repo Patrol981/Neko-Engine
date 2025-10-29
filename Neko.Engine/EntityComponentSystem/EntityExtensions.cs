@@ -1,4 +1,5 @@
 using System.Numerics;
+using Neko.AbstractionLayer;
 using Neko.EntityComponentSystem;
 using Neko.Loaders;
 using Neko.Loaders.Tiled;
@@ -398,8 +399,32 @@ public static class EntityExtensions {
     }
   }
 
-  public static void WithCustomShader(this IRender3DElement mesh, string shaderName) {
+  public static IRender3DElement WithCustomShader(this IRender3DElement mesh, string shaderName) {
     mesh.SetCustomShader(new(shaderName));
+
+    return mesh;
+  }
+
+  public static IRender3DElement WithAdditionalTexture(this IRender3DElement mesh, Guid textureId) {
+    mesh.SetShaderTextureInfo(textureId);
+
+    return mesh;
+  }
+
+  public static IRender3DElement WithAdditionalTexture(this IRender3DElement mesh, ITexture texture) {
+    var textureId = Application.Instance.TextureManager.GetTextureIdLocal(texture.TextureName);
+    mesh.SetShaderTextureInfo(textureId);
+
+    return mesh;
+  }
+
+  public static IRender3DElement WithAdditionalTexture(this IRender3DElement mesh, string texturePath) {
+    var textureManager = Application.Instance.TextureManager;
+    var texture = textureManager.AddTextureLocal(texturePath).Result;
+    var textureId = textureManager.GetTextureIdLocal(texture.TextureName);
+    mesh.SetShaderTextureInfo(textureId);
+
+    return mesh;
   }
 
   private sealed class Drawable2DComparer : IComparer<IDrawable2D> {
