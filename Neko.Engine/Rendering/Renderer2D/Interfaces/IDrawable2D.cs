@@ -1,7 +1,6 @@
 using Neko.AbstractionLayer;
 using Neko.EntityComponentSystem;
 using Neko.Math;
-using Neko.Vulkan;
 
 namespace Neko.Rendering.Renderer2D.Interfaces;
 
@@ -19,4 +18,8 @@ public interface IDrawable2D : IDrawable, ICloneable {
   Mesh CollisionMesh { get; }
   Mesh Mesh { get; }
   public IDrawable2D[] Children { get; }
+
+  ShaderInfo CustomShader { get; }
+  void SetCustomShader(ShaderInfo shaderInfo);
+  void SetShaderTextureInfo(Guid textureId);
 }

@@ -32,7 +32,6 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
   private readonly IDescriptorSetLayout[] _basicLayouts = [];
 
   public int LastKnownElemCount { get; set; } = 0;
-  // private readonly Dictionary<Guid, CustomShaderBuffer> _buffers = [];
   private List<CustomShaderBuffer> _buffers = [];
   private Dictionary<Guid, ObjectData> _objectDataArray = [];
 
@@ -70,7 +69,9 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
   }
 
   private static int GetIndexOfMyTexture(string texName) {
-    var texturePair = Application.Instance.TextureManager.PerSceneLoadedTextures.Where(x => x.Value.TextureName == texName).Single();
+    var texturePair = Application.Instance.TextureManager
+      .PerSceneLoadedTextures.Where(x => x.Value.TextureName == texName)
+      .Single();
     return texturePair.Value.TextureManagerIndex;
   }
 
@@ -114,7 +115,11 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
       objectData.JointsBufferOffset = Vector4.Zero;
       objectData.AmbientAndTexId0.W = texId;
       objectData.DiffuseAndTexId1.W = shaderTextureId;
-      objectData.DiffuseAndTexId1.X = Time.DeltaTime;
+
+      if (objectData.DiffuseAndTexId1.X >= 60.0f) {
+        objectData.DiffuseAndTexId1.X = 0.0f;
+      }
+      objectData.DiffuseAndTexId1.X += Time.DeltaTime;
     }
 
     unsafe {
@@ -140,8 +145,6 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
         Descriptor.BindDescriptorSet(_device, frameInfo.GlobalDescriptorSet, frameInfo, _pipelines[currentPipelineName].PipelineLayout, 1, 1);
         Descriptor.BindDescriptorSet(_device, frameInfo.CustomShaderObjectDataDescriptorSet, frameInfo, _pipelines[currentPipelineName].PipelineLayout, 2, 1);
         Descriptor.BindDescriptorSet(_device, frameInfo.PointLightsDescriptorSet, frameInfo, _pipelines[currentPipelineName].PipelineLayout, 3, 1);
-
-        // Descriptor.BindDescriptorSet(_device, _hatch)
       }
 
       _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, buffer.IndexBuffer, 0);

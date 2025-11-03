@@ -29,6 +29,7 @@ public class Tilemap : IDrawable2D {
 
   public Entity Entity { get; init; }
   public bool Active => Entity.Active;
+  public ShaderInfo CustomShader { get; }
   public ITexture Texture => throw new NotImplementedException();
 
   public Tilemap(Entity entity) {
@@ -158,4 +159,12 @@ public class Tilemap : IDrawable2D {
 
   public int SpriteCount => Layers.Count;
   public float LocalZDepth => 0;
+
+  public void SetCustomShader(ShaderInfo shaderInfo) {
+    return;
+  }
+
+  public void SetShaderTextureInfo(Guid textureId) {
+    return;
+  }
 }

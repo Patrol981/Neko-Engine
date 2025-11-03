@@ -35,6 +35,9 @@ public class SpriteRenderer : IDrawable2D {
 
   public float LocalZDepth => 0;
 
+  private ShaderInfo _customShader = new();
+  public ShaderInfo CustomShader => _customShader;
+
   public SpriteRenderer() { }
 
   public void Next(OnAnimationEnd onAnimationEnd) {
@@ -159,6 +162,14 @@ public class SpriteRenderer : IDrawable2D {
     );
 
     return _cachedSize;
+  }
+
+  public void SetCustomShader(ShaderInfo shaderInfo) {
+    _customShader = shaderInfo;
+  }
+
+  public void SetShaderTextureInfo(Guid textureId) {
+    _customShader.ShaderTextureId = textureId;
   }
 
   public class Builder {
