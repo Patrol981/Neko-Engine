@@ -35,6 +35,8 @@ public class TilemapLayer : IDrawable2D {
   public IDrawable2D[] Children => [];
   public float LocalZDepth { get; set; }
 
+  public ShaderInfo CustomShader { get; }
+
   public TilemapLayer(
     Application app,
     Tilemap parent,
@@ -229,6 +231,14 @@ public class TilemapLayer : IDrawable2D {
   }
 
   public object Clone() {
+    throw new NotImplementedException();
+  }
+
+  public void SetCustomShader(ShaderInfo shaderInfo) {
+    throw new NotImplementedException();
+  }
+
+  public void SetShaderTextureInfo(Guid textureId) {
     throw new NotImplementedException();
   }
 }
