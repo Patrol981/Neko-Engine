@@ -36,9 +36,9 @@ layout(std140, set = 3, binding = 0) readonly buffer PointLightBuffer {
 
 // holo specific
 const vec4 hologram_color = vec4(0.0, 0.6, 1.0, 1.0);
-const float transparency = 0.6;
+const float transparency = 0.5;
 const float glitch_strength = 0.3;
-const float glow_intensity  = 0.4;
+const float glow_intensity  = 0.9;
 const float time_factor = 1.0;
 const float noise_amount = 0.05;
 const float vertical_shift_speed = 0.1;
@@ -48,20 +48,20 @@ float random_noise(vec2 in_uv) {
 }
 
 void main() {
-  float TIME = objectBuffer.objectData[id].diffuseAndTexId1.x;
-  vec2 cust_uv = texCoord.xy;
-  cust_uv.y += TIME * vertical_shift_speed;
-  float noise = random_noise(cust_uv + TIME * 0.1);
+  float time = objectBuffer.objectData[id].diffuseAndTexId1.x;
+  vec2 cust_uv = texCoord.xy * screenTexCoord.xy;
+  cust_uv.y += time * vertical_shift_speed;
+  float noise = random_noise(cust_uv + time * 0.1);
   cust_uv.x += noise * glitch_strength * 0.05;
 
-  float glitch = sin(cust_uv.x * 10.0 + TIME * time_factor) * glitch_strength;
+  float glitch = sin(cust_uv.x * 10.0 + time * time_factor) * glitch_strength;
   cust_uv.x += glitch * 0.05;
-  float glow = sin(TIME * 2.0) * glow_intensity;
+  float glow = sin(time * 2.0) * glow_intensity;
   // vec4 color = texture(texture_sampler, cust_uv);
   vec4 color = texture(sampler2D(_texture[int(objectBuffer.objectData[id].diffuseAndTexId1.w)], _sampler), cust_uv).rgba;
   color.rgb += glow * hologram_color.rgb * 0.5;
-  color.r += sin(TIME + cust_uv.y * 3.0) * 0.1 * glitch_strength; 
-  color.g += cos(TIME + cust_uv.x * 2.0) * 0.1 * glitch_strength;
+  color.r += sin(time + cust_uv.y * 3.0) * 0.1 * glitch_strength; 
+  color.g += cos(time + cust_uv.x * 2.0) * 0.1 * glitch_strength;
   color.rgb *= hologram_color.rgb;
   color.a *= transparency;
   color.rgb += random_noise(cust_uv) * noise_amount;

@@ -43,8 +43,6 @@ public partial class Application {
   public bool UseImGui { get; } = true;
   public unsafe GlobalUniformBufferObject GlobalUbo => *_ubo;
 
-  public const int MAX_POINT_LIGHTS_COUNT = 128;
-
   public void SetUpdateCallback(EventCallback eventCallback) {
     _onUpdate = eventCallback;
   }
@@ -514,57 +512,7 @@ public partial class Application {
 
       _ubo->DirectionalLight = DirectionalLight;
 
-      if (Systems.PointLightSystem != null) {
-        Systems.PointLightSystem.Update(Lights.Values.ToArray(), out var pointLights);
-        if (pointLights.Length > 1) {
-          _ubo->PointLightsLength = pointLights.Length;
-          fixed (PointLight* pPointLights = pointLights) {
-            StorageCollection.WriteBuffer(
-              "PointStorage",
-              frameIndex,
-              (nint)pPointLights,
-              (ulong)Unsafe.SizeOf<PointLight>() * MAX_POINT_LIGHTS_COUNT
-            );
-          }
-        } else {
-          _ubo->PointLightsLength = 0;
-        }
-      }
-
-      var i2D = Entities.FlattenDrawable2D();
-
-      if (Systems.Render3DSystem != null) {
-        Systems.Render3DSystem.Update(
-          FrameInfo,
-          Meshes
-        );
-      }
-
-      if (Systems.CustomShaderRender3DSystem != null) {
-        Systems.CustomShaderRender3DSystem.Update(
-          FrameInfo,
-          Drawables3D.Values.AsValueEnumerable()
-          .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
-          .ToArray(),
-          Meshes,
-          Entities
-        );
-      }
-
-      if (Systems.Render2DSystem != null) {
-        Systems.Render2DSystem.Update(i2D, out var spriteData);
-
-        fixed (SpritePushConstant140* pSpriteData = spriteData) {
-          StorageCollection.WriteBuffer(
-            "SpriteStorage",
-            frameIndex,
-            (nint)pSpriteData,
-            (ulong)Unsafe.SizeOf<SpritePushConstant140>() * (ulong)i2D.Length
-          );
-        }
-      }
-
-      // Systems.ShadowRenderSystem?.Update(i3D);
+      Systems.UpdateSystems(this, FrameInfo, _ubo);
 
       StorageCollection.WriteBuffer(
         "GlobalStorage",
@@ -582,7 +530,7 @@ public partial class Application {
         TracyWrapper.Profiler.PushProfileZone("Systems", System.Drawing.Color.AliceBlue);
       }
 
-      Systems.UpdateSystems(this, _currentFrame);
+      Systems.RenderSystems(this, _currentFrame);
 
       if (Debug) {
         TracyWrapper.Profiler.PopProfileZone();
@@ -595,7 +543,7 @@ public partial class Application {
         GuiController.Update(Time.StopwatchDelta);
       }
 
-      Systems.UpdateSystems2(this, _currentFrame);
+      Systems.RenderSystems2(this, _currentFrame);
       MasterRenderUpdate(Scripts.Values.ToArray());
       _onGUI?.Invoke();
       if (UseImGui) {
@@ -606,35 +554,7 @@ public partial class Application {
 
       Renderer.EndFrame();
 
-      if (Systems.Render3DSystem != null) {
-        StorageCollection.CheckSize(
-          "ObjectStorage",
-          frameIndex,
-          Systems.Render3DSystem.LastKnownElemCount,
-          _descriptorSetLayouts["ObjectData"],
-          default
-        );
-
-        StorageCollection.CheckSize(
-          "JointsStorage",
-          frameIndex,
-          (int)Systems.Render3DSystem.LastKnownSkinnedElemJointsCount,
-          _descriptorSetLayouts["JointsBuffer"],
-          default
-        );
-
-        StorageCollection.CheckSize(
-          "CustomShaderObjectStorage",
-          frameIndex,
-          Systems.CustomShaderRender3DSystem?.LastKnownElemCount ?? 0,
-          _descriptorSetLayouts["CustomShaderObjectData"],
-          default
-        );
-      }
-
-      if (Systems.Render2DSystem != null) {
-        StorageCollection.CheckSize("SpriteStorage", frameIndex, Systems.Render2DSystem.LastKnownElemCount, _descriptorSetLayouts["SpriteData"], default);
-      }
+      Systems.CheckStorageSizes(this, FrameInfo, _descriptorSetLayouts);
 
       while (_reloadQueue.Count > 0) {
         var item = _reloadQueue.Dequeue();

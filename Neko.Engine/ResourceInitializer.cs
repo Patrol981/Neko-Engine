@@ -136,6 +136,10 @@ public class ResourceInitializer {
       .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.AllGraphics)
       .Build());
 
+    descriptorSetLayouts.TryAdd("CustomSpriteData", new VulkanDescriptorSetLayout.Builder((VulkanDevice)device)
+      .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.AllGraphics)
+      .Build());
+
     descriptorSetLayouts.TryAdd("JointsBuffer", new VulkanDescriptorSetLayout.Builder((VulkanDevice)device)
       .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.Vertex)
       .Build());
@@ -170,7 +174,7 @@ public class ResourceInitializer {
       BufferUsage.StorageBuffer,
       renderer.MAX_FRAMES_IN_FLIGHT,
       (ulong)Unsafe.SizeOf<PointLight>(),
-      Application.MAX_POINT_LIGHTS_COUNT,
+      CommonConstants.MAX_POINT_LIGHTS_COUNT,
       descriptorSetLayouts["PointLight"],
       globalPool,
       "PointStorage",
@@ -247,6 +251,20 @@ public class ResourceInitializer {
         (VulkanDescriptorSetLayout)descriptorSetLayouts["SpriteData"],
         null!,
         "SpriteStorage",
+        device.MinStorageBufferOffsetAlignment,
+        true
+      );
+
+      storageCollection.CreateStorage(
+        device,
+        DescriptorType.StorageBuffer,
+        BufferUsage.StorageBuffer,
+        renderer.MAX_FRAMES_IN_FLIGHT,
+        (ulong)Unsafe.SizeOf<SpritePushConstant140>(),
+        (ulong)systems.Render2DSystem.LastKnownElemCount,
+        (VulkanDescriptorSetLayout)descriptorSetLayouts["CustomSpriteData"],
+        null!,
+        "CustomSpriteStorage",
         device.MinStorageBufferOffsetAlignment,
         true
       );

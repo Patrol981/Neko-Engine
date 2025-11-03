@@ -1,9 +1,9 @@
+using System.Runtime.CompilerServices;
 using Neko.AbstractionLayer;
 using Neko.Animations;
 using Neko.EntityComponentSystem;
 using Neko.Networking;
 using Neko.Physics;
-using Neko.Physics.Interfaces;
 using Neko.Rendering.DebugRenderer;
 using Neko.Rendering.Guizmos;
 using Neko.Rendering.Lightning;
@@ -11,13 +11,12 @@ using Neko.Rendering.Particles;
 using Neko.Rendering.PostProcessing;
 using Neko.Rendering.Renderer2D;
 using Neko.Rendering.Renderer2D.Interfaces;
+using Neko.Rendering.Renderer2D.Models;
 using Neko.Rendering.Renderer3D;
 using Neko.Rendering.Shadows;
 using Neko.Vulkan;
 
-using Vortice.Vulkan;
 using ZLinq;
-using Entity = Neko.EntityComponentSystem.Entity;
 
 namespace Neko.Rendering;
 
@@ -49,7 +48,90 @@ public class SystemCollection : IDisposable {
   public bool ReloadUISystem = false;
   public bool ReloadParticleSystem = false;
 
-  public void UpdateSystems(Application app, FrameInfo frameInfo) {
+  public unsafe void UpdateSystems(Application app, FrameInfo frameInfo, GlobalUniformBufferObject* gbo) {
+    if (PointLightSystem != null) {
+      PointLightSystem.Update(app.Lights.Values.AsValueEnumerable().ToArray(), out var pointLights);
+      if (pointLights.Length > 1) {
+        gbo->PointLightsLength = pointLights.Length;
+        fixed (PointLight* pPointLights = pointLights) {
+          app.StorageCollection.WriteBuffer(
+            "PointStorage",
+            frameInfo.FrameIndex,
+            (nint)pPointLights,
+            (ulong)Unsafe.SizeOf<PointLight>() * CommonConstants.MAX_POINT_LIGHTS_COUNT
+          );
+        }
+      } else { gbo->PointLightsLength = 0; }
+    }
+
+
+    Render3DSystem?.Update(frameInfo, app.Meshes);
+    CustomShaderRender3DSystem?.Update(
+      frameInfo,
+      app.Drawables3D.Values.AsValueEnumerable()
+        .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
+        .ToArray(),
+      app.Meshes,
+      app.Entities
+    );
+
+    if (Render2DSystem != null) {
+      var i2D = app.Entities.FlattenDrawable2D();
+      Render2DSystem.Update(i2D, out var spriteData);
+      fixed (SpritePushConstant140* pSpriteData = spriteData) {
+        app.StorageCollection.WriteBuffer(
+          "SpriteStorage",
+          frameInfo.FrameIndex,
+          (nint)pSpriteData,
+          (ulong)Unsafe.SizeOf<SpritePushConstant140>() * (ulong)i2D.Length
+        );
+      }
+    }
+  }
+
+  public void CheckStorageSizes(
+    Application app,
+    FrameInfo frameInfo,
+    Dictionary<string, IDescriptorSetLayout> _descriptorSetLayouts
+  ) {
+    if (Render3DSystem != null) {
+      app.StorageCollection.CheckSize(
+        "ObjectStorage",
+        frameInfo.FrameIndex,
+        Render3DSystem.LastKnownElemCount,
+        _descriptorSetLayouts["ObjectData"],
+        default
+      );
+
+      app.StorageCollection.CheckSize(
+        "JointsStorage",
+        frameInfo.FrameIndex,
+        (int)Render3DSystem.LastKnownSkinnedElemJointsCount,
+        _descriptorSetLayouts["JointsBuffer"],
+        default
+      );
+
+      app.StorageCollection.CheckSize(
+        "CustomShaderObjectStorage",
+        frameInfo.FrameIndex,
+        CustomShaderRender3DSystem?.LastKnownElemCount ?? 0,
+        _descriptorSetLayouts["CustomShaderObjectData"],
+        default
+      );
+    }
+
+    if (Render2DSystem != null) {
+      app.StorageCollection.CheckSize(
+        "SpriteStorage",
+        frameInfo.FrameIndex,
+        Render2DSystem.LastKnownElemCount,
+        _descriptorSetLayouts["SpriteData"],
+        default
+      );
+    }
+  }
+
+  public void RenderSystems(Application app, FrameInfo frameInfo) {
 
     if (Render3DSystem != null) {
       Render3DSystem.Render(
@@ -79,7 +161,7 @@ public class SystemCollection : IDisposable {
     ParticleSystem?.Render(frameInfo);
   }
 
-  public void UpdateSystems2(Application app, FrameInfo frameInfo) {
+  public void RenderSystems2(Application app, FrameInfo frameInfo) {
     // _renderDebugSystem?.Render(frameInfo, entities.DistinctInterface<IDebugRenderObject>());
     // _particleSystem?.Render(frameInfo);
     // _renderUISystem?.DrawUI(frameInfo, _canvas);
