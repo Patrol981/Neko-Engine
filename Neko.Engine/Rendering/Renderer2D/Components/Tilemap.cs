@@ -29,7 +29,7 @@ public class Tilemap : IDrawable2D {
 
   public Entity Entity { get; init; }
   public bool Active => Entity.Active;
-  public ShaderInfo CustomShader { get; }
+  public ShaderInfo CustomShader { get; } = new() { Name = CommonConstants.SHADER_INFO_NAME_UNSET };
   public ITexture Texture => throw new NotImplementedException();
 
   public Tilemap(Entity entity) {

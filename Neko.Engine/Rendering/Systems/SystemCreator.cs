@@ -102,6 +102,9 @@ public class SystemCreator {
       Logger.Info("[SYSTEM CREATOR] Creating 2D Renderer");
       systemCollection.Render2DSystem =
         new(app, allocator, (VulkanDevice)device, renderer, textureManager, layouts, configInfo);
+
+      systemCollection.CustomShaderRender2DSystem =
+        new(app, allocator, (VulkanDevice)device, renderer, textureManager, layouts, configInfo);
     }
 
     if (hasAnimations) {
