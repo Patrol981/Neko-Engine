@@ -208,19 +208,22 @@ public class SpriteRenderer : IDrawable2D {
     //   return this;
     // }
 
-    public SpriteRenderer? Build() {
+    public SpriteRenderer Build() {
       var spriteRenderer = new SpriteRenderer() {
         Sprites = [.. _sprites],
         Entity = _entity ?? null!
       };
-      if (_entity != null) {
-        _entity.AddDrawable2D(spriteRenderer);
-        Application.Mutex.ReleaseMutex();
-        return null!;
-      } else {
-        Application.Mutex.ReleaseMutex();
-        return spriteRenderer;
-      }
+      _entity?.AddDrawable2D(spriteRenderer);
+      Application.Mutex.ReleaseMutex();
+      return spriteRenderer;
+      // if (_entity != null) {
+      //   _entity.AddDrawable2D(spriteRenderer);
+      //   Application.Mutex.ReleaseMutex();
+      //   return null!;
+      // } else {
+      //   Application.Mutex.ReleaseMutex();
+      //   return spriteRenderer;
+      // }
     }
   }
 }

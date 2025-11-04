@@ -13,6 +13,7 @@ public struct FrameInfo {
   public VkDescriptorSet CustomShaderObjectDataDescriptorSet;
   public VkDescriptorSet JointsBufferDescriptorSet;
   public VkDescriptorSet SpriteDataDescriptorSet;
+  public VkDescriptorSet CustomSpriteDataDescriptorSet;
   public TextureManager TextureManager;
   public Entity ImportantEntity;
 }

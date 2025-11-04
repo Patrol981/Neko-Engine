@@ -35,7 +35,7 @@ public class TilemapLayer : IDrawable2D {
   public IDrawable2D[] Children => [];
   public float LocalZDepth { get; set; }
 
-  public ShaderInfo CustomShader { get; }
+  public ShaderInfo CustomShader { get; } = new() { Name = CommonConstants.SHADER_INFO_NAME_UNSET };
 
   public TilemapLayer(
     Application app,

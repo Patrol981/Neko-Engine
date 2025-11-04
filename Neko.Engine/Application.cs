@@ -489,6 +489,7 @@ public partial class Application {
       _currentFrame.ObjectDataDescriptorSet = StorageCollection.GetDescriptor("ObjectStorage", frameIndex);
       _currentFrame.CustomShaderObjectDataDescriptorSet = StorageCollection.GetDescriptor("CustomShaderObjectStorage", frameIndex);
       _currentFrame.SpriteDataDescriptorSet = StorageCollection.GetDescriptor("SpriteStorage", frameIndex);
+      _currentFrame.CustomSpriteDataDescriptorSet = StorageCollection.GetDescriptor("CustomSpriteStorage", frameIndex);
       _currentFrame.JointsBufferDescriptorSet = StorageCollection.GetDescriptor("JointsStorage", frameIndex);
       _currentFrame.TextureManager = _textureManager;
       _currentFrame.ImportantEntity = Entities.Where(x => x.IsImportant).FirstOrDefault() ?? null!;

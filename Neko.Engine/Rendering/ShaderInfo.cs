@@ -1,7 +1,7 @@
 namespace Neko.Rendering;
 
 public struct ShaderInfo {
-  public string Name { get; set; }
+  public string Name { get; set; } = CommonConstants.SHADER_INFO_NAME_UNSET;
   public Guid ShaderTextureId { get; set; } = Guid.Empty;
 
   public ShaderInfo() {

@@ -277,6 +277,33 @@ public static class EntityExtensions {
     }
   }
 
+  public static IDrawable2D WithCustomShader(this IDrawable2D drawable, string shaderName) {
+    drawable.SetCustomShader(new(shaderName));
+
+    return drawable;
+  }
+
+  public static IDrawable2D WithAdditionalTexture(this IDrawable2D drawable, Guid textureId) {
+    drawable.SetShaderTextureInfo(textureId);
+
+    return drawable;
+  }
+
+  public static IDrawable2D WithAdditionalTexture(this IDrawable2D drawable, ITexture texture) {
+    var textureId = Application.Instance.TextureManager.GetTextureIdLocal(texture.TextureName);
+    drawable.SetShaderTextureInfo(textureId);
+
+    return drawable;
+  }
+
+  public static IDrawable2D WithAdditionalTexture(this IDrawable2D drawable, string texturePath) {
+    var textureManager = Application.Instance.TextureManager;
+    var texture = textureManager.AddTextureLocal(texturePath).Result;
+    var textureId = textureManager.GetTextureIdLocal(texture.TextureName);
+    drawable.SetShaderTextureInfo(textureId);
+
+    return drawable;
+  }
 
   public static T? GetScript<T>(this Entity entity) where T : NekoScript {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
