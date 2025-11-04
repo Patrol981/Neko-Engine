@@ -141,7 +141,7 @@ public class Render2DSystem : SystemBase {
     }
   }
 
-  public unsafe void Render(FrameInfo frameInfo, ReadOnlySpan<IDrawable2D> drawables) {
+  public unsafe void Render(FrameInfo frameInfo) {
     if (_globalIndexBuffer == null) return;
 
     BindPipeline(frameInfo.CommandBuffer);

@@ -25,6 +25,7 @@ public class SystemCollection : IDisposable {
   public Render3DSystem? Render3DSystem { get; set; }
   public CustomShaderRender3DSystem? CustomShaderRender3DSystem { get; set; }
   public Render2DSystem? Render2DSystem { get; set; }
+  public CustomShaderRender2DSystem? CustomShaderRender2DSystem { get; set; }
   public RenderUISystem? RenderUISystem { get; set; }
   public RenderDebugSystem? RenderDebugSystem { get; set; }
   public DirectionalLightSystem? DirectionalLightSystem { get; set; }
@@ -76,16 +77,25 @@ public class SystemCollection : IDisposable {
     );
 
     if (Render2DSystem != null) {
-      var i2D = app.Entities.FlattenDrawable2D();
-      Render2DSystem.Update(i2D, out var spriteData);
+      var i2D = app.Entities.FlattenDrawable2D().AsValueEnumerable();
+      var stdSprites = i2D
+        .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+        .ToArray();
+      var customSprites = i2D
+        .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
+        .ToArray();
+
+      Render2DSystem.Update(stdSprites, out var spriteData);
       fixed (SpritePushConstant140* pSpriteData = spriteData) {
         app.StorageCollection.WriteBuffer(
           "SpriteStorage",
           frameInfo.FrameIndex,
           (nint)pSpriteData,
-          (ulong)Unsafe.SizeOf<SpritePushConstant140>() * (ulong)i2D.Length
+          (ulong)Unsafe.SizeOf<SpritePushConstant140>() * (ulong)stdSprites.Length
         );
       }
+
+      CustomShaderRender2DSystem?.Update(frameInfo, customSprites, app.Entities);
     }
   }
 
@@ -128,6 +138,14 @@ public class SystemCollection : IDisposable {
         _descriptorSetLayouts["SpriteData"],
         default
       );
+
+      app.StorageCollection.CheckSize(
+        "CustomSpriteStorage",
+        frameInfo.FrameIndex,
+        CustomShaderRender2DSystem?.LastKnownElemCount ?? 0,
+        _descriptorSetLayouts["CustomSpriteData"],
+        default
+      );
     }
   }
 
@@ -145,10 +163,10 @@ public class SystemCollection : IDisposable {
       AnimationSystem?.Update(animatedNodes);
       // _animationSystem?.Update(_render3DSystem.SkinnedNodesCache);
     }
-
     CustomShaderRender3DSystem?.Render(frameInfo);
 
-    Render2DSystem?.Render(frameInfo, app.Sprites.Values.AsValueEnumerable().ToArray());
+    Render2DSystem?.Render(frameInfo);
+    CustomShaderRender2DSystem?.Render(frameInfo);
 
     ShadowRenderSystem?.Render(frameInfo);
     DirectionalLightSystem?.Render(frameInfo);
@@ -209,7 +227,11 @@ public class SystemCollection : IDisposable {
     if (Render2DSystem != null) {
       var spriteEntities = app.Entities.FlattenDrawable2D();
       if (spriteEntities.Length < 1) return;
-      var sizes = Render2DSystem.CheckSizes(spriteEntities);
+      var sizes = Render2DSystem.CheckSizes(
+        spriteEntities.AsValueEnumerable()
+          .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+          .ToArray()
+      );
       // var textures = _render2DSystem.CheckTextures(spriteEntities);
       if (!sizes || Reload2DRenderSystem) {
         Reload2DRenderSystem = false;
@@ -285,7 +307,17 @@ public class SystemCollection : IDisposable {
       );
 
     var drawables = app.Entities.FlattenDrawable2D();
-    Render2DSystem?.Setup(drawables, ref textureManager);
+    Render2DSystem?.Setup(
+      drawables.AsValueEnumerable()
+        .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+        .ToArray(),
+      ref textureManager
+    );
+    CustomShaderRender2DSystem?.Setup(
+      drawables.AsValueEnumerable()
+        .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
+        .ToArray()
+    );
     // _renderUISystem?.Setup(Canvas, ref textureManager);
     DirectionalLightSystem?.Setup();
     PointLightSystem?.Setup();
@@ -354,7 +386,17 @@ public class SystemCollection : IDisposable {
     //   globalLayout,
     //   pipelineConfig
     // );
-    Render2DSystem?.Setup(drawables, ref textureManager);
+    Render2DSystem?.Setup(
+      drawables.AsValueEnumerable()
+        .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+        .ToArray(),
+      ref textureManager
+    );
+    CustomShaderRender2DSystem?.Setup(
+      drawables.AsValueEnumerable()
+        .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
+        .ToArray()
+    );
   }
 
   public void ReloadUIRenderer(
@@ -406,6 +448,7 @@ public class SystemCollection : IDisposable {
     Render3DSystem?.Dispose();
     CustomShaderRender3DSystem?.Dispose();
     Render2DSystem?.Dispose();
+    CustomShaderRender2DSystem?.Dispose();
     RenderUISystem?.Dispose();
     PhysicsSystem?.Dispose();
     PhysicsSystem2D?.Dispose();

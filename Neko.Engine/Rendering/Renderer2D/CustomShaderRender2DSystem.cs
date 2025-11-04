@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.IO.Pipelines;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -19,7 +20,6 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
   private struct CustomShaderBuffer {
     public required Guid EntityId { get; set; }
     public required Guid BufferId { get; set; }
-    public required Guid MeshId { get; set; }
 
     public NekoBuffer VertexBuffer { get; set; }
     public NekoBuffer IndexBuffer { get; set; }
@@ -49,7 +49,7 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
   ) : base(app, allocator, device, renderer, textureManager, configInfo) {
     _basicLayouts = [
       externalLayouts["Global"],
-      externalLayouts["SpriteData"],
+      externalLayouts["CustomSpriteData"],
       _textureManager.AllTexturesSetLayout,
     ];
   }
@@ -60,7 +60,7 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
 
       AddPipelineData(new() {
         RenderPass = _application.Renderer.GetSwapchainRenderPass(),
-        VertexName = "sprite_vertex",
+        VertexName = $"{pipelineName}_vertex",
         FragmentName = $"{pipelineName}_fragment",
         PipelineProvider = new PipelineSpriteProvider(),
         DescriptorSetLayouts = [.. _basicLayouts],
@@ -79,15 +79,73 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
   public void Update(
     FrameInfo frameInfo,
     ReadOnlySpan<IDrawable2D> spritesWithCustomShaders,
-    in ConcurrentDictionary<Guid, Mesh> meshes,
     in HashSet<Entity> entities
   ) {
+    AddOrUpdateBuffers(spritesWithCustomShaders);
 
+    for (ushort i = 0; i < _buffers.Count; i++) {
+      var entity = entities.Where(x => x.Id == _buffers[i].EntityId).First();
+      var transform = entity.GetTransform();
+      var drawable = entity.GetDrawable2D();
+      var myTexId = GetIndexOfMyTexture(drawable?.Texture.TextureName ?? "");
+
+      ref SpritePushConstant140 spriteData = ref CollectionsMarshal.GetValueRefOrAddDefault(
+        _objectDataArray,
+        _buffers[i].BufferId,
+        out var exists
+      );
+
+      if (!exists) continue;
+
+      spriteData.SpriteMatrix = transform?.Matrix() ?? Matrix4x4.Identity;
+      spriteData.SpriteSheetData.X = drawable?.SpriteSheetSize.X ?? 0;
+      spriteData.SpriteSheetData.Y = drawable?.SpriteSheetSize.Y ?? 0;
+      spriteData.SpriteSheetData.Z = drawable?.SpriteIndex ?? 0;
+      spriteData.SpriteSheetData.W = ((drawable?.FlipX) ?? false) ? 1 : 0;
+      spriteData.SpriteSheetData2.X = ((drawable?.FlipY) ?? false) ? 1 : 0;
+      spriteData.SpriteSheetData2.Y = myTexId;
+    }
+
+    unsafe {
+      fixed (SpritePushConstant140* pSpriteData = _objectDataArray.Values.AsValueEnumerable().ToArray()) {
+        _application.StorageCollection.WriteBuffer(
+          "CustomSpriteStorage",
+          frameInfo.FrameIndex,
+          (nint)pSpriteData,
+          (ulong)Unsafe.SizeOf<SpritePushConstant140>() * (ulong)_objectDataArray.Values.Count
+        );
+      }
+    }
+  }
+
+  public void Render(FrameInfo frameInfo) {
+    string currentPipelineName = "";
+    foreach (var buffer in _buffers) {
+      if (currentPipelineName != buffer.PipelineName) {
+        currentPipelineName = buffer.PipelineName;
+        BindPipeline(frameInfo.CommandBuffer, buffer.PipelineName);
+
+        Descriptor.BindDescriptorSet(_device, frameInfo.GlobalDescriptorSet, frameInfo, _pipelines[currentPipelineName].PipelineLayout, 0, 1);
+        Descriptor.BindDescriptorSet(_device, frameInfo.CustomSpriteDataDescriptorSet, frameInfo, _pipelines[currentPipelineName].PipelineLayout, 1, 1);
+        Descriptor.BindDescriptorSet(_device, _textureManager.AllTexturesDescriptor, frameInfo, _pipelines[currentPipelineName].PipelineLayout, 2, 1);
+      }
+
+      _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, buffer.IndexBuffer, 0);
+      _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, buffer.VertexBuffer, 0);
+
+      _renderer.CommandList.DrawIndexed(
+        commandBuffer: frameInfo.CommandBuffer,
+        indexCount: buffer.IndexCount,
+        instanceCount: 1,
+        firstIndex: 0,
+        vertexOffset: 0,
+        firstInstance: 0
+      );
+    }
   }
 
   private void AddOrUpdateBuffers(
-    ReadOnlySpan<IDrawable2D> spritesWithCustomShaders,
-    ConcurrentDictionary<Guid, Sprite> meshes
+    ReadOnlySpan<IDrawable2D> spritesWithCustomShaders
   ) {
     if (LastKnownElemCount == spritesWithCustomShaders.Length) {
       return;
@@ -104,6 +162,20 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
     foreach (var drawable in spritesWithCustomShaders) {
       CreateIndexBuffer(drawable.Mesh, out var indexBuffer);
       CreateVertexBuffer(drawable.Mesh, out var vertexBuffer);
+
+      var bufferId = Guid.NewGuid();
+
+      _buffers.Add(new CustomShaderBuffer() {
+        EntityId = drawable.Entity.Id,
+        BufferId = bufferId,
+        VertexBuffer = vertexBuffer,
+        IndexBuffer = indexBuffer,
+        IndexCount = (uint)drawable.Mesh.IndexCount,
+        PipelineName = drawable.CustomShader.Name,
+        ShaderTextureId = drawable.CustomShader.ShaderTextureId
+      });
+
+      _objectDataArray.TryAdd(bufferId, default);
     }
   }
 
