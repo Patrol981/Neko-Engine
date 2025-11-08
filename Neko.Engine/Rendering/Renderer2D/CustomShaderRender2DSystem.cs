@@ -104,6 +104,20 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
       spriteData.SpriteSheetData.W = ((drawable?.FlipX) ?? false) ? 1 : 0;
       spriteData.SpriteSheetData2.X = ((drawable?.FlipY) ?? false) ? 1 : 0;
       spriteData.SpriteSheetData2.Y = myTexId;
+
+      if (spriteData.SpriteSheetData2.Z >= 60.0f) {
+        spriteData.SpriteSheetData2.Z = 0.0f;
+      }
+      spriteData.SpriteSheetData2.Z += Time.DeltaTime;
+
+      if (_buffers[i].ShaderTextureId != Guid.Empty) {
+        var texture = _textureManager.GetTextureLocal(_buffers[i].ShaderTextureId);
+        var customTexture = GetIndexOfMyTexture(texture.TextureName);
+        spriteData.SpriteSheetData2.W = customTexture;
+      } else {
+        Logger.Warn("Texture not set for buffId " + i);
+        spriteData.SpriteSheetData2.W = -1;
+      }
     }
 
     unsafe {
