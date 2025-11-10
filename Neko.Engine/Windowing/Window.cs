@@ -54,6 +54,7 @@ public class Window : IWindow {
                       SDL_WindowFlags.Occluded |
                       SDL_WindowFlags.MouseFocus |
                       SDL_WindowFlags.InputFocus |
+                      SDL_WindowFlags.HighPixelDensity |
                       SDL_WindowFlags.Resizable;
 
     if (
@@ -71,8 +72,10 @@ public class Window : IWindow {
     //   windowFlags |= SDL_WindowFlags.Metal;
     // }
 
-    if (fullscreen) {
+    if (fullscreen && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
       windowFlags |= SDL_WindowFlags.Fullscreen | SDL_WindowFlags.Borderless;
+    } else if (fullscreen && RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+      windowFlags |= SDL_WindowFlags.Fullscreen;
     }
 
     SDLWindow = SDL_CreateWindow(windowName, width, height, windowFlags);
