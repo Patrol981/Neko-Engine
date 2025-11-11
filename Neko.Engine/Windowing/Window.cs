@@ -51,6 +51,8 @@ public class Window : IWindow {
     var windowFlags =
                       // SDL_WindowFlags.Maximized |
                       // SDL_WindowFlags.Transparent |
+                      SDL_WindowFlags.MouseCapture |
+                      SDL_WindowFlags.MouseGrabbed |
                       SDL_WindowFlags.Occluded |
                       SDL_WindowFlags.MouseFocus |
                       SDL_WindowFlags.InputFocus |
@@ -142,6 +144,9 @@ public class Window : IWindow {
           switch (MouseCursorState) {
             case CursorState.Centered:
               Input.RelativeMouseCallback(e.motion.xrel, e.motion.yrel);
+              break;
+            case CursorState.Normal:
+              Input.WindowMouseCallback(e.motion.x, e.motion.y);
               break;
             default:
               break;
