@@ -10,6 +10,7 @@ using Neko.Rendering.Renderer2D.Components;
 using Neko.Rendering.Renderer2D.Helpers;
 using Neko.Rendering.Renderer2D.Interfaces;
 using Neko.Rendering.Renderer3D;
+using ZLinq;
 
 namespace Neko.Physics.Backends.Hammer;
 
@@ -143,13 +144,25 @@ public class HammerBodyWrapper : IPhysicsBody2D {
   }
 
   public static Rigidbody2D? GetCollisionData(BodyId body1) {
-    var entity = Application.Instance.Entities
-      .Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody2D>())
-      .Where(x => (BodyId)x.GetRigidbody2D()!.PhysicsBody2D.BodyId == body1)
-      .SingleOrDefault()?
-      .GetRigidbody2D();
+    foreach (var e in Application.Instance.Entities) {
+      if (e.CanBeDisposed) continue;
+      if (!e.HasComponent<Rigidbody2D>()) continue;
 
-    return entity;
+      var rb = e.GetRigidbody2D();
+      if ((BodyId)rb!.PhysicsBody2D.BodyId == body1) {
+        return rb;
+      }
+    }
+
+    return null;
+
+    // var entity = Application.Instance.Entities
+    //   .Where(x => !x.CanBeDisposed && x.HasComponent<Rigidbody2D>())
+    //   .Where(x => (BodyId)x.GetRigidbody2D()!.PhysicsBody2D.BodyId == body1)
+    //   .SingleOrDefault()?
+    //   .GetRigidbody2D();
+
+    // return entity;
   }
 
   public void Dispose() {
