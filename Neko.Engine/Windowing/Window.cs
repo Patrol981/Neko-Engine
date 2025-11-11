@@ -98,7 +98,7 @@ public class Window : IWindow {
       engineSurface->pixels = (nint)pixPtr;
     }
     if (!SDL_SetWindowIcon(SDLWindow, engineSurface)) {
-      throw new Exception("Failed to load window icon");
+      Logger.Error("Failed to load window icon");
     }
     Marshal.FreeHGlobal((nint)engineSurface);
     engineIcoStream.Dispose();
@@ -144,7 +144,6 @@ public class Window : IWindow {
               Input.RelativeMouseCallback(e.motion.xrel, e.motion.yrel);
               break;
             default:
-              Input.WindowMouseCallback(e.motion.x, e.motion.y);
               break;
           }
           break;
