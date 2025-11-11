@@ -33,7 +33,7 @@ public partial class Application {
   internal ConcurrentDictionary<Guid, Skin> Skins = [];
   internal ConcurrentDictionary<Guid, AnimationNode> AnimationNodes = [];
 
-  // Computed 
+  // Computed
   // internal ConcurrentDictionary
 
   private readonly Queue<Entity> _entitiesQueue = new();
@@ -113,7 +113,7 @@ public partial class Application {
     _reloadQueue.Enqueue(meshRenderer);
   }
 
-  private void Collect() {
+  private void Collect_() {
     if (Entities.Count == 0) return;
     for (short i = 0; i < Entities.Count; i++) {
       var target = Entities.ElementAt(i);
@@ -127,8 +127,21 @@ public partial class Application {
     }
   }
 
+  private void Collect() {
+    lock (EntitiesLock) {
+      foreach (var e in Entities.ToList()) {
+        if (!e.CanBeDisposed) continue;
+        if (e.Collected) continue;
 
-  //// Legacy Code 
+        e.Collected = true;
+        e.Dispose(this);
+        Entities.Remove(e);
+      }
+    }
+  }
+
+
+  //// Legacy Code
 
   //   public void RemoveEntity(Guid id) {
   //   lock (EntitiesLock) {
