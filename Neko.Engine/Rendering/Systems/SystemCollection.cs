@@ -77,7 +77,8 @@ public class SystemCollection : IDisposable {
     );
 
     if (Render2DSystem != null) {
-      var i2D = app.Entities.FlattenDrawable2D().AsValueEnumerable();
+      // var i2D = app.Entities.FlattenDrawable2D().AsValueEnumerable();
+      var i2D = app.Sprites.FlattenDrawable2D().AsValueEnumerable();
       var stdSprites = i2D
         .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
         .ToArray();
@@ -225,7 +226,8 @@ public class SystemCollection : IDisposable {
     }
 
     if (Render2DSystem != null) {
-      var spriteEntities = app.Entities.FlattenDrawable2D();
+      // var spriteEntities = app.Entities.FlattenDrawable2D();
+      var spriteEntities = app.Sprites.FlattenDrawable2D();
       if (spriteEntities.Length < 1) return;
       var sizes = Render2DSystem.CheckSizes(
         spriteEntities.AsValueEnumerable()
@@ -306,7 +308,8 @@ public class SystemCollection : IDisposable {
         .ToArray()
       );
 
-    var drawables = app.Entities.FlattenDrawable2D();
+    var drawables_old = app.Entities.FlattenDrawable2D();
+    var drawables = app.Sprites.FlattenDrawable2D().ToArray();
     Render2DSystem?.Setup(
       drawables.AsValueEnumerable()
         .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Numerics;
 using Neko.AbstractionLayer;
 using Neko.EntityComponentSystem;
@@ -230,6 +231,23 @@ public static class EntityExtensions {
         )
       );
     }
+  }
+
+  public static ReadOnlySpan<IDrawable2D> FlattenDrawable2D(this ConcurrentDictionary<Guid, IDrawable2D> drawables) {
+    var buffer = drawables.Values.ToList();
+    var flatMap = new List<IDrawable2D>();
+
+    foreach (var buff in buffer) {
+      if (buff.Children.Length > 0) {
+        for (int j = 0; j < buff.Children.Length; j++) {
+          flatMap.Add(buff.Children[j]);
+        }
+      } else {
+        flatMap.Add(buff);
+      }
+    }
+
+    return flatMap.ToArray();
   }
 
   public static ReadOnlySpan<IDrawable2D> FlattenDrawable2D(this HashSet<Entity> entities) {

@@ -51,8 +51,8 @@ public class Window : IWindow {
     var windowFlags =
                       // SDL_WindowFlags.Maximized |
                       // SDL_WindowFlags.Transparent |
-                      SDL_WindowFlags.MouseCapture |
-                      SDL_WindowFlags.MouseGrabbed |
+                      // SDL_WindowFlags.MouseCapture |
+                      // SDL_WindowFlags.MouseGrabbed |
                       SDL_WindowFlags.Occluded |
                       SDL_WindowFlags.MouseFocus |
                       SDL_WindowFlags.InputFocus |
