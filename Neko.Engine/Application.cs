@@ -18,7 +18,6 @@ using Neko.Rendering.UI.DirectRPG;
 using Neko.Utils;
 using Neko.Vulkan;
 using Neko.Windowing;
-using Microsoft.OpenApi.Extensions;
 using ZLinq;
 using Entity = Neko.EntityComponentSystem.Entity;
 
@@ -280,9 +279,6 @@ public partial class Application {
             break;
           case ConsoleKey.T:
             var threads = Process.GetCurrentProcess().Threads;
-            foreach (ProcessThread thread in threads) {
-              Logger.NoLabel($"[{thread.Id}] {thread.ThreadState.GetDisplayName()} | {thread.CurrentPriority}");
-            }
             break;
           default:
             break;
