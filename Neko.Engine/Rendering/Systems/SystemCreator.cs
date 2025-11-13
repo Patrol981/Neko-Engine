@@ -150,9 +150,9 @@ public class SystemCreator {
       Logger.Info("[SYSTEM CREATOr] Creating Networking");
 
       if (Application.ApplicationMode == ApplicationType.Headless) {
-        systemCollection.NetSystem = new(Application.Instance);
+        // systemCollection.NetSystem = new(Application.Instance);
       } else {
-        systemCollection.NetClientSystem = new();
+        // systemCollection.NetClientSystem = new();
       }
 
     }

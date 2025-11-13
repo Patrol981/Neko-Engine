@@ -41,8 +41,8 @@ public class SystemCollection : IDisposable {
   public PhysicsSystem? PhysicsSystem { get; set; }
   public PhysicsSystem2D? PhysicsSystem2D { get; set; }
   public WebApiSystem? WebApi { get; set; }
-  public SignalRSystem? NetSystem { get; set; }
-  public SignalRClientSystem? NetClientSystem { get; set; }
+  // public SignalRSystem? NetSystem { get; set; }
+  // public SignalRClientSystem? NetClientSystem { get; set; }
 
   public bool Reload3DRenderSystem = false;
   public bool Reload2DRenderSystem = false;
@@ -460,8 +460,8 @@ public class SystemCollection : IDisposable {
     DirectionalLightSystem?.Dispose();
     PointLightSystem?.Dispose();
     WebApi?.Dispose();
-    NetSystem?.Dispose();
-    NetClientSystem?.Dispose();
+    // NetSystem?.Dispose();
+    // NetClientSystem?.Dispose();
     ParticleSystem?.Dispose();
     ShadowRenderSystem?.Dispose();
     GC.SuppressFinalize(this);

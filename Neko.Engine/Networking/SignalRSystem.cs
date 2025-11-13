@@ -1,38 +1,38 @@
-using Neko.Extensions.Logging;
-using Neko.SignalR;
+// using Neko.Extensions.Logging;
+// using Neko.SignalR;
 
-namespace Neko.Networking;
+// namespace Neko.Networking;
 
-public class SignalRSystem : IDisposable {
-  private readonly Application? _application;
-  private readonly SignalRInstance? _netInstance;
-  private Thread? _netThread;
+// public class SignalRSystem : IDisposable {
+//   private readonly Application? _application;
+//   private readonly SignalRInstance? _netInstance;
+//   private Thread? _netThread;
 
-  public SignalRSystem(Application app) {
-    _application = app;
-    _netInstance = new SignalRInstance();
-    _netInstance.AddCorsOptions(app.SystemConfiguration.WebAllowOrigins ?? []);
-    Logger.Info("[SYSTEMS] SignalR System created");
+//   public SignalRSystem(Application app) {
+//     _application = app;
+//     _netInstance = new SignalRInstance();
+//     _netInstance.AddCorsOptions(app.SystemConfiguration.WebAllowOrigins ?? []);
+//     Logger.Info("[SYSTEMS] SignalR System created");
 
-    _netThread = new Thread(Run) {
-      Name = "SignalR Thread",
-      IsBackground = true,
-      Priority = ThreadPriority.BelowNormal,
-    };
-    _netThread.Start();
-  }
+//     _netThread = new Thread(Run) {
+//       Name = "SignalR Thread",
+//       IsBackground = true,
+//       Priority = ThreadPriority.BelowNormal,
+//     };
+//     _netThread.Start();
+//   }
 
-  private void Run() {
-    if (_netThread == null) return;
+//   private void Run() {
+//     if (_netThread == null) return;
 
-    Logger.Info($"[SYSTEMS] SignalR System Running on Thread {_netThread.Name} - {_netThread.ManagedThreadId}");
-    _netInstance?.Run();
-  }
+//     Logger.Info($"[SYSTEMS] SignalR System Running on Thread {_netThread.Name} - {_netThread.ManagedThreadId}");
+//     _netInstance?.Run();
+//   }
 
-  public void Dispose() {
-    _netInstance?.DisposeAsync().AsTask().Wait();
-    _netThread?.Join();
+//   public void Dispose() {
+//     _netInstance?.DisposeAsync().AsTask().Wait();
+//     _netThread?.Join();
 
-    GC.SuppressFinalize(this);
-  }
-}
+//     GC.SuppressFinalize(this);
+//   }
+// }
