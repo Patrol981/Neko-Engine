@@ -1,142 +1,142 @@
-using System.Collections.Concurrent;
-using Neko.Extensions.Logging;
-using Neko.SignalR.Hubs;
-using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.DependencyInjection;
+// using System.Collections.Concurrent;
+// using Neko.Extensions.Logging;
+// using Neko.SignalR.Hubs;
+// using Microsoft.AspNetCore.SignalR.Client;
+// using Microsoft.Extensions.DependencyInjection;
 
-namespace Neko.Networking;
+// namespace Neko.Networking;
 
-public delegate void NetworkSenderEvent(object? sender, object? msg);
-public delegate void NetworkEvent(object? msg);
+// public delegate void NetworkSenderEvent(object? sender, object? msg);
+// public delegate void NetworkEvent(object? msg);
 
-public class SignalRClientSystem : IDisposable {
-  private readonly ConcurrentDictionary<string, HubConnection> _connections = [];
+// public class SignalRClientSystem : IDisposable {
+//   private readonly ConcurrentDictionary<string, HubConnection> _connections = [];
 
-  public async Task<bool> Connect(string url, string hubName = HubNames.DEFAULT) {
-    if (_connections.ContainsKey(hubName)) {
-      Logger.Error($"{hubName} alredy exists in the pool. Skipping");
-      return false;
-    }
+//   public async Task<bool> Connect(string url, string hubName = HubNames.DEFAULT) {
+//     if (_connections.ContainsKey(hubName)) {
+//       Logger.Error($"{hubName} alredy exists in the pool. Skipping");
+//       return false;
+//     }
 
-    try {
-      var result = _connections.TryAdd(hubName, new HubConnectionBuilder()
-       .WithUrl($"{url}/{hubName}")
-       .WithAutomaticReconnect()
-       .AddJsonProtocol(options => {
-         options.PayloadSerializerOptions
-           .TypeInfoResolverChain
-           .Add(NekoHubJsonSerializerContext.Default);
-         options.PayloadSerializerOptions
-           .TypeInfoResolverChain
-           .Add(ChatHubJsonSerializerContext.Default);
-       })
-       .Build()
-      );
-      if (result) {
-        _connections.TryGetValue(hubName, out var connection);
-        await connection!.StartAsync();
-        Logger.Info($"Connected to {url}/{hubName}");
-        return true;
-      }
-    } catch (Exception ex) {
-      Logger.Error(ex.Message);
-      throw;
-    }
+//     try {
+//       var result = _connections.TryAdd(hubName, new HubConnectionBuilder()
+//        .WithUrl($"{url}/{hubName}")
+//        .WithAutomaticReconnect()
+//        .AddJsonProtocol(options => {
+//          options.PayloadSerializerOptions
+//            .TypeInfoResolverChain
+//            .Add(NekoHubJsonSerializerContext.Default);
+//          options.PayloadSerializerOptions
+//            .TypeInfoResolverChain
+//            .Add(ChatHubJsonSerializerContext.Default);
+//        })
+//        .Build()
+//       );
+//       if (result) {
+//         _connections.TryGetValue(hubName, out var connection);
+//         await connection!.StartAsync();
+//         Logger.Info($"Connected to {url}/{hubName}");
+//         return true;
+//       }
+//     } catch (Exception ex) {
+//       Logger.Error(ex.Message);
+//       throw;
+//     }
 
-    return false;
-  }
+//     return false;
+//   }
 
-  public async Task Send(
-    string eventName,
-    object data,
-    string hubName = HubNames.DEFAULT
-  ) {
-    var result = _connections.TryGetValue(hubName, out var connection);
-    if (!result) {
-      throw new KeyNotFoundException("Could not find given hub name");
-    }
+//   public async Task Send(
+//     string eventName,
+//     object data,
+//     string hubName = HubNames.DEFAULT
+//   ) {
+//     var result = _connections.TryGetValue(hubName, out var connection);
+//     if (!result) {
+//       throw new KeyNotFoundException("Could not find given hub name");
+//     }
 
-    if (connection == null || connection.State == HubConnectionState.Disconnected) {
-      return;
-    }
+//     if (connection == null || connection.State == HubConnectionState.Disconnected) {
+//       return;
+//     }
 
-    await connection.InvokeAsync(eventName, data);
+//     await connection.InvokeAsync(eventName, data);
 
-    return;
-  }
+//     return;
+//   }
 
-  public async Task Send(
-    string eventName,
-    string args,
-    string hubName = HubNames.DEFAULT
-  ) {
-    var result = _connections.TryGetValue(hubName, out var connection);
-    if (!result) {
-      throw new KeyNotFoundException("Could not find given hub name");
-    }
+//   public async Task Send(
+//     string eventName,
+//     string args,
+//     string hubName = HubNames.DEFAULT
+//   ) {
+//     var result = _connections.TryGetValue(hubName, out var connection);
+//     if (!result) {
+//       throw new KeyNotFoundException("Could not find given hub name");
+//     }
 
-    if (connection == null || connection.State == HubConnectionState.Disconnected) {
-      return;
-    }
+//     if (connection == null || connection.State == HubConnectionState.Disconnected) {
+//       return;
+//     }
 
-    await connection.InvokeAsync(eventName, args);
+//     await connection.InvokeAsync(eventName, args);
 
-    return;
-  }
+//     return;
+//   }
 
-  public async Task Send<T>(
-    string eventName,
-    string sender,
-    T data,
-    string hubName = HubNames.DEFAULT
-  ) {
-    var result = _connections.TryGetValue(hubName, out var connection);
-    if (!result) {
-      throw new KeyNotFoundException("Could not find given hub name");
-    }
+//   public async Task Send<T>(
+//     string eventName,
+//     string sender,
+//     T data,
+//     string hubName = HubNames.DEFAULT
+//   ) {
+//     var result = _connections.TryGetValue(hubName, out var connection);
+//     if (!result) {
+//       throw new KeyNotFoundException("Could not find given hub name");
+//     }
 
-    if (connection == null || connection.State == HubConnectionState.Disconnected) {
-      return;
-    }
+//     if (connection == null || connection.State == HubConnectionState.Disconnected) {
+//       return;
+//     }
 
-    await connection.InvokeAsync(eventName, sender, data);
+//     await connection.InvokeAsync(eventName, sender, data);
 
-    return;
-  }
+//     return;
+//   }
 
-  public void RegisterEvent<T1, T2>(
-    string eventName,
-    NetworkSenderEvent networkEvent,
-    string hubName = HubNames.DEFAULT
-  ) {
-    var result = _connections.TryGetValue(hubName, out var connection);
-    if (!result) {
-      throw new KeyNotFoundException("Could not find given hub name");
-    }
-    connection?.On<T1, T2>(eventName, (sender, msg) => {
-      networkEvent.Invoke(sender, msg);
-    });
-  }
+//   public void RegisterEvent<T1, T2>(
+//     string eventName,
+//     NetworkSenderEvent networkEvent,
+//     string hubName = HubNames.DEFAULT
+//   ) {
+//     var result = _connections.TryGetValue(hubName, out var connection);
+//     if (!result) {
+//       throw new KeyNotFoundException("Could not find given hub name");
+//     }
+//     connection?.On<T1, T2>(eventName, (sender, msg) => {
+//       networkEvent.Invoke(sender, msg);
+//     });
+//   }
 
-  public void RegisterEvent<T>(
-    string eventName,
-    NetworkEvent networkEvent,
-    string hubName = HubNames.DEFAULT
-  ) {
-    var result = _connections.TryGetValue(hubName, out var connection);
-    if (!result) {
-      throw new KeyNotFoundException("Could not find given hub name");
-    }
-    connection?.On<T>(eventName, (msg) => {
-      networkEvent.Invoke(msg);
-    });
-  }
+//   public void RegisterEvent<T>(
+//     string eventName,
+//     NetworkEvent networkEvent,
+//     string hubName = HubNames.DEFAULT
+//   ) {
+//     var result = _connections.TryGetValue(hubName, out var connection);
+//     if (!result) {
+//       throw new KeyNotFoundException("Could not find given hub name");
+//     }
+//     connection?.On<T>(eventName, (msg) => {
+//       networkEvent.Invoke(msg);
+//     });
+//   }
 
-  public void Dispose() {
-    foreach (var conn in _connections.Values) {
-      conn.DisposeAsync().AsTask().Wait();
-    }
+//   public void Dispose() {
+//     foreach (var conn in _connections.Values) {
+//       conn.DisposeAsync().AsTask().Wait();
+//     }
 
-    GC.SuppressFinalize(this);
-  }
-}
+//     GC.SuppressFinalize(this);
+//   }
+// }
