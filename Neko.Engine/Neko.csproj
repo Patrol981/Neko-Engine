@@ -72,7 +72,6 @@
     <ProjectReference Include="..\Neko.Utils\Neko.Utils.csproj" />
     <ProjectReference Include="..\Neko.AbstractionLayer\Neko.AbstractionLayer.csproj" />
     <ProjectReference Include="..\Neko.WebApi\Neko.WebApi.csproj" />
-    <ProjectReference Include="..\Neko.SignalR\Neko.SignalR.csproj" />
     <ProjectReference Include="..\Neko.Hammer\Neko.Hammer.csproj" />
     <Reference Include="glTFLoader">
       <HintPath>..\Dependencies\glTFLoader.dll</HintPath>
