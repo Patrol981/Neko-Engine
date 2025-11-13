@@ -16,7 +16,7 @@ public class PipelineData {
   public IPipeline Pipeline = null!;
 
   public unsafe void Dispose(VulkanDevice device) {
-    Pipeline.Dispose();
+    Pipeline?.Dispose();
 
     if (PipelineLayout != 0) {
       device.DeviceApi.vkDestroyPipelineLayout(device.LogicalDevice, PipelineLayout);
