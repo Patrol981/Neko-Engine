@@ -129,7 +129,8 @@ public partial class Application {
 
   private void Collect() {
     lock (EntitiesLock) {
-      foreach (var e in Entities.ToList()) {
+      ReadOnlySpan<Entity> entities = Entities.ToArray();
+      foreach (var e in entities) {
         if (!e.CanBeDisposed) continue;
         if (e.Collected) continue;
 
