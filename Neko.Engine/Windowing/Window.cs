@@ -61,10 +61,19 @@ public class Window : IWindow {
 
     if (
       RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ||
-      RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ||
-      RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+      RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
     ) {
       if (!SDL_Vulkan_LoadLibrary()) {
+        throw new Exception("Failed to initialize Vulkan");
+      }
+
+      windowFlags |= SDL_WindowFlags.Vulkan;
+    } else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+      var path = Path.Combine(NekoPath.AssemblyDirectory, "libMoltenVK.dylib");
+
+      Logger.Info($"[WINDOW] Setting path for MoltenVK - {path}");
+
+      if (!SDL_Vulkan_LoadLibrary(path)) {
         throw new Exception("Failed to initialize Vulkan");
       }
 
