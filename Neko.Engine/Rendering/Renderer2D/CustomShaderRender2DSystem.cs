@@ -85,6 +85,9 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
 
     for (ushort i = 0; i < _buffers.Count; i++) {
       var entity = entities.Where(x => x.Id == _buffers[i].EntityId).First();
+
+      if (entity.CanBeDisposed) continue;
+
       var transform = entity.GetTransform();
       var drawable = entity.GetDrawable2D();
       var myTexId = GetIndexOfMyTexture(drawable?.Texture.TextureName ?? "");
