@@ -476,6 +476,8 @@ public partial class Application {
     }
 
     if (commandBuffer != IntPtr.Zero && camera != null) {
+      var entities = Entities.AsValueEnumerable().ToArray();
+
       int frameIndex = Renderer.FrameIndex;
       _currentFrame.Camera = camera;
       _currentFrame.CommandBuffer = commandBuffer;
@@ -488,7 +490,7 @@ public partial class Application {
       _currentFrame.CustomSpriteDataDescriptorSet = StorageCollection.GetDescriptor("CustomSpriteStorage", frameIndex);
       _currentFrame.JointsBufferDescriptorSet = StorageCollection.GetDescriptor("JointsStorage", frameIndex);
       _currentFrame.TextureManager = _textureManager;
-      _currentFrame.ImportantEntity = Entities.Where(x => x.IsImportant).FirstOrDefault() ?? null!;
+      _currentFrame.ImportantEntity = entities.Where(x => x.IsImportant).FirstOrDefault() ?? null!;
 
       _ubo->Projection = camera?.GetProjectionMatrix() ?? Matrix4x4.Identity;
       _ubo->View = camera?.GetViewMatrix() ?? Matrix4x4.Identity;
