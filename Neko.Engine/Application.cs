@@ -573,7 +573,7 @@ public partial class Application {
     }
   }
 
-  internal unsafe void RenderLoader() {
+  internal void RenderLoader() {
     var commandBuffer = Renderer.BeginFrame();
     if (commandBuffer != IntPtr.Zero) {
       int frameIndex = Renderer.FrameIndex;
