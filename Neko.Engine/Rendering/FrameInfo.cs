@@ -9,7 +9,9 @@ public struct FrameInfo {
   public Camera Camera;
   public VkDescriptorSet GlobalDescriptorSet;
   public VkDescriptorSet PointLightsDescriptorSet;
-  public VkDescriptorSet ObjectDataDescriptorSet;
+  [Obsolete] public VkDescriptorSet ObjectDataDescriptorSet;
+  public VkDescriptorSet StaticObjectDataDescriptorSet;
+  public VkDescriptorSet SkinnedObjectDataDescriptorSet;
   public VkDescriptorSet CustomShaderObjectDataDescriptorSet;
   public VkDescriptorSet JointsBufferDescriptorSet;
   public VkDescriptorSet SpriteDataDescriptorSet;
