@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using Neko.AbstractionLayer;
 using Neko.Animations;
 using Neko.EntityComponentSystem;
+using Neko.Extensions.Logging;
 using Neko.Networking;
 using Neko.Physics;
 using Neko.Rendering.DebugRenderer;
@@ -23,6 +24,8 @@ namespace Neko.Rendering;
 public class SystemCollection : IDisposable {
   // Render Systems
   public Render3DSystem? Render3DSystem { get; set; }
+  public SkinnedRenderSystem? SkinnedRenderSystem { get; set; }
+  public StaticRenderSystem? StaticRenderSystem { get; set; }
   public CustomShaderRender3DSystem? CustomShaderRender3DSystem { get; set; }
   public Render2DSystem? Render2DSystem { get; set; }
   public CustomShaderRender2DSystem? CustomShaderRender2DSystem { get; set; }
@@ -66,7 +69,11 @@ public class SystemCollection : IDisposable {
     }
 
 
-    Render3DSystem?.Update(frameInfo, app.Meshes);
+    // Render3DSystem?.Update(frameInfo, app.Meshes);
+    var staticOffset = 0ul;
+    StaticRenderSystem?.Update(frameInfo, app.Meshes, out staticOffset);
+    SkinnedRenderSystem?.Update(frameInfo, app.Meshes, staticOffset);
+
     CustomShaderRender3DSystem?.Update(
       frameInfo,
       app.Drawables3D.Values.AsValueEnumerable()
@@ -105,11 +112,19 @@ public class SystemCollection : IDisposable {
     FrameInfo frameInfo,
     Dictionary<string, IDescriptorSetLayout> _descriptorSetLayouts
   ) {
-    if (Render3DSystem != null) {
+    if (StaticRenderSystem != null && SkinnedRenderSystem != null) {
       app.StorageCollection.CheckSize(
-        "ObjectStorage",
+        "StaticObjectStorage",
         frameInfo.FrameIndex,
-        Render3DSystem.LastKnownElemCount,
+        StaticRenderSystem.LastKnownElemCount,
+        _descriptorSetLayouts["ObjectData"],
+        default
+      );
+
+      app.StorageCollection.CheckSize(
+        "SkinnedObjectStorage",
+        frameInfo.FrameIndex,
+        (int)SkinnedRenderSystem.LastKnownSkinnedElemCount,
         _descriptorSetLayouts["ObjectData"],
         default
       );
@@ -117,7 +132,7 @@ public class SystemCollection : IDisposable {
       app.StorageCollection.CheckSize(
         "JointsStorage",
         frameInfo.FrameIndex,
-        (int)Render3DSystem.LastKnownSkinnedElemJointsCount,
+        StaticRenderSystem.LastKnownElemCount,
         _descriptorSetLayouts["JointsBuffer"],
         default
       );
@@ -152,17 +167,39 @@ public class SystemCollection : IDisposable {
 
   public void RenderSystems(Application app, FrameInfo frameInfo) {
 
-    if (Render3DSystem != null) {
-      Render3DSystem.Render(
+    // if (Render3DSystem != null) {
+    //   Render3DSystem.Render(
+    //     app.Drawables3D.Values.AsValueEnumerable()
+    //       .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+    //       .ToArray(),
+    //     app.Meshes,
+    //     frameInfo,
+    //     out var animatedNodes
+    //   );
+    //   AnimationSystem?.Update(animatedNodes);
+    //   // _animationSystem?.Update(_render3DSystem.SkinnedNodesCache);
+    // }
+    IEnumerable<Node> staticNodes = [];
+    StaticRenderSystem?.Render(
+      app.Drawables3D.Values.AsValueEnumerable()
+        .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+        .Where(x => !x.IsSkinned)
+        .ToArray(),
+      app.Meshes,
+      frameInfo,
+      out staticNodes
+    );
+    if (SkinnedRenderSystem != null) {
+      SkinnedRenderSystem.Render(
         app.Drawables3D.Values.AsValueEnumerable()
           .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+          .Where(x => x.IsSkinned)
           .ToArray(),
         app.Meshes,
         frameInfo,
         out var animatedNodes
       );
       AnimationSystem?.Update(animatedNodes);
-      // _animationSystem?.Update(_render3DSystem.SkinnedNodesCache);
     }
     CustomShaderRender3DSystem?.Render(frameInfo);
 
@@ -205,24 +242,72 @@ public class SystemCollection : IDisposable {
     IPipelineConfigInfo pipelineConfigInfo,
     ref TextureManager textureManager
   ) {
-    if (Render3DSystem != null) {
-      var modelEntities = app.Drawables3D.Values.ToArray();
-      if (modelEntities.Length < 1) return;
-      var sizes = Render3DSystem.CheckSizes(modelEntities);
-      var textures = Render3DSystem.CheckTextures(modelEntities);
-      if (!sizes || !textures || Reload3DRenderSystem) {
-        Reload3DRenderSystem = false;
-        Reload3DRenderer(
-          app,
-          allocator,
-          device,
-          renderer,
-          layouts,
-          ref textureManager,
-          pipelineConfigInfo,
-          modelEntities
-        );
+    var modelEntities = app.Drawables3D.Values.AsValueEnumerable();
+    if (SkinnedRenderSystem != null) {
+      var skinnedEntities = modelEntities
+        .Where(x => x.IsSkinned)
+        .ToArray();
+      if (skinnedEntities.Length > 1) {
+        var sizes = SkinnedRenderSystem.CheckSizes(skinnedEntities);
+        if (!sizes || Reload3DRenderSystem) {
+          ReloadSkinnedRenderer(
+           app,
+           allocator,
+           device,
+           renderer,
+           layouts,
+           ref textureManager,
+           pipelineConfigInfo,
+           skinnedEntities
+         );
+        }
       }
+    }
+
+    if (StaticRenderSystem != null) {
+      var staticEntities = modelEntities
+        .Where(x => !x.IsSkinned)
+        .ToArray();
+
+      if (staticEntities.Length > 1) {
+        var sizes = StaticRenderSystem.CheckSizes(staticEntities);
+        if (!sizes || Reload3DRenderSystem) {
+          ReloadStaticRenderer(
+           app,
+           allocator,
+           device,
+           renderer,
+           layouts,
+           ref textureManager,
+           pipelineConfigInfo,
+           staticEntities
+          );
+        }
+      }
+    }
+
+    // if (Render3DSystem != null) {
+    //   var modelEntities = app.Drawables3D.Values.ToArray();
+    //   if (modelEntities.Length < 1) return;
+    //   var sizes = Render3DSystem.CheckSizes(modelEntities);
+    //   var textures = Render3DSystem.CheckTextures(modelEntities);
+    //   if (!sizes || !textures || Reload3DRenderSystem) {
+    //     Reload3DRenderSystem = false;
+    //     Reload3DRenderer(
+    //       app,
+    //       allocator,
+    //       device,
+    //       renderer,
+    //       layouts,
+    //       ref textureManager,
+    //       pipelineConfigInfo,
+    //       modelEntities
+    //     );
+    //   }
+    // }
+
+    if (Reload3DRenderSystem) {
+      Reload3DRenderSystem = false;
     }
 
     if (Render2DSystem != null) {
@@ -295,11 +380,25 @@ public class SystemCollection : IDisposable {
     // _subpassConnectorSystem = new(allocator, device, renderer, layouts, new SecondSubpassPipeline());
     // _postProcessingSystem = new(allocator, device, renderer, textureManager, systemConfiguration, layouts, new PostProcessingPipeline());
 
-    Render3DSystem?.Setup(
+    // Render3DSystem?.Setup(
+    //   app.Drawables3D.Values.AsValueEnumerable()
+    //     .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+    //     .ToArray(),
+    //   ref textureManager
+    // );
+
+    StaticRenderSystem?.Setup(
       app.Drawables3D.Values.AsValueEnumerable()
         .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
-        .ToArray(),
-      ref textureManager
+        .Where(x => !x.IsSkinned)
+        .ToArray()
+    );
+
+    SkinnedRenderSystem?.Setup(
+      app.Drawables3D.Values.AsValueEnumerable()
+        .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+        .Where(x => x.IsSkinned)
+        .ToArray()
     );
 
     CustomShaderRender3DSystem?.Setup(
@@ -369,6 +468,52 @@ public class SystemCollection : IDisposable {
       pipelineConfig
     );
     Render3DSystem?.Setup(renderables, ref textureManager);
+  }
+
+  public void ReloadStaticRenderer(
+    Application app,
+    nint allocator,
+    IDevice device,
+    IRenderer renderer,
+    Dictionary<string, IDescriptorSetLayout> externalLayouts,
+    ref TextureManager textureManager,
+    IPipelineConfigInfo pipelineConfig,
+    ReadOnlySpan<IRender3DElement> renderables
+  ) {
+    StaticRenderSystem?.Dispose();
+    StaticRenderSystem = new StaticRenderSystem(
+      app,
+      allocator,
+      (VulkanDevice)device,
+      renderer,
+      textureManager,
+      externalLayouts,
+      pipelineConfig
+    );
+    StaticRenderSystem?.Setup(renderables);
+  }
+
+  public void ReloadSkinnedRenderer(
+    Application app,
+    nint allocator,
+    IDevice device,
+    IRenderer renderer,
+    Dictionary<string, IDescriptorSetLayout> externalLayouts,
+    ref TextureManager textureManager,
+    IPipelineConfigInfo pipelineConfig,
+    ReadOnlySpan<IRender3DElement> renderables
+  ) {
+    SkinnedRenderSystem?.Dispose();
+    SkinnedRenderSystem = new SkinnedRenderSystem(
+      app,
+      allocator,
+      (VulkanDevice)device,
+      renderer,
+      textureManager,
+      externalLayouts,
+      pipelineConfig
+    );
+    SkinnedRenderSystem?.Setup(renderables);
   }
 
   public void Reload2DRenderer(
@@ -449,6 +594,8 @@ public class SystemCollection : IDisposable {
   public void Dispose() {
     PostProcessingSystem?.Dispose();
     Render3DSystem?.Dispose();
+    StaticRenderSystem?.Dispose();
+    SkinnedRenderSystem?.Dispose();
     CustomShaderRender3DSystem?.Dispose();
     Render2DSystem?.Dispose();
     CustomShaderRender2DSystem?.Dispose();

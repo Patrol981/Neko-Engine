@@ -84,7 +84,13 @@ public class SystemCreator {
 
     if (hasRenderer3D) {
       Logger.Info("[SYSTEM CREATOR] Creating 3D Renderer");
-      systemCollection.Render3DSystem =
+      // systemCollection.Render3DSystem =
+      //   new(app, allocator, (VulkanDevice)device, renderer, textureManager, layouts, new ModelPipelineConfig());
+
+      systemCollection.StaticRenderSystem =
+        new(app, allocator, (VulkanDevice)device, renderer, textureManager, layouts, new ModelPipelineConfig());
+
+      systemCollection.SkinnedRenderSystem =
         new(app, allocator, (VulkanDevice)device, renderer, textureManager, layouts, new ModelPipelineConfig());
 
       systemCollection.CustomShaderRender3DSystem =

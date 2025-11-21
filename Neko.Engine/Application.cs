@@ -484,7 +484,8 @@ public partial class Application {
       _currentFrame.FrameIndex = frameIndex;
       _currentFrame.GlobalDescriptorSet = StorageCollection.GetDescriptor("GlobalStorage", frameIndex);
       _currentFrame.PointLightsDescriptorSet = StorageCollection.GetDescriptor("PointStorage", frameIndex);
-      _currentFrame.ObjectDataDescriptorSet = StorageCollection.GetDescriptor("ObjectStorage", frameIndex);
+      _currentFrame.StaticObjectDataDescriptorSet = StorageCollection.GetDescriptor("StaticObjectStorage", frameIndex);
+      _currentFrame.SkinnedObjectDataDescriptorSet = StorageCollection.GetDescriptor("SkinnedObjectStorage", frameIndex);
       _currentFrame.CustomShaderObjectDataDescriptorSet = StorageCollection.GetDescriptor("CustomShaderObjectStorage", frameIndex);
       _currentFrame.SpriteDataDescriptorSet = StorageCollection.GetDescriptor("SpriteStorage", frameIndex);
       _currentFrame.CustomSpriteDataDescriptorSet = StorageCollection.GetDescriptor("CustomSpriteStorage", frameIndex);
