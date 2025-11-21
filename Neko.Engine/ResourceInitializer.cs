@@ -196,17 +196,32 @@ public class ResourceInitializer {
     ref Dictionary<string, IDescriptorSetLayout> descriptorSetLayouts,
     bool useSkybox
   ) {
-    if (systems.Render3DSystem != null) {
+    // if (systems.Render3DSystem != null) {
+    if (systems.StaticRenderSystem != null && systems.SkinnedRenderSystem != null) {
       storageCollection.CreateStorage(
         device,
         DescriptorType.StorageBuffer,
         BufferUsage.StorageBuffer,
         renderer.MAX_FRAMES_IN_FLIGHT,
         (ulong)Unsafe.SizeOf<ObjectData>(),
-        (ulong)systems.Render3DSystem.LastKnownElemCount,
+        (ulong)systems.StaticRenderSystem.LastKnownElemCount,
         (VulkanDescriptorSetLayout)descriptorSetLayouts["ObjectData"],
         null!,
-        "ObjectStorage",
+        "StaticObjectStorage",
+        device.MinStorageBufferOffsetAlignment,
+        true
+      );
+
+      storageCollection.CreateStorage(
+        device,
+        DescriptorType.StorageBuffer,
+        BufferUsage.StorageBuffer,
+        renderer.MAX_FRAMES_IN_FLIGHT,
+        (ulong)Unsafe.SizeOf<ObjectData>(),
+        (ulong)systems.StaticRenderSystem.LastKnownElemCount,
+        (VulkanDescriptorSetLayout)descriptorSetLayouts["ObjectData"],
+        null!,
+        "SkinnedObjectStorage",
         device.MinStorageBufferOffsetAlignment,
         true
       );
@@ -217,7 +232,7 @@ public class ResourceInitializer {
         BufferUsage.StorageBuffer,
         renderer.MAX_FRAMES_IN_FLIGHT,
         (ulong)Unsafe.SizeOf<Matrix4x4>(),
-        systems.Render3DSystem.LastKnownSkinnedElemJointsCount,
+        systems.SkinnedRenderSystem.LastKnownSkinnedElemJointsCount,
         (VulkanDescriptorSetLayout)descriptorSetLayouts["JointsBuffer"],
         null!,
         "JointsStorage",

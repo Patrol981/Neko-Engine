@@ -127,6 +127,13 @@ public class VkStorageCollection : IStorageCollection {
     // Application.Mutex.ReleaseMutex();
   }
 
+  public void WriteToIndex(string key, int index, nint data, ulong size, ulong offset) {
+    if (!Storages.TryGetValue(key, out var storage)) return;
+    if (storage.Buffers[index] == null) return;
+
+    Storages[key].Buffers[index].WriteToBuffer(data, size, offset);
+  }
+
   public ulong GetDescriptor(string key, int index) {
     // Storages[key].Descriptors[index]
     return Storages.TryGetValue(key, out var storageData)

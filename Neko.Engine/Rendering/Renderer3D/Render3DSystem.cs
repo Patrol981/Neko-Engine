@@ -13,17 +13,6 @@ using Vortice.Vulkan;
 
 namespace Neko.Rendering.Renderer3D;
 
-sealed class IndirectData {
-  public readonly List<VkDrawIndexedIndirectCommand> Commands = [];
-  public int VisibleCount;
-  public uint CurrentIndexOffset;
-}
-
-readonly struct CmdRef(uint pool, int cmdIndex) {
-  public readonly uint Pool = pool;
-  public readonly int CmdIndex = cmdIndex;
-}
-
 public partial class Render3DSystem : SystemBase, IRenderSystem {
   public const string Simple3D = "simple3D";
   public const string Skinned3D = "skinned3D";
@@ -519,14 +508,14 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
   private void EnsureVisibleScratchCapacity() {
     foreach (var (pool, data) in _indirectSimples) {
       if (!_simpleVisibleScratch.TryGetValue(pool, out var list))
-        _simpleVisibleScratch[pool] = list = new List<VkDrawIndexedIndirectCommand>(data.Commands.Count);
+        _simpleVisibleScratch[pool] = new List<VkDrawIndexedIndirectCommand>(data.Commands.Count);
       else if (list.Capacity < data.Commands.Count)
         list.Capacity = data.Commands.Count;
     }
 
     foreach (var (pool, data) in _indirectComplexes) {
       if (!_complexVisibleScratch.TryGetValue(pool, out var list))
-        _complexVisibleScratch[pool] = list = new List<VkDrawIndexedIndirectCommand>(data.Commands.Count);
+        _complexVisibleScratch[pool] = new List<VkDrawIndexedIndirectCommand>(data.Commands.Count);
       else if (list.Capacity < data.Commands.Count)
         list.Capacity = data.Commands.Count;
     }

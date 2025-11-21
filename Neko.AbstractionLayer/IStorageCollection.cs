@@ -30,6 +30,14 @@ public interface IStorageCollection : IDisposable {
     ulong size
   );
 
+  void WriteToIndex(
+    string key,
+    int index,
+    nint data,
+    ulong size,
+    ulong offset
+  );
+
   ulong GetDescriptor(
     string key,
     int index
