@@ -345,7 +345,83 @@ public class SkinnedRenderSystem : SystemBase {
     EnsureVisibleScratchCapacity();
   }
 
-  private unsafe void CreateVertexIndexBuffer(
+  private void CreateVertexIndexBuffer(
+    ReadOnlySpan<Node> nodes,
+    ConcurrentDictionary<Guid, Mesh> meshes
+  ) {
+    _vertexBindings.Clear();
+    _bufferPool?.Dispose();
+    _bufferPool = new BufferPool(_device, _allocator);
+    _indirectData.Clear();
+
+    var indexOffset = 0u;
+    var vertexOffset = 0u;
+
+    var currentPool = 0u;
+    _bufferPool.CreateNewBakeData(currentPool);
+
+    var adjustedIndices = new List<uint>();
+
+    var accumulatedIndexSize = 0u;
+    var accumulatedVertexSize = 0ul;
+
+    Cache = nodes.ToArray();
+    foreach (var node in nodes) {
+      ReadOnlySpan<Vertex> verts = meshes[node.MeshGuid].Vertices;
+      ReadOnlySpan<uint> indices = meshes[node.MeshGuid].Indices;
+
+      var vertexByteSize = (ulong)verts.Length * (ulong)Unsafe.SizeOf<Vertex>();
+      var indexByteSize = (uint)indices.Length * sizeof(uint);
+
+      accumulatedVertexSize += vertexByteSize;
+      accumulatedIndexSize += indexByteSize;
+
+      var canAddVertex = _bufferPool.CanBakeMoreVertex(currentPool, accumulatedVertexSize);
+      var canAddIndex = _bufferPool.CanBakeMoreIndex(currentPool, accumulatedIndexSize);
+      var isOverflowingOnNextStep = CheckForOverflow(indexOffset, (uint)indices.Length);
+
+      if (!canAddIndex || !canAddVertex || isOverflowingOnNextStep) {
+        currentPool++;
+        _bufferPool.CreateNewBakeData(currentPool);
+        indexOffset = 0;
+        vertexOffset = 0;
+        accumulatedIndexSize = 0;
+        accumulatedVertexSize = 0;
+      }
+
+      var localIndices = new List<uint>();
+      foreach (var idx in meshes[node.MeshGuid].Indices) {
+        adjustedIndices.Add(idx + vertexOffset);
+        localIndices.Add(idx + vertexOffset);
+      }
+
+      _bufferPool.AddIndexToBake(currentPool, [.. indices]);
+      _bufferPool.AddVertexToBake(currentPool, [.. verts]);
+
+      _vertexBindings.Add(new VertexBinding {
+        BufferIndex = currentPool,
+        FirstVertexOffset = vertexOffset,
+        FirstIndexOffset = indexOffset
+      });
+
+      int cmdIdx = AddIndirectCommand(
+        meshes,
+        currentPool,
+        node,
+        _vertexBindings.Last(),
+        ref _indirectData,
+        ref _instanceIndex
+      );
+      _cmdMap[node] = new CmdRef(currentPool, cmdIdx);
+
+      indexOffset += (uint)indices.Length;
+      vertexOffset += (uint)meshes[node.MeshGuid].Vertices.Length;
+    }
+
+    _bufferPool.BakeAll();
+  }
+
+  private unsafe void CreateVertexIndexBuffer_NonBaked(
     ReadOnlySpan<Node> nodes,
     ConcurrentDictionary<Guid, Mesh> meshes
   ) {
