@@ -102,17 +102,23 @@ public class Window : IWindow {
   }
 
   private unsafe void LoadIcons() {
-    var engineIcoStream = File.OpenRead($"{NekoPath.AssemblyDirectory}/Resources/ico/neko_ico.png");
-    var engineIco = ImageResult.FromStream(engineIcoStream, ColorComponents.RedGreenBlueAlpha);
-    var engineSurface = SDL_CreateSurface(engineIco.Width, engineIco.Height, SDL_PixelFormat.Abgr8888);
-    fixed (byte* pixPtr = engineIco.Data) {
-      engineSurface->pixels = (nint)pixPtr;
+
+    // We bundle MacOS variant into .app so we can skip setting icon since it will be set
+    // from appbundle
+    if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+      var engineIcoStream = File.OpenRead($"{NekoPath.AssemblyDirectory}/Resources/ico/neko_ico.png");
+      var engineIco = ImageResult.FromStream(engineIcoStream, ColorComponents.RedGreenBlueAlpha);
+      var engineSurface = SDL_CreateSurface(engineIco.Width, engineIco.Height, SDL_PixelFormat.Abgr8888);
+      fixed (byte* pixPtr = engineIco.Data) {
+        engineSurface->pixels = (nint)pixPtr;
+      }
+
+      if (!SDL_SetWindowIcon(SDLWindow, engineSurface)) {
+        Logger.Error("Failed to load window icon");
+      }
+      Marshal.FreeHGlobal((nint)engineSurface);
+      engineIcoStream.Dispose();
     }
-    if (!SDL_SetWindowIcon(SDLWindow, engineSurface)) {
-      Logger.Error("Failed to load window icon");
-    }
-    Marshal.FreeHGlobal((nint)engineSurface);
-    engineIcoStream.Dispose();
 
     var cursorIcoStream = File.OpenRead($"{NekoPath.AssemblyDirectory}/Resources/ico/cursor.png");
     var cursorIco = ImageResult.FromStream(cursorIcoStream, ColorComponents.RedGreenBlueAlpha);
