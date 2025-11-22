@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Numerics;
 using Neko.AbstractionLayer;
 using Neko.EntityComponentSystem;
+using Neko.Extensions.Logging;
 using Neko.Loaders;
 using Neko.Loaders.Tiled;
 using Neko.Physics;
@@ -334,7 +335,11 @@ public static class EntityExtensions {
   }
 
   public static NekoScript[] GetScripts(this Entity entity) {
-    if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
+    if (entity.CanBeDisposed) {
+      // throw new ArgumentException("Cannot access disposed entity!");
+      Logger.Error("Cannot access disposed entity!");
+      return [];
+    }
 
     var app = Application.Instance;
 
