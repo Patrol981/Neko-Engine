@@ -15,7 +15,28 @@ public class BufferPool : IDisposable {
     internal NekoBuffer IndexBuffer = null!;
   };
 
+  internal class BakedBatchData {
+    internal List<uint> Indices = [];
+    internal List<Vertex> Vertices = [];
+
+    internal uint IndexSize => (uint)(Indices.Count * sizeof(uint));
+    internal ulong VertexSize => (ulong)(Vertices.Count * Unsafe.SizeOf<Vertex>());
+
+    internal bool WillExceedVertex(ulong size) {
+      if (ulong.MaxValue - size < VertexSize) return true;
+
+      return false;
+    }
+
+    internal bool WillExceedIndex(uint size) {
+      if (uint.MaxValue - size < IndexSize) return true;
+
+      return false;
+    }
+  };
+
   private readonly ConcurrentDictionary<uint, BufferData> _buffers = [];
+  private readonly ConcurrentDictionary<uint, BakedBatchData> _bakeData = [];
   // private const ulong MAX_BUFF_SIZE = 2500000;
   // private readonly ulong MAX_HEAP_SIZE = 268435456;
   // 2500000
@@ -75,6 +96,103 @@ public class BufferPool : IDisposable {
     }
 
     return true;
+  }
+
+  public bool CanBakeMoreVertex(
+    in uint id,
+    in ulong size
+  ) {
+    var willExceed = _bakeData[id].WillExceedVertex(size);
+    var isHigherThanHardMax = size > _maxBufferSize;
+
+    if (willExceed || isHigherThanHardMax) return false;
+
+    return true;
+  }
+
+  public bool CanBakeMoreIndex(
+    in uint id,
+    in uint size
+  ) {
+    var willExceed = _bakeData[id].WillExceedIndex(size);
+    var isHigherThanHardMax = (ulong)size > _maxBufferSize;
+
+    if (willExceed || isHigherThanHardMax) return false;
+
+    return true;
+  }
+
+  public bool AddIndexToBake(
+    in uint id,
+    in List<uint> indices
+  ) {
+    if (!_bakeData.ContainsKey(id)) {
+      return false;
+    }
+
+    _bakeData.TryGetValue(id, out var bakeData);
+    if (bakeData is null) throw new NullReferenceException("Bake data is null");
+
+    bakeData.Indices.AddRange(indices);
+    return true;
+  }
+
+  public bool AddVertexToBake(
+    in uint id,
+    in List<Vertex> vertices
+  ) {
+    if (!_bakeData.ContainsKey(id)) {
+      return false;
+    }
+
+    _bakeData.TryGetValue(id, out var bakeData);
+    if (bakeData is null) throw new NullReferenceException("Bake data is null");
+
+    bakeData.Vertices.AddRange(vertices);
+    return true;
+  }
+
+  public void CreateNewBakeData(in uint id) {
+    _bakeData.TryAdd(id, new());
+  }
+
+  public unsafe void BakeAll() {
+    for (uint i = 0; i < _bakeData.Count; i++) {
+      _buffers.TryAdd(i, new());
+
+      fixed (uint* pIndices = _bakeData[i].Indices.ToArray()) {
+        PrebakeIndex(i, (nint)pIndices, _bakeData[i].IndexSize);
+      }
+      fixed (Vertex* pVertices = _bakeData[i].Vertices.ToArray()) {
+        PrebakeVertex(i, (nint)pVertices, _bakeData[i].VertexSize);
+      }
+    }
+
+    Logger.Info($"[Buffer Pool] Created {_buffers.Count} pools.");
+  }
+
+  public void PrebakeVertex(
+    in uint id,
+    in nint data,
+    in ulong byteSize
+  ) {
+    var result = CreateNewVertexBuffer(id, data, byteSize);
+
+    if (!result) {
+      throw new ArgumentOutOfRangeException(nameof(id), "Failed to bake");
+    }
+  }
+
+  public void PrebakeIndex(
+    in uint id,
+    in nint data,
+    in ulong byteSize
+  ) {
+    var result = CreateNewIndexBuffer(id, data, byteSize);
+
+    if (!result) {
+      throw new ArgumentOutOfRangeException(nameof(id), "Failed to bake");
+    }
   }
 
   public unsafe bool AddToBuffer(
