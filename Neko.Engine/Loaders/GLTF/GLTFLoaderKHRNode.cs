@@ -22,6 +22,7 @@ public static partial class GLTFLoaderKHR {
     string path,
     int flip = 1
   ) {
+    path = Path.Combine(NekoPath.AssemblyDirectory, path);
     var gltf = Interface.LoadModel(path);
     var glb = Interface.LoadBinaryBuffer(path);
 

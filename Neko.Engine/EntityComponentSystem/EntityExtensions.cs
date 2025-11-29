@@ -31,10 +31,10 @@ public static class EntityExtensions {
 
   public static unsafe void AddTransform(this Entity entity, TransformComponent transformComponent) {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
-    var guid = Guid.NewGuid();
+    // var guid = Guid.NewGuid();
     try {
-      entity.Components.TryAdd(typeof(TransformComponent), guid);
-      if (!Application.Instance.TransformComponents.TryAdd(guid, transformComponent)) {
+      entity.Components.TryAdd(typeof(TransformComponent), entity.Id);
+      if (!Application.Instance.TransformComponents.TryAdd(entity.Id, transformComponent)) {
         throw new Exception("Cannot add transform to list");
       }
     } catch {
@@ -65,7 +65,7 @@ public static class EntityExtensions {
   ) {
     if (entity.CanBeDisposed) throw new ArgumentException("Cannot access disposed entity!");
 
-    var guid = Guid.NewGuid();
+    // var guid = Guid.NewGuid();
     if (position.Length < 1) {
       position = [0, 0, 0];
     }
@@ -80,8 +80,8 @@ public static class EntityExtensions {
 
     var transform = new TransformComponent(new(position), new(rotation), new(scale));
     try {
-      entity.Components.TryAdd(typeof(TransformComponent), guid);
-      if (!Application.Instance.TransformComponents.TryAdd(guid, transform)) {
+      entity.Components.TryAdd(typeof(TransformComponent), entity.Id);
+      if (!Application.Instance.TransformComponents.TryAdd(entity.Id, transform)) {
         throw new Exception("Cannot add transform to list");
       }
     } catch {

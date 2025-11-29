@@ -91,8 +91,9 @@ public static class Frustum {
     }
   }
 
+  [Obsolete("Do not use it; for reference only")]
   [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-  public static void FilterNodesByFog(ReadOnlySpan<Node> inNodes, out List<Node> outNodes) {
+  public static void FilterNodesByFog_(ReadOnlySpan<Node> inNodes, out List<Node> outNodes) {
     outNodes = [];
     var globalUbo = Application.Instance.GlobalUbo;
     var iep = globalUbo.CameraPosition;
@@ -108,6 +109,38 @@ public static class Frustum {
       }
     }
   }
+
+  [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+  public unsafe static void FilterNodesByFog(ReadOnlySpan<Node> inNodes, out ReadOnlySpan<Node> output) {
+    List<Node> outNodes = [];
+    var app = Application.Instance;
+    var globalUbo = app.GlobalUbo;
+    var iep = globalUbo.CameraPosition;
+    var fogValue = app.FogValue.X;
+    var transforms = app.TransformComponents;
+
+
+    var iPos = stackalloc Vector2[1];
+    iPos[0].X = iep.X;
+    iPos[0].Y = iep.Z;
+    var pos = stackalloc Vector2[inNodes.Length];
+
+    for (short i = 0; i < inNodes.Length; i++) {
+      var owner = inNodes[i].ParentRenderer.Owner;
+      if (owner.CanBeDisposed) continue;
+
+      var transform = transforms[owner.Id].Position;
+      pos[i].X = transform.X;
+      pos[i].Y = transform.Z;
+
+      if (Vector2.Distance(pos[i], iPos[0]) <= fogValue + inNodes[i].Radius) {
+        outNodes.Add(inNodes[i]);
+      }
+    }
+
+    output = outNodes.ToArray();
+  }
+
 
   [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public static FrustumPlanes BuildFromCamera(Camera cam) {

@@ -162,7 +162,7 @@ public class SkinnedRenderSystem : SystemBase {
     IRender3DElement[] renderables,
     ConcurrentDictionary<Guid, Mesh> meshes,
     FrameInfo frameInfo,
-    out IEnumerable<Node> animatedNodes
+    out ReadOnlySpan<Node> animatedNodes
   ) {
     CreateOrUpdateBuffers(renderables, meshes);
     uint visible = RefillIndirectBuffersWithCulling(meshes, out animatedNodes);
@@ -217,7 +217,7 @@ public class SkinnedRenderSystem : SystemBase {
     return true;
   }
 
-  private uint RefillIndirectBuffersWithCulling(ConcurrentDictionary<Guid, Mesh> meshes, out IEnumerable<Node> animatedNodes) {
+  private uint RefillIndirectBuffersWithCulling(ConcurrentDictionary<Guid, Mesh> meshes, out ReadOnlySpan<Node> animatedNodes) {
     // clear scratch
     foreach (var s in _visibleScratch.Values) s.Clear();
 
