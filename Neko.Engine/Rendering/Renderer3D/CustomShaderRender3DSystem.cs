@@ -80,7 +80,7 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
     FrameInfo frameInfo,
     ReadOnlySpan<IRender3DElement> renderablesWithCustomShaders,
     in ConcurrentDictionary<Guid, Mesh> meshes,
-    in HashSet<Entity> entities
+    in Entity[] entities
   ) {
     AddOrUpdateBuffers(renderablesWithCustomShaders, meshes);
 

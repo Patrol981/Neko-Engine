@@ -478,8 +478,20 @@ public class BufferPool : IDisposable {
     }
   }
 
-  public NekoBuffer GetVertexBuffer(uint index) => _buffers[index].VertexBuffer;
-  public NekoBuffer GetIndexBuffer(uint index) => _buffers[index].IndexBuffer;
+  public NekoBuffer GetVertexBuffer(uint index) {
+    if (_buffers.TryGetValue(index, out var value)) {
+      return value.VertexBuffer;
+    }
+
+    return null!;
+  }
+  public NekoBuffer GetIndexBuffer(uint index) {
+    if (_buffers.TryGetValue(index, out var value)) {
+      return value.IndexBuffer;
+    }
+
+    return null!;
+  }
 
   public void Dispose() {
     Logger.Info($"[Buffer Pool] Disposing {_buffers.Count} pools");

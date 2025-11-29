@@ -40,6 +40,7 @@ public partial class Application {
   public IStorageCollection StorageCollection { get; private set; } = null!;
   public Scene CurrentScene { get; private set; } = null!;
   public bool UseImGui { get; } = true;
+  public bool IsEditor { get; } = false;
   public unsafe GlobalUniformBufferObject GlobalUbo => *_ubo;
 
   public void SetUpdateCallback(EventCallback eventCallback) {
@@ -81,7 +82,7 @@ public partial class Application {
 
   // ubos
   private IDescriptorPool _globalPool = null!;
-  private Dictionary<string, IDescriptorSetLayout> _descriptorSetLayouts = [];
+  public Dictionary<string, IDescriptorSetLayout> DescriptorSetLayouts = [];
 
   private readonly SystemCreationFlags _systemCreationFlags;
   public readonly SystemConfiguration SystemConfiguration;
@@ -220,7 +221,7 @@ public partial class Application {
       if (!Scripts.IsEmpty) {
         MasterFixedUpdate(Scripts.Values.ToArray());
         _onUpdate?.Invoke();
-        MasterUpdate(Scripts.Values.ToArray());
+        MasterUpdate([.. Scripts.Values]);
       }
 
       if (_newSceneShouldLoad) {
@@ -305,7 +306,13 @@ public partial class Application {
   }
   #region RESOURCES
   private unsafe Task InitResources() {
-    ResourceInitializer.InitResources(Device, Renderer, StorageCollection, ref _globalPool, ref _descriptorSetLayouts);
+    ResourceInitializer.InitResources(
+      Device,
+      Renderer,
+      StorageCollection,
+      ref _globalPool,
+      ref DescriptorSetLayouts
+    );
 
     Mutex.WaitOne();
     Systems.Setup(
@@ -315,7 +322,7 @@ public partial class Application {
       Allocator,
       Device,
       Renderer,
-      _descriptorSetLayouts,
+      DescriptorSetLayouts,
       null!,
       ref _textureManager
     );
@@ -326,7 +333,7 @@ public partial class Application {
       Systems,
       StorageCollection,
       ref _globalPool,
-      ref _descriptorSetLayouts,
+      ref DescriptorSetLayouts,
       UseSkybox
     );
     Mutex.ReleaseMutex();
@@ -381,7 +388,8 @@ public partial class Application {
     Mutex.WaitOne();
     CurrentScene.LoadEntities();
     foreach (var entity in CurrentScene.GetEntities()) {
-      Entities.Add(entity);
+      // Entities.Add(entity);
+      AddEntity(entity);
     }
     Mutex.ReleaseMutex();
 
@@ -393,7 +401,6 @@ public partial class Application {
   #endregion RESOURCES
   #region ENTITY_FLOW
   private static void MasterAwake(ReadOnlySpan<NekoScript> scripts) {
-#if RUNTIME
     var sc = scripts.ToArray();
     // Parallel.ForEach(ents, (entity) => {
     //   entity.Awake();
@@ -401,11 +408,9 @@ public partial class Application {
     foreach (var s in sc) {
       s.Awake();
     }
-#endif
   }
 
   private static void MasterStart(ReadOnlySpan<NekoScript> scripts) {
-#if RUNTIME
     var sc = scripts.ToArray();
     // Parallel.ForEach(ents, (entity) => {
     //   entity.Start();
@@ -413,29 +418,22 @@ public partial class Application {
     foreach (var s in sc) {
       s.Start();
     }
-#endif
   }
 
   private static void MasterUpdate(NekoScript[] scripts) {
-#if RUNTIME
     Parallel.For(0, scripts.Length, i => { scripts[i].Update(); });
-#endif
   }
 
   private static void MasterFixedUpdate(ReadOnlySpan<NekoScript> scripts) {
-#if RUNTIME
     for (short i = 0; i < scripts.Length; i++) {
       scripts[i].FixedUpdate();
     }
-#endif
   }
 
   private static void MasterRenderUpdate(ReadOnlySpan<NekoScript> entities) {
-#if RUNTIME
     for (short i = 0; i < entities.Length; i++) {
       entities[i].RenderUpdate();
     }
-#endif
   }
 
   #endregion ENTITY_FLOW
@@ -444,13 +442,13 @@ public partial class Application {
     Time.RenderTick();
     if (Window.IsMinimalized) return;
 
-    Systems.ValidateSystems(
-        this,
-        Allocator, Device, Renderer,
-        _descriptorSetLayouts,
-        CurrentPipelineConfig,
-        ref _textureManager
-      );
+    // Systems.ValidateSystems(
+    //     this,
+    //     Allocator, Device, Renderer,
+    //     DescriptorSetLayouts,
+    //     CurrentPipelineConfig,
+    //     ref _textureManager
+    //   );
 
     float aspect = Renderer.AspectRatio;
     var cameraAsppect = CameraEntity?.GetCamera()?.Aspect;
@@ -476,7 +474,7 @@ public partial class Application {
     }
 
     if (commandBuffer != IntPtr.Zero && camera != null) {
-      var entities = Entities.AsValueEnumerable().ToArray();
+      // var entities = Entities.AsValueEnumerable().ToArray();
 
       int frameIndex = Renderer.FrameIndex;
       _currentFrame.Camera = camera;
@@ -491,7 +489,8 @@ public partial class Application {
       _currentFrame.CustomSpriteDataDescriptorSet = StorageCollection.GetDescriptor("CustomSpriteStorage", frameIndex);
       _currentFrame.JointsBufferDescriptorSet = StorageCollection.GetDescriptor("JointsStorage", frameIndex);
       _currentFrame.TextureManager = _textureManager;
-      _currentFrame.ImportantEntity = entities.Where(x => x.IsImportant).FirstOrDefault() ?? null!;
+      // _currentFrame.ImportantEntity = entities.Where(x => x.IsImportant).FirstOrDefault() ?? null!;
+      _currentFrame.ImportantEntity = null!;
 
       _ubo->Projection = camera?.GetProjectionMatrix() ?? Matrix4x4.Identity;
       _ubo->View = camera?.GetViewMatrix() ?? Matrix4x4.Identity;
@@ -554,7 +553,7 @@ public partial class Application {
 
       Renderer.EndFrame();
 
-      Systems.CheckStorageSizes(this, FrameInfo, _descriptorSetLayouts);
+      // Systems.CheckStorageSizes(this, FrameInfo, DescriptorSetLayouts);
 
       while (_reloadQueue.Count > 0) {
         var item = _reloadQueue.Dequeue();
@@ -568,7 +567,8 @@ public partial class Application {
     if (_entitiesQueue.Count > 0) {
       Mutex.WaitOne();
       while (_entitiesQueue.Count > 0) {
-        Entities.Add(_entitiesQueue.Dequeue());
+        // Entities.Add(_entitiesQueue.Dequeue());
+        AddEntity(_entitiesQueue.Dequeue());
       }
       Mutex.ReleaseMutex();
     }
@@ -660,7 +660,7 @@ public partial class Application {
     }
 
     _textureManager?.Dispose();
-    foreach (var layout in _descriptorSetLayouts) {
+    foreach (var layout in DescriptorSetLayouts) {
       layout.Value.Dispose();
     }
     _globalPool?.Dispose();

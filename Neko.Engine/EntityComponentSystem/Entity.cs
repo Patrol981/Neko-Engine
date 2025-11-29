@@ -10,6 +10,7 @@ namespace Neko.EntityComponentSystem;
 public class Entity {
   public string Name;
   public Guid Id;
+  public int Idx;
   public Dictionary<Type, Guid> Components;
 
   public bool Active { get; set; }

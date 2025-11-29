@@ -79,7 +79,7 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
   public void Update(
     FrameInfo frameInfo,
     ReadOnlySpan<IDrawable2D> spritesWithCustomShaders,
-    in HashSet<Entity> entities
+    in Entity[] entities
   ) {
     AddOrUpdateBuffers(spritesWithCustomShaders);
 

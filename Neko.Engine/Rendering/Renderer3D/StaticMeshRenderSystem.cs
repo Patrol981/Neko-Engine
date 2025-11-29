@@ -39,6 +39,8 @@ public class StaticRenderSystem : SystemBase {
   private readonly Dictionary<uint, List<VkDrawIndexedIndirectCommand>> _visibleScratch = [];
   private readonly Dictionary<Node, CmdRef> _cmdMap = [];
 
+  private uint _lastVisibleCount = 0;
+
   public StaticRenderSystem(
    Application app,
    nint allocator,
@@ -89,12 +91,32 @@ public class StaticRenderSystem : SystemBase {
 
   public void Update(
     FrameInfo frameInfo,
+    IRender3DElement[] renderables,
     ConcurrentDictionary<Guid, Mesh> meshes,
     out ulong staticOffset
   ) {
+    CreateOrUpdateBuffers(renderables, meshes);
+
     staticOffset = 0;
     if (_objectDataScratch.Length == 0) return;
 
+    // Parallel.For(0, Cache.Length, i => {
+    //   var node = Cache[i];
+    //   var owner = node.ParentRenderer.Owner;
+    //   if (!owner.CanBeDisposed) {
+    //     var transform = owner.GetTransform();
+    //     // TransformComponent? transform = null!;
+    //     var mesh = meshes[node.MeshGuid];
+
+    //     int idx = _nodeToObjIndex[node];
+    //     ref var od = ref _objectDataScratch[idx];
+
+    //     od.ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity;
+    //     od.NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity;
+    //     od.NodeMatrix = mesh.Matrix;
+    //     od.JointsBufferOffset = Vector4.Zero;
+    //   }
+    // });
     for (int i = 0; i < Cache.Length; i++) {
       var node = Cache[i];
       var owner = node.ParentRenderer.Owner;
@@ -112,6 +134,31 @@ public class StaticRenderSystem : SystemBase {
       od.JointsBufferOffset = Vector4.Zero;
     }
 
+    staticOffset = (ulong)Cache.Length;
+  }
+
+  public void Render(
+    ConcurrentDictionary<Guid, Mesh> meshes,
+    FrameInfo frameInfo,
+    out ReadOnlySpan<Node> staticNodes
+  ) {
+    uint visible = RefillIndirectBuffersWithCulling(meshes, out staticNodes);
+    if (visible < 1) return;
+
+    for (int i = 0; i < staticNodes.Length; i++) {
+      var node = staticNodes[i];
+      var owner = node.ParentRenderer.Owner;
+      if (owner.CanBeDisposed) continue;
+
+      var transform = _application.TransformComponents[owner.Id];
+
+      int idx = _nodeToObjIndex[node];
+      ref var od = ref _objectDataScratch[idx];
+
+      od.ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity;
+      od.NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity;
+    }
+
     unsafe {
       fixed (ObjectData* pObjectData = _objectDataScratch) {
         _application.StorageCollection.WriteToIndex(
@@ -124,21 +171,9 @@ public class StaticRenderSystem : SystemBase {
       }
     }
 
-    staticOffset = (ulong)Cache.Length;
-  }
-
-  public void Render(
-    IRender3DElement[] renderables,
-    ConcurrentDictionary<Guid, Mesh> meshes,
-    FrameInfo frameInfo,
-    out IEnumerable<Node> staticNodes
-  ) {
-    CreateOrUpdateBuffers(renderables, meshes);
-    uint visible = RefillIndirectBuffersWithCulling(meshes, out staticNodes);
-
-    if (visible < 1) return;
-
     RenderIndirect(frameInfo);
+
+    staticNodes = Cache;
   }
 
   public void RenderIndirect(FrameInfo frameInfo) {
@@ -230,7 +265,9 @@ public class StaticRenderSystem : SystemBase {
     ConcurrentDictionary<Guid, Mesh> meshes
   ) {
     _cacheMatch = _renderablesCache.SequenceEqual(renderables);
-    if (_cacheMatch && _bufferPool != null) return;
+    // if (_cacheMatch && _bufferPool != null) return;
+
+    Logger.Info("[Static Renderer] Cache does not match");
 
     _instanceIndex = 0;
 
@@ -244,16 +281,13 @@ public class StaticRenderSystem : SystemBase {
     }
 
     nodeObjects.Sort(static (a, b) => a.CompareTo(b));
-
-    Cache = [.. nodeObjects];
-
-    int totalObjs = Cache.Length;
+    int totalObjs = nodeObjects.Count;
 
     _objectDataScratch = (totalObjs == 0) ? [] : new ObjectData[totalObjs];
 
     _nodeToObjIndex.Clear();
     for (int i = 0; i < totalObjs; i++) {
-      _nodeToObjIndex[Cache[i]] = i;
+      _nodeToObjIndex[nodeObjects[i]] = i;
     }
 
     _texIndexCache.Clear();
@@ -261,7 +295,7 @@ public class StaticRenderSystem : SystemBase {
     Logger.Info($"Total Objs: {totalObjs}");
 
     if (totalObjs > 0) {
-      CreateVertexIndexBuffer(Cache, meshes);
+      CreateVertexIndexBuffer([.. nodeObjects], meshes);
     }
 
     EnsureIndirectBuffers(_indirectData, ref _indirectBuffers);
@@ -269,8 +303,8 @@ public class StaticRenderSystem : SystemBase {
     _renderablesCache = (IRender3DElement[])renderables.Clone();
     _cacheMatch = true;
 
-    for (int i = 0; i < Cache.Length; i++) {
-      var node = Cache[i];
+    for (int i = 0; i < nodeObjects.Count; i++) {
+      var node = nodeObjects[i];
       var owner = node.ParentRenderer.Owner;
       var material = owner.GetMaterial();
       var mesh = meshes[node.MeshGuid];
@@ -583,16 +617,10 @@ public class StaticRenderSystem : SystemBase {
     return false;
   }
 
-  private uint RefillIndirectBuffersWithCulling(
-    ConcurrentDictionary<Guid, Mesh> meshes,
-    out IEnumerable<Node> staticNodes
-  ) {
-    if (_indirectBuffers?.Length < 1) { staticNodes = []; return 0; }
+  private void PerformCull(ConcurrentDictionary<Guid, Mesh> meshes, Node[] visible) {
+    Logger.Info("Culling");
 
     foreach (var s in _visibleScratch.Values) s.Clear();
-
-    Frustum.FilterNodesByFog(Cache.ToArray(), out var visible);
-    staticNodes = visible;
 
     foreach (var n in visible) {
       var owner = n.ParentRenderer.Owner;
@@ -616,10 +644,25 @@ public class StaticRenderSystem : SystemBase {
       var targetBuffer = _indirectBuffers![pool];
       CopyCmdListToBuffer(list, targetBuffer);
     }
+  }
 
-    uint total = 0;
-    foreach (var d in _indirectData.Values) total += (uint)d.VisibleCount;
-    return total;
+  private uint RefillIndirectBuffersWithCulling(
+    ConcurrentDictionary<Guid, Mesh> meshes,
+    out ReadOnlySpan<Node> staticNodes
+  ) {
+    // Frustum.FilterNodesByFog(Cache, out var visible);
+    if (_indirectBuffers?.Length < 1) { staticNodes = []; return 0; }
+    // if (_lastVisibleCount > 1) { staticNodes = Cache; return _lastVisibleCount; }
+
+    Frustum.FilterNodesByFog(Cache, out var visible);
+    staticNodes = visible;
+    if (visible.Length == _lastVisibleCount) return (uint)visible.Length;
+    _lastVisibleCount = (uint)visible.Length;
+
+    Logger.Info($"{Cache.Length} | {visible.Length} | {_visibleScratch.Values.Count} | {_lastVisibleCount}");
+    PerformCull(meshes, [.. visible]);
+
+    return (uint)visible.Length;
   }
 
   private static unsafe void CopyCmdListToBuffer(List<VkDrawIndexedIndirectCommand> list, NekoBuffer buf) {

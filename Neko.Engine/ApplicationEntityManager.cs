@@ -13,9 +13,13 @@ using Neko.Rendering.Renderer3D.Animations;
 namespace Neko;
 
 public partial class Application {
+  public EventCallback? EntityChangedEvent;
+
   public HashSet<Entity> Entities = [];
+  // public Entity[] Entities = [];
   internal ConcurrentDictionary<Guid, NekoScript> Scripts = [];
   internal ConcurrentDictionary<Guid, TransformComponent> TransformComponents = [];
+  // internal TransformComponent[] TransformComponents = [];
   internal ConcurrentDictionary<Guid, IDrawable2D> Sprites = [];
   internal ConcurrentDictionary<Guid, Rigidbody2D> Rigidbodies2D = [];
   internal ConcurrentDictionary<Guid, ColliderMesh> DebugMeshes = [];
@@ -50,11 +54,19 @@ public partial class Application {
       Device.WaitFence(fence, true);
     }
     Entities.Add(entity);
+    // Array.Resize(ref Entities, Entities.Length + 1);
+    // Entities[^1] = entity;
+    // entity.Idx = Entities.Length;
     Mutex.ReleaseMutex();
+    EntityChangedEvent?.Invoke();
   }
 
   public void RemoveEntity(Guid id) {
     Entities.RemoveWhere(x => x.Id == id);
+    // var en = Entities.Where(x => x.Id == id).First();
+    // en.Dispose(this);
+    // Entities[en.Idx] = null!;
+    EntityChangedEvent?.Invoke();
   }
 
   public Entity? GetEntity(Guid entitiyId) {
@@ -68,6 +80,7 @@ public partial class Application {
       Device.WaitDevice();
       Device.WaitQueue();
       Entities.Remove(Entities.ElementAt(index));
+      EntityChangedEvent?.Invoke();
     }
   }
 
@@ -76,12 +89,14 @@ public partial class Application {
       Device.WaitDevice();
       Device.WaitQueue();
       Entities.Remove(entity);
+      EntityChangedEvent?.Invoke();
     }
   }
 
   public void DestroyEntity(Entity entity) {
     lock (EntitiesLock) {
       entity.CanBeDisposed = true;
+      EntityChangedEvent?.Invoke();
     }
   }
 
@@ -113,19 +128,19 @@ public partial class Application {
     _reloadQueue.Enqueue(meshRenderer);
   }
 
-  private void Collect_() {
-    if (Entities.Count == 0) return;
-    for (short i = 0; i < Entities.Count; i++) {
-      var target = Entities.ElementAt(i);
-      if (target.CanBeDisposed) {
-        if (target.Collected) continue;
+  // private void Collect_() {
+  //   if (Entities.Count == 0) return;
+  //   for (short i = 0; i < Entities.Count; i++) {
+  //     var target = Entities.ElementAt(i);
+  //     if (target.CanBeDisposed) {
+  //       if (target.Collected) continue;
 
-        target.Collected = true;
-        target.Dispose(this);
-        RemoveEntity(target.Id);
-      }
-    }
-  }
+  //       target.Collected = true;
+  //       target.Dispose(this);
+  //       RemoveEntity(target.Id);
+  //     }
+  //   }
+  // }
 
   private void Collect() {
     lock (EntitiesLock) {
@@ -137,6 +152,7 @@ public partial class Application {
         e.Collected = true;
         e.Dispose(this);
         Entities.Remove(e);
+        // Entities[e.Idx] = null!;
       }
     }
   }

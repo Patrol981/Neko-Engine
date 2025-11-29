@@ -67,10 +67,10 @@ public partial class Application {
     Mutex.WaitOne();
     Systems.Dispose();
     StorageCollection.Dispose();
-    foreach (var layout in _descriptorSetLayouts) {
+    foreach (var layout in DescriptorSetLayouts) {
       layout.Value.Dispose();
     }
-    _descriptorSetLayouts = [];
+    DescriptorSetLayouts = [];
     _globalPool.Dispose();
     _globalPool = null!;
     _skybox?.Dispose();
@@ -97,13 +97,14 @@ public partial class Application {
       Name = "Render Thread"
     };
     _renderThread.Start();
-
+    EntityChangedEvent?.Invoke();
   }
 
   private async Task<Task> SetupScene() {
     if (CurrentScene == null) return Task.CompletedTask;
 
     await LoadEntities();
+    EntityChangedEvent?.Invoke();
 
     Logger.Info($"Loaded entities: {Entities?.Count}");
     Logger.Info($"Loaded textures: {_textureManager?.PerSceneLoadedTextures?.Count}");
