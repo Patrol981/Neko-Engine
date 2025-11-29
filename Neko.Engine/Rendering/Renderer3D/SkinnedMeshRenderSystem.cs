@@ -16,6 +16,7 @@ public class SkinnedRenderSystem : SystemBase {
   public const string PipelineName = "Skinned";
 
   public Node[] Cache { get; private set; } = [];
+  private Node[] _visibleCache = [];
 
   public ulong LastKnownElemSize { get; private set; } = 0;
   public ulong LastKnownSkinnedElemCount { get; private set; }
@@ -109,13 +110,12 @@ public class SkinnedRenderSystem : SystemBase {
   [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public void Update(
     FrameInfo frameInfo,
-    ConcurrentDictionary<Guid, Mesh> meshes,
-    ulong staticOffset
+    ConcurrentDictionary<Guid, Mesh> meshes
   ) {
     if (_objectDataScratch.Length == 0) return;
 
-    for (int i = 0; i < Cache.Length; i++) {
-      var node = Cache[i];
+    for (int i = 0; i < _visibleCache.Length; i++) {
+      var node = _visibleCache[i];
       var owner = node.ParentRenderer.Owner;
       if (owner.CanBeDisposed) continue;
 
@@ -165,7 +165,8 @@ public class SkinnedRenderSystem : SystemBase {
     out ReadOnlySpan<Node> animatedNodes
   ) {
     CreateOrUpdateBuffers(renderables, meshes);
-    uint visible = RefillIndirectBuffersWithCulling(meshes, out animatedNodes);
+    uint visible = RefillIndirectBuffersWithCulling(meshes);
+    animatedNodes = _visibleCache;
     if (visible < 1) return;
 
     RenderIndirect(frameInfo);
@@ -217,7 +218,7 @@ public class SkinnedRenderSystem : SystemBase {
     return true;
   }
 
-  private uint RefillIndirectBuffersWithCulling(ConcurrentDictionary<Guid, Mesh> meshes, out ReadOnlySpan<Node> animatedNodes) {
+  private uint RefillIndirectBuffersWithCulling(ConcurrentDictionary<Guid, Mesh> meshes) {
     // clear scratch
     foreach (var s in _visibleScratch.Values) s.Clear();
 
@@ -226,7 +227,7 @@ public class SkinnedRenderSystem : SystemBase {
     // --- COMPLEX (skinned) ---
     // _visComplex.Clear();
     Frustum.FilterNodesByFog(Cache, out var visible);
-    animatedNodes = visible;
+    _visibleCache = [.. visible];
     // Frustum.FilterNodesByPlanes(in planes, [.. _complexBufferNodes], out visComplexIn);
 
     foreach (var n in visible) {
