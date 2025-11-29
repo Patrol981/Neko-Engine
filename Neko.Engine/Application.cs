@@ -442,13 +442,13 @@ public partial class Application {
     Time.RenderTick();
     if (Window.IsMinimalized) return;
 
-    // Systems.ValidateSystems(
-    //     this,
-    //     Allocator, Device, Renderer,
-    //     DescriptorSetLayouts,
-    //     CurrentPipelineConfig,
-    //     ref _textureManager
-    //   );
+    Systems.ValidateSystems(
+        this,
+        Allocator, Device, Renderer,
+        DescriptorSetLayouts,
+        CurrentPipelineConfig,
+        ref _textureManager
+      );
 
     float aspect = Renderer.AspectRatio;
     var cameraAsppect = CameraEntity?.GetCamera()?.Aspect;
@@ -553,7 +553,7 @@ public partial class Application {
 
       Renderer.EndFrame();
 
-      // Systems.CheckStorageSizes(this, FrameInfo, DescriptorSetLayouts);
+      Systems.CheckStorageSizes(this, FrameInfo, DescriptorSetLayouts);
 
       while (_reloadQueue.Count > 0) {
         var item = _reloadQueue.Dequeue();

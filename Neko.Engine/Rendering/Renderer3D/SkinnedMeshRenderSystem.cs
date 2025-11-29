@@ -44,9 +44,6 @@ public class SkinnedRenderSystem : SystemBase {
   private readonly Dictionary<uint, List<VkDrawIndexedIndirectCommand>> _visibleScratch = [];
   private readonly Dictionary<Node, CmdRef> _cmdMap = [];
 
-  private uint _lastVisibleCount = 0;
-  private bool _needsRebuild = false;
-
   public SkinnedRenderSystem(
     Application app,
     nint allocator,
@@ -110,89 +107,10 @@ public class SkinnedRenderSystem : SystemBase {
   }
 
   [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-  public void Update_(
-    FrameInfo frameInfo,
-    ConcurrentDictionary<Guid, Mesh> meshes,
-    ulong staticOffset
-  ) {
-    if (_objectDataScratch.Length == 0) return;
-
-    Parallel.For(0, Cache.Length, i => {
-      var node = Cache[i];
-      var owner = node.ParentRenderer.Owner;
-      if (!owner.CanBeDisposed) {
-        var transform = owner.GetTransform();
-        var mesh = meshes[node.MeshGuid];
-
-        int objIdx = _nodeToObjIndex[node];
-        int jointsOffset = _nodeToJointsOffset[node];
-
-        ref var od = ref _objectDataScratch[objIdx];
-
-        od.ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity;
-        od.NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity;
-        od.NodeMatrix = mesh.Matrix;
-        od.JointsBufferOffset = new Vector4(jointsOffset, 0, 0, 0);
-
-        var skin = _application.Skins[node.SkinGuid];
-        var joints = skin.OutputNodeMatrices;
-        Array.Copy(joints, 0, _jointsScratch, jointsOffset, joints.Length);
-      }
-    });
-
-    // for (int i = 0; i < Cache.Length; i++) {
-    //   var node = Cache[i];
-    //   var owner = node.ParentRenderer.Owner;
-    //   if (owner.CanBeDisposed) continue;
-
-    //   var transform = owner.GetTransform();
-    //   var mesh = meshes[node.MeshGuid];
-
-    //   int objIdx = _nodeToObjIndex[node];
-    //   int jointsOffset = _nodeToJointsOffset[node];
-
-    //   ref var od = ref _objectDataScratch[objIdx];
-
-    //   od.ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity;
-    //   od.NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity;
-    //   od.NodeMatrix = mesh.Matrix;
-    //   od.JointsBufferOffset = new Vector4(jointsOffset, 0, 0, 0);
-
-    //   var skin = _application.Skins[node.SkinGuid];
-    //   var joints = skin.OutputNodeMatrices;
-    //   Array.Copy(joints, 0, _jointsScratch, jointsOffset, joints.Length);
-    // }
-
-    unsafe {
-      fixed (ObjectData* pObjectData = _objectDataScratch) {
-        _application.StorageCollection.WriteToIndex(
-          "SkinnedObjectStorage",
-          frameInfo.FrameIndex,
-          (nint)pObjectData,
-          (ulong)Unsafe.SizeOf<ObjectData>() * (ulong)_objectDataScratch.Length,
-          0
-        );
-      }
-      fixed (Matrix4x4* pMatrices = _jointsScratch) {
-        _application.StorageCollection.WriteBuffer(
-          "JointsStorage",
-          frameInfo.FrameIndex,
-          (nint)pMatrices,
-          (ulong)Unsafe.SizeOf<Matrix4x4>() * (ulong)_totalJointCount
-        );
-      }
-    }
-  }
-
-  [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public void Update(
     FrameInfo frameInfo,
-    IRender3DElement[] renderables,
-    ConcurrentDictionary<Guid, Mesh> meshes,
-    ulong staticOffset
+    ConcurrentDictionary<Guid, Mesh> meshes
   ) {
-    CreateOrUpdateBuffers(renderables, meshes);
-
     if (_objectDataScratch.Length == 0) return;
 
     for (int i = 0; i < Cache.Length; i++) {
@@ -218,45 +136,6 @@ public class SkinnedRenderSystem : SystemBase {
       Array.Copy(joints, 0, _jointsScratch, jointsOffset, joints.Length);
     }
 
-    _needsRebuild = true;
-    Logger.Info(_needsRebuild);
-  }
-
-  public void Render(
-    ConcurrentDictionary<Guid, Mesh> meshes,
-    FrameInfo frameInfo,
-    out ReadOnlySpan<Node> animatedNodes
-  ) {
-    if (_needsRebuild) {
-      // _application.EntityChangedEvent?.Invoke();
-    }
-
-    uint visible = RefillIndirectBuffersWithCulling(meshes, out animatedNodes);
-    if (visible < 1) return;
-
-    for (int i = 0; i < animatedNodes.Length; i++) {
-      var node = animatedNodes[i];
-      var owner = node.ParentRenderer.Owner;
-      if (owner.CanBeDisposed) continue;
-
-      var transform = owner.GetTransform();
-      var mesh = meshes[node.MeshGuid];
-
-      int objIdx = _nodeToObjIndex[node];
-      int jointsOffset = _nodeToJointsOffset[node];
-
-      ref var od = ref _objectDataScratch[objIdx];
-
-      od.ModelMatrix = transform?.Matrix() ?? Matrix4x4.Identity;
-      od.NormalMatrix = transform?.NormalMatrix() ?? Matrix4x4.Identity;
-      od.NodeMatrix = mesh.Matrix;
-      od.JointsBufferOffset = new Vector4(jointsOffset, 0, 0, 0);
-
-      var skin = _application.Skins[node.SkinGuid];
-      var joints = skin.OutputNodeMatrices;
-      Array.Copy(joints, 0, _jointsScratch, jointsOffset, joints.Length);
-    }
-
     unsafe {
       fixed (ObjectData* pObjectData = _objectDataScratch) {
         _application.StorageCollection.WriteToIndex(
@@ -276,6 +155,17 @@ public class SkinnedRenderSystem : SystemBase {
         );
       }
     }
+  }
+
+  public void Render(
+    IRender3DElement[] renderables,
+    ConcurrentDictionary<Guid, Mesh> meshes,
+    FrameInfo frameInfo,
+    out IEnumerable<Node> animatedNodes
+  ) {
+    CreateOrUpdateBuffers(renderables, meshes);
+    uint visible = RefillIndirectBuffersWithCulling(meshes, out animatedNodes);
+    if (visible < 1) return;
 
     RenderIndirect(frameInfo);
   }
@@ -326,52 +216,7 @@ public class SkinnedRenderSystem : SystemBase {
     return true;
   }
 
-  private void PerformCull(ConcurrentDictionary<Guid, Mesh> meshes, Node[] visible) {
-    foreach (var s in _visibleScratch.Values) s.Clear();
-
-    foreach (var n in visible) {
-      var owner = n.ParentRenderer.Owner;
-      if (owner.CanBeDisposed || !owner.Active) continue;
-      if (meshes[n.MeshGuid]?.IndexCount < 1) continue;
-
-      if (!_cmdMap.TryGetValue(n, out var r)) continue;
-      var src = _indirectData[r.Pool].Commands[r.CmdIndex];
-
-      if (!_visibleScratch.TryGetValue(r.Pool, out var list)) {
-        list = new List<VkDrawIndexedIndirectCommand>(32);
-        _visibleScratch[r.Pool] = list;
-      }
-      list.Add(src);
-    }
-
-    if (_needsRebuild) return;
-    foreach (var kv in _visibleScratch) {
-      var pool = kv.Key;
-      var list = kv.Value;
-      _indirectData[pool].VisibleCount = list.Count;
-      var targetBuffer = _indirectBuffers![pool];
-      CopyCmdListToBuffer(list, targetBuffer);
-    }
-  }
-
-  private uint RefillIndirectBuffersWithCulling(
-  ConcurrentDictionary<Guid, Mesh> meshes,
-  out ReadOnlySpan<Node> staticNodes
-) {
-    if (_indirectBuffers?.Length < 1) { staticNodes = []; return 0; }
-
-    Frustum.FilterNodesByFog(Cache, out var visible);
-    staticNodes = visible;
-    if (visible.Length == _lastVisibleCount) return (uint)visible.Length;
-    _lastVisibleCount = (uint)visible.Length;
-
-    // Logger.Info($"{Cache.Length} | {visible.Length} | {_visibleScratch.Values.Count} | {_lastVisibleCount}");
-    PerformCull(meshes, [.. visible]);
-
-    return (uint)visible.Length;
-  }
-
-  private uint RefillIndirectBuffersWithCulling_(ConcurrentDictionary<Guid, Mesh> meshes, out ReadOnlySpan<Node> animatedNodes) {
+  private uint RefillIndirectBuffersWithCulling(ConcurrentDictionary<Guid, Mesh> meshes, out IEnumerable<Node> animatedNodes) {
     // clear scratch
     foreach (var s in _visibleScratch.Values) s.Clear();
 
@@ -379,11 +224,11 @@ public class SkinnedRenderSystem : SystemBase {
 
     // --- COMPLEX (skinned) ---
     // _visComplex.Clear();
-    Frustum.FilterNodesByFog(Cache, out var visible);
-    animatedNodes = visible;
+    // Frustum.FilterNodesByFog(Cache, out var visible);
+    animatedNodes = Cache;
     // Frustum.FilterNodesByPlanes(in planes, [.. _complexBufferNodes], out visComplexIn);
 
-    foreach (var n in visible) {
+    foreach (var n in animatedNodes) {
       var owner = n.ParentRenderer.Owner;
       if (owner.CanBeDisposed || !owner.Active) continue;
       if (meshes[n.MeshGuid]?.IndexCount < 1) continue;
@@ -573,7 +418,6 @@ public class SkinnedRenderSystem : SystemBase {
     }
 
     _bufferPool.BakeAll();
-    _needsRebuild = false;
   }
 
   private unsafe void CreateVertexIndexBuffer_NonBaked(
