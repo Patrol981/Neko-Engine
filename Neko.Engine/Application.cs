@@ -81,7 +81,7 @@ public partial class Application {
 
   // ubos
   private IDescriptorPool _globalPool = null!;
-  private Dictionary<string, IDescriptorSetLayout> _descriptorSetLayouts = [];
+  public Dictionary<string, IDescriptorSetLayout> DescriptorSetLayouts = [];
 
   private readonly SystemCreationFlags _systemCreationFlags;
   public readonly SystemConfiguration SystemConfiguration;
@@ -104,6 +104,7 @@ public partial class Application {
   public bool VSync { get; init; } = false;
   public bool Fullscreen { get; init; } = false;
   public bool Debug { get; init; } = false;
+  public bool IsEditor { get; init; } = false;
   public static ApplicationType ApplicationMode { get; private set; } = ApplicationType.Default;
   public readonly Lock ApplicationLock = new();
 
@@ -305,7 +306,13 @@ public partial class Application {
   }
   #region RESOURCES
   private unsafe Task InitResources() {
-    ResourceInitializer.InitResources(Device, Renderer, StorageCollection, ref _globalPool, ref _descriptorSetLayouts);
+    ResourceInitializer.InitResources(
+      Device,
+      Renderer,
+      StorageCollection,
+      ref _globalPool,
+      ref DescriptorSetLayouts
+    );
 
     Mutex.WaitOne();
     Systems.Setup(
@@ -315,7 +322,7 @@ public partial class Application {
       Allocator,
       Device,
       Renderer,
-      _descriptorSetLayouts,
+      DescriptorSetLayouts,
       null!,
       ref _textureManager
     );
@@ -326,7 +333,7 @@ public partial class Application {
       Systems,
       StorageCollection,
       ref _globalPool,
-      ref _descriptorSetLayouts,
+      ref DescriptorSetLayouts,
       UseSkybox
     );
     Mutex.ReleaseMutex();
@@ -392,8 +399,8 @@ public partial class Application {
 
   #endregion RESOURCES
   #region ENTITY_FLOW
-  private static void MasterAwake(ReadOnlySpan<NekoScript> scripts) {
-#if RUNTIME
+  private void MasterAwake(ReadOnlySpan<NekoScript> scripts) {
+    if (!IsEditor) { }
     var sc = scripts.ToArray();
     // Parallel.ForEach(ents, (entity) => {
     //   entity.Awake();
@@ -401,41 +408,40 @@ public partial class Application {
     foreach (var s in sc) {
       s.Awake();
     }
-#endif
   }
 
-  private static void MasterStart(ReadOnlySpan<NekoScript> scripts) {
-#if RUNTIME
-    var sc = scripts.ToArray();
-    // Parallel.ForEach(ents, (entity) => {
-    //   entity.Start();
-    // });
-    foreach (var s in sc) {
-      s.Start();
+  private void MasterStart(ReadOnlySpan<NekoScript> scripts) {
+    if (!IsEditor) {
+      var sc = scripts.ToArray();
+      // Parallel.ForEach(ents, (entity) => {
+      //   entity.Start();
+      // });
+      foreach (var s in sc) {
+        s.Start();
+      }
     }
-#endif
   }
 
-  private static void MasterUpdate(NekoScript[] scripts) {
-#if RUNTIME
-    Parallel.For(0, scripts.Length, i => { scripts[i].Update(); });
-#endif
-  }
-
-  private static void MasterFixedUpdate(ReadOnlySpan<NekoScript> scripts) {
-#if RUNTIME
-    for (short i = 0; i < scripts.Length; i++) {
-      scripts[i].FixedUpdate();
+  private void MasterUpdate(NekoScript[] scripts) {
+    if (!IsEditor) {
+      Parallel.For(0, scripts.Length, i => { scripts[i].Update(); });
     }
-#endif
   }
 
-  private static void MasterRenderUpdate(ReadOnlySpan<NekoScript> entities) {
-#if RUNTIME
-    for (short i = 0; i < entities.Length; i++) {
-      entities[i].RenderUpdate();
+  private void MasterFixedUpdate(ReadOnlySpan<NekoScript> scripts) {
+    if (!IsEditor) {
+      for (short i = 0; i < scripts.Length; i++) {
+        scripts[i].FixedUpdate();
+      }
     }
-#endif
+  }
+
+  private void MasterRenderUpdate(ReadOnlySpan<NekoScript> entities) {
+    if (!IsEditor) {
+      for (short i = 0; i < entities.Length; i++) {
+        entities[i].RenderUpdate();
+      }
+    }
   }
 
   #endregion ENTITY_FLOW
@@ -447,7 +453,7 @@ public partial class Application {
     Systems.ValidateSystems(
         this,
         Allocator, Device, Renderer,
-        _descriptorSetLayouts,
+        DescriptorSetLayouts,
         CurrentPipelineConfig,
         ref _textureManager
       );
@@ -554,7 +560,7 @@ public partial class Application {
 
       Renderer.EndFrame();
 
-      Systems.CheckStorageSizes(this, FrameInfo, _descriptorSetLayouts);
+      Systems.CheckStorageSizes(this, FrameInfo, DescriptorSetLayouts);
 
       while (_reloadQueue.Count > 0) {
         var item = _reloadQueue.Dequeue();
@@ -660,7 +666,7 @@ public partial class Application {
     }
 
     _textureManager?.Dispose();
-    foreach (var layout in _descriptorSetLayouts) {
+    foreach (var layout in DescriptorSetLayouts) {
       layout.Value.Dispose();
     }
     _globalPool?.Dispose();

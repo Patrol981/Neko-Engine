@@ -179,7 +179,7 @@ public class SystemCollection : IDisposable {
     //   AnimationSystem?.Update(animatedNodes);
     //   // _animationSystem?.Update(_render3DSystem.SkinnedNodesCache);
     // }
-    IEnumerable<Node> staticNodes = [];
+    ReadOnlySpan<Node> staticNodes = [];
     StaticRenderSystem?.Render(
       app.Drawables3D.Values.AsValueEnumerable()
         .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
@@ -199,7 +199,7 @@ public class SystemCollection : IDisposable {
         frameInfo,
         out var animatedNodes
       );
-      AnimationSystem?.Update(animatedNodes);
+      AnimationSystem?.Update([.. animatedNodes]);
     }
     CustomShaderRender3DSystem?.Render(frameInfo);
 
