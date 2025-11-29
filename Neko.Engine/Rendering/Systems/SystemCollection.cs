@@ -72,7 +72,7 @@ public class SystemCollection : IDisposable {
     // Render3DSystem?.Update(frameInfo, app.Meshes);
     var staticOffset = 0ul;
     StaticRenderSystem?.Update(frameInfo, app.Meshes, out staticOffset);
-    SkinnedRenderSystem?.Update(frameInfo, app.Meshes, staticOffset);
+    SkinnedRenderSystem?.Update(frameInfo, app.Meshes);
 
     CustomShaderRender3DSystem?.Update(
       frameInfo,
