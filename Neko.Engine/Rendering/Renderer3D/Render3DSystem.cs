@@ -530,7 +530,7 @@ public partial class Render3DSystem : SystemBase, IRenderSystem {
 
     // --- SIMPLE (non-skinned) ---
     _visSimple.Clear();
-    Frustum.FilterNodesByFog(_simpleBufferNodes, out _visSimple); // your culling
+    Frustum.FilterNodesByFog([.. _simpleBufferNodes], out _visSimple); // your culling
     // Frustum.FilterNodesByPlanes(in planes, [.. _simpleBufferNodes], out visSimpleIn);
 
     foreach (var n in _visSimple) {

@@ -67,10 +67,10 @@ public partial class Application {
     Mutex.WaitOne();
     Systems.Dispose();
     StorageCollection.Dispose();
-    foreach (var layout in _descriptorSetLayouts) {
+    foreach (var layout in DescriptorSetLayouts) {
       layout.Value.Dispose();
     }
-    _descriptorSetLayouts = [];
+    DescriptorSetLayouts = [];
     _globalPool.Dispose();
     _globalPool = null!;
     _skybox?.Dispose();

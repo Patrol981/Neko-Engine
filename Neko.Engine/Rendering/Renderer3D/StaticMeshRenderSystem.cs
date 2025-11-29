@@ -131,7 +131,7 @@ public class StaticRenderSystem : SystemBase {
     IRender3DElement[] renderables,
     ConcurrentDictionary<Guid, Mesh> meshes,
     FrameInfo frameInfo,
-    out IEnumerable<Node> staticNodes
+    out ReadOnlySpan<Node> staticNodes
   ) {
     CreateOrUpdateBuffers(renderables, meshes);
     uint visible = RefillIndirectBuffersWithCulling(meshes, out staticNodes);
@@ -585,7 +585,7 @@ public class StaticRenderSystem : SystemBase {
 
   private uint RefillIndirectBuffersWithCulling(
     ConcurrentDictionary<Guid, Mesh> meshes,
-    out IEnumerable<Node> staticNodes
+    out ReadOnlySpan<Node> staticNodes
   ) {
     if (_indirectBuffers?.Length < 1) { staticNodes = []; return 0; }
 
