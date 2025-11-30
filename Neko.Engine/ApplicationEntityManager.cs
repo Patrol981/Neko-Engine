@@ -136,6 +136,7 @@ public partial class Application {
 
   private void Collect() {
     lock (EntitiesLock) {
+      uint removed = 0;
       ReadOnlySpan<Entity> entities = Entities.ToArray();
       foreach (var e in entities) {
         if (!e.CanBeDisposed) continue;
@@ -144,8 +145,11 @@ public partial class Application {
         e.Collected = true;
         e.Dispose(this);
         Entities.Remove(e);
+        removed += 1;
       }
-      // EntityChangedEvent?.Invoke();
+      if (removed > 0) {
+        EntityChangedEvent?.Invoke();
+      }
     }
   }
 
