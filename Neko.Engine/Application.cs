@@ -204,6 +204,8 @@ public partial class Application {
     };
     _renderThread.Start();
 
+    EntityChangedEvent?.Invoke();
+
     Logger.Info("[APPLICATION] Application loaded. Starting render thread.");
 
     while (!Window.ShouldClose) {
@@ -482,7 +484,7 @@ public partial class Application {
     }
 
     if (commandBuffer != IntPtr.Zero && camera != null) {
-      var entities = Entities.AsValueEnumerable().ToArray();
+      // var entities = Entities.AsValueEnumerable().ToArray();
 
       int frameIndex = Renderer.FrameIndex;
       _currentFrame.Camera = camera;
@@ -497,7 +499,8 @@ public partial class Application {
       _currentFrame.CustomSpriteDataDescriptorSet = StorageCollection.GetDescriptor("CustomSpriteStorage", frameIndex);
       _currentFrame.JointsBufferDescriptorSet = StorageCollection.GetDescriptor("JointsStorage", frameIndex);
       _currentFrame.TextureManager = _textureManager;
-      _currentFrame.ImportantEntity = entities.Where(x => x.IsImportant).FirstOrDefault() ?? null!;
+      // _currentFrame.ImportantEntity = entities.Where(x => x.IsImportant).FirstOrDefault() ?? null!;
+      _currentFrame.ImportantEntity = null!;
 
       _ubo->Projection = camera?.GetProjectionMatrix() ?? Matrix4x4.Identity;
       _ubo->View = camera?.GetViewMatrix() ?? Matrix4x4.Identity;
@@ -624,7 +627,7 @@ public partial class Application {
     _renderShouldClose = false;
   }
 
-  internal unsafe void RenderLoop() {
+  internal void RenderLoop() {
     Mutex.WaitOne();
     var pool = Device.CreateCommandPool();
     var threadInfo = new ThreadInfo() {
@@ -632,6 +635,9 @@ public partial class Application {
     };
 
     Renderer.CreateCommandBuffers(threadInfo.CommandPool, CommandBufferLevel.Primary);
+
+    EntityChangedEvent?.Invoke();
+
     Mutex.ReleaseMutex();
 
     if (Debug)

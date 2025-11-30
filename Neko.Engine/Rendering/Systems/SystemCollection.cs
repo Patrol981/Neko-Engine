@@ -52,6 +52,49 @@ public class SystemCollection : IDisposable {
   public bool ReloadUISystem = false;
   public bool ReloadParticleSystem = false;
 
+  public void OnEntityChanged() {
+    var app = Application.Instance;
+    var textureManager = app.TextureManager;
+
+    Application.Mutex.WaitOne();
+
+    if (StaticRenderSystem != null) {
+      var staticNodes = app.Drawables3D.Values.AsValueEnumerable()
+        .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+        .Where(x => !x.IsSkinned)
+        .ToArray();
+      StaticRenderSystem.Invalidate(staticNodes);
+    }
+
+    if (SkinnedRenderSystem != null) {
+      var skinnedNodes = app.Drawables3D.Values.AsValueEnumerable()
+        .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+        .Where(x => x.IsSkinned)
+        .ToArray();
+      SkinnedRenderSystem.Invalidate(skinnedNodes);
+    }
+
+    if (CustomShaderRender3DSystem != null) {
+      var customNodes = app.Drawables3D.Values.AsValueEnumerable()
+        .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
+        .Where(x => !x.IsSkinned)
+        .ToArray();
+      CustomShaderRender3DSystem.Invalidate(customNodes);
+    }
+
+    // ValidateSystems(
+    //   app,
+    //   app.Allocator, app.Device, app.Renderer,
+    //   app.DescriptorSetLayouts,
+    //   app.CurrentPipelineConfig,
+    //   ref textureManager
+    // );
+
+    Application.Mutex.ReleaseMutex();
+
+    Logger.Warn("ENTITY CHANGED EVENT");
+  }
+
   public unsafe void UpdateSystems(Application app, FrameInfo frameInfo, GlobalUniformBufferObject* gbo) {
     if (PointLightSystem != null) {
       PointLightSystem.Update(app.Lights.Values.AsValueEnumerable().ToArray(), out var pointLights);
@@ -70,18 +113,19 @@ public class SystemCollection : IDisposable {
 
 
     // Render3DSystem?.Update(frameInfo, app.Meshes);
-    var staticOffset = 0ul;
-    StaticRenderSystem?.Update(frameInfo, app.Meshes, out staticOffset);
+    // var staticOffset = 0ul;
+    StaticRenderSystem?.Update(frameInfo, app.Meshes, out _);
     SkinnedRenderSystem?.Update(frameInfo, app.Meshes);
+    CustomShaderRender3DSystem?.Update(frameInfo, app.Meshes, app.Entities);
 
-    CustomShaderRender3DSystem?.Update(
-      frameInfo,
-      app.Drawables3D.Values.AsValueEnumerable()
-        .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
-        .ToArray(),
-      app.Meshes,
-      app.Entities
-    );
+    // CustomShaderRender3DSystem?.Update(
+    //   frameInfo,
+    //   app.Drawables3D.Values.AsValueEnumerable()
+    //     .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
+    //     .ToArray(),
+    //   app.Meshes,
+    //   app.Entities
+    // );
 
     if (Render2DSystem != null) {
       // var i2D = app.Entities.FlattenDrawable2D().AsValueEnumerable();
@@ -179,29 +223,21 @@ public class SystemCollection : IDisposable {
     //   AnimationSystem?.Update(animatedNodes);
     //   // _animationSystem?.Update(_render3DSystem.SkinnedNodesCache);
     // }
-    ReadOnlySpan<Node> staticNodes = [];
+    // ReadOnlySpan<Node> staticNodes = [];
     StaticRenderSystem?.Render(
-      app.Drawables3D.Values.AsValueEnumerable()
-        .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
-        .Where(x => !x.IsSkinned)
-        .ToArray(),
       app.Meshes,
       frameInfo,
-      out staticNodes
+      out _
     );
     if (SkinnedRenderSystem != null) {
       SkinnedRenderSystem.Render(
-        app.Drawables3D.Values.AsValueEnumerable()
-          .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
-          .Where(x => x.IsSkinned)
-          .ToArray(),
         app.Meshes,
         frameInfo,
         out var animatedNodes
       );
       AnimationSystem?.Update([.. animatedNodes]);
     }
-    CustomShaderRender3DSystem?.Render(frameInfo);
+    CustomShaderRender3DSystem?.Render(frameInfo, app.Meshes);
 
     Render2DSystem?.Render(frameInfo);
     CustomShaderRender2DSystem?.Render(frameInfo);
@@ -407,7 +443,7 @@ public class SystemCollection : IDisposable {
         .ToArray()
       );
 
-    var drawables_old = app.Entities.FlattenDrawable2D();
+    // var drawables_old = app.Entities.FlattenDrawable2D();
     var drawables = app.Sprites.FlattenDrawable2D().ToArray();
     Render2DSystem?.Setup(
       drawables.AsValueEnumerable()
@@ -426,6 +462,9 @@ public class SystemCollection : IDisposable {
     ParticleSystem?.Setup(ref textureManager);
     PhysicsSystem?.Init(app.Entities.ToArray());
     PhysicsSystem2D?.Init(app.Entities.ToArray());
+
+    app.EntityChangedEvent += OnEntityChanged;
+    app.EntityChangedEvent?.Invoke();
   }
 
   public void SetupHeadless(
@@ -491,6 +530,7 @@ public class SystemCollection : IDisposable {
       pipelineConfig
     );
     StaticRenderSystem?.Setup(renderables);
+    StaticRenderSystem?.Invalidate([.. renderables]);
   }
 
   public void ReloadSkinnedRenderer(
@@ -514,6 +554,7 @@ public class SystemCollection : IDisposable {
       pipelineConfig
     );
     SkinnedRenderSystem?.Setup(renderables);
+    SkinnedRenderSystem?.Invalidate([.. renderables]);
   }
 
   public void Reload2DRenderer(
@@ -611,6 +652,11 @@ public class SystemCollection : IDisposable {
     // NetClientSystem?.Dispose();
     ParticleSystem?.Dispose();
     ShadowRenderSystem?.Dispose();
+
+#pragma warning disable CS8601 // Possible null reference assignment.
+    Application.Instance.EntityChangedEvent -= OnEntityChanged;
+#pragma warning restore CS8601 // Possible null reference assignment.
+
     GC.SuppressFinalize(this);
   }
 }
