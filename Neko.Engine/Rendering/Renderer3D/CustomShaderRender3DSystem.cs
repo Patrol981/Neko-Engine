@@ -213,6 +213,8 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
         _objectDataArray.TryAdd(bufferId, default);
       }
     }
+
+    _invalid = false;
   }
 
   private unsafe void CreateVertexBuffer(in Mesh mesh, out NekoBuffer vertexBuffer) {

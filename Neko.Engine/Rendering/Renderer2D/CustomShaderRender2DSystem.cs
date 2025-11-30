@@ -37,6 +37,8 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
   private List<CustomShaderBuffer> _buffers = [];
 
   private Dictionary<Guid, SpritePushConstant140> _objectDataArray = [];
+  private IDrawable2D[] _drawablesCache = [];
+  private bool _invalid = false;
 
   public CustomShaderRender2DSystem(
     Application app,
@@ -78,15 +80,12 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
 
   public void Update(
     FrameInfo frameInfo,
-    ReadOnlySpan<IDrawable2D> spritesWithCustomShaders,
     in HashSet<Entity> entities
   ) {
-    AddOrUpdateBuffers(spritesWithCustomShaders);
-
     for (ushort i = 0; i < _buffers.Count; i++) {
-      var entity = entities.Where(x => x.Id == _buffers[i].EntityId).First();
+      var entity = entities.Where(x => x.Id == _buffers[i].EntityId).FirstOrDefault();
 
-      if (entity.CanBeDisposed) continue;
+      if (entity == null || entity.CanBeDisposed) continue;
 
       var transform = entity.GetTransform();
       var drawable = entity.GetDrawable2D();
@@ -135,7 +134,13 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
     }
   }
 
+  public void Invalidate(IDrawable2D[] drawables2D) {
+    _drawablesCache = drawables2D;
+    _invalid = true;
+  }
+
   public void Render(FrameInfo frameInfo) {
+    AddOrUpdateBuffers(_drawablesCache);
     string currentPipelineName = "";
     foreach (var buffer in _buffers) {
       if (currentPipelineName != buffer.PipelineName) {
@@ -164,6 +169,7 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
   private void AddOrUpdateBuffers(
     ReadOnlySpan<IDrawable2D> spritesWithCustomShaders
   ) {
+    if (!_invalid) return;
     if (LastKnownElemCount == spritesWithCustomShaders.Length) {
       return;
     }
@@ -194,6 +200,8 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
 
       _objectDataArray.TryAdd(bufferId, default);
     }
+
+    _invalid = false;
   }
 
   private unsafe void CreateVertexBuffer(in Mesh mesh, out NekoBuffer vertexBuffer) {

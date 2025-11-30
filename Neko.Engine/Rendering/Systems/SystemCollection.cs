@@ -82,6 +82,22 @@ public class SystemCollection : IDisposable {
       CustomShaderRender3DSystem.Invalidate(customNodes);
     }
 
+    if (Render2DSystem != null) {
+      var i2D = app.Sprites.FlattenDrawable2D().AsValueEnumerable();
+      var sprites = i2D
+        .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+        .ToArray();
+      Render2DSystem.Invalidate(sprites);
+    }
+
+    if (CustomShaderRender2DSystem != null) {
+      var i2D = app.Sprites.FlattenDrawable2D().AsValueEnumerable();
+      var customSprites = i2D
+        .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
+        .ToArray();
+      CustomShaderRender2DSystem.Invalidate(customSprites);
+    }
+
     // ValidateSystems(
     //   app,
     //   app.Allocator, app.Device, app.Renderer,
@@ -111,44 +127,12 @@ public class SystemCollection : IDisposable {
       } else { gbo->PointLightsLength = 0; }
     }
 
-
-    // Render3DSystem?.Update(frameInfo, app.Meshes);
-    // var staticOffset = 0ul;
     StaticRenderSystem?.Update(frameInfo, app.Meshes, out _);
     SkinnedRenderSystem?.Update(frameInfo, app.Meshes);
     CustomShaderRender3DSystem?.Update(frameInfo, app.Meshes, app.Entities);
 
-    // CustomShaderRender3DSystem?.Update(
-    //   frameInfo,
-    //   app.Drawables3D.Values.AsValueEnumerable()
-    //     .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
-    //     .ToArray(),
-    //   app.Meshes,
-    //   app.Entities
-    // );
-
-    if (Render2DSystem != null) {
-      // var i2D = app.Entities.FlattenDrawable2D().AsValueEnumerable();
-      var i2D = app.Sprites.FlattenDrawable2D().AsValueEnumerable();
-      var stdSprites = i2D
-        .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
-        .ToArray();
-      var customSprites = i2D
-        .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
-        .ToArray();
-
-      Render2DSystem.Update(stdSprites, out var spriteData);
-      fixed (SpritePushConstant140* pSpriteData = spriteData) {
-        app.StorageCollection.WriteBuffer(
-          "SpriteStorage",
-          frameInfo.FrameIndex,
-          (nint)pSpriteData,
-          (ulong)Unsafe.SizeOf<SpritePushConstant140>() * (ulong)stdSprites.Length
-        );
-      }
-
-      CustomShaderRender2DSystem?.Update(frameInfo, customSprites, app.Entities);
-    }
+    Render2DSystem?.Update(frameInfo);
+    CustomShaderRender2DSystem?.Update(frameInfo, app.Entities);
   }
 
   public void CheckStorageSizes(
