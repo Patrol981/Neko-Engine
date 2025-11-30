@@ -9,6 +9,7 @@ public class PerformanceTester {
     if (key == SDL_Keycode.P) CreateNewModel(Application.Instance, false);
     if (key == SDL_Keycode.LeftBracket) CreateNewModel(Application.Instance, true);
     if (key == SDL_Keycode.O) RemoveModel(Application.Instance);
+    if (key == SDL_Keycode.M) Application.Instance.Systems.OnEntityChanged();
   }
 
   public static Task CreateNewModel(Application app, bool addTexture = false) {

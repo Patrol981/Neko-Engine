@@ -13,6 +13,8 @@ using Neko.Rendering.Renderer3D.Animations;
 namespace Neko;
 
 public partial class Application {
+  public EventCallback EntityChangedEvent { get; set; }
+
   public HashSet<Entity> Entities = [];
   internal ConcurrentDictionary<Guid, NekoScript> Scripts = [];
   internal ConcurrentDictionary<Guid, TransformComponent> TransformComponents = [];
@@ -51,10 +53,12 @@ public partial class Application {
     }
     Entities.Add(entity);
     Mutex.ReleaseMutex();
+    EntityChangedEvent?.Invoke();
   }
 
   public void RemoveEntity(Guid id) {
     Entities.RemoveWhere(x => x.Id == id);
+    EntityChangedEvent?.Invoke();
   }
 
   public Entity? GetEntity(Guid entitiyId) {
@@ -68,6 +72,7 @@ public partial class Application {
       Device.WaitDevice();
       Device.WaitQueue();
       Entities.Remove(Entities.ElementAt(index));
+      EntityChangedEvent?.Invoke();
     }
   }
 
@@ -76,6 +81,7 @@ public partial class Application {
       Device.WaitDevice();
       Device.WaitQueue();
       Entities.Remove(entity);
+      EntityChangedEvent?.Invoke();
     }
   }
 
@@ -89,6 +95,7 @@ public partial class Application {
     foreach (var entity in entities) {
       AddEntity(entity);
     }
+    EntityChangedEvent?.Invoke();
   }
 
   public ReadOnlySpan<Entity> GetEntities() {
@@ -138,6 +145,7 @@ public partial class Application {
         e.Dispose(this);
         Entities.Remove(e);
       }
+      // EntityChangedEvent?.Invoke();
     }
   }
 
