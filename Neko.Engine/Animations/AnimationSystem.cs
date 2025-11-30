@@ -21,7 +21,7 @@ public class AnimationSystem : SystemBase {
   ) : base(app, allocator, device, renderer, textureManager, configInfo) {
   }
 
-  public void Update(IEnumerable<Node> animatedNodes) {
+  public void Update(Node[] animatedNodes) {
     if (!Enabled) return;
 
     Parallel.ForEach(animatedNodes, node => {

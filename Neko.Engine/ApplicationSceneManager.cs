@@ -97,13 +97,14 @@ public partial class Application {
       Name = "Render Thread"
     };
     _renderThread.Start();
-
+    EntityChangedEvent?.Invoke();
   }
 
   private async Task<Task> SetupScene() {
     if (CurrentScene == null) return Task.CompletedTask;
 
     await LoadEntities();
+    EntityChangedEvent?.Invoke();
 
     Logger.Info($"Loaded entities: {Entities?.Count}");
     Logger.Info($"Loaded textures: {_textureManager?.PerSceneLoadedTextures?.Count}");

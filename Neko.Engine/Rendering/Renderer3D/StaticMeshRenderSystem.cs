@@ -16,6 +16,7 @@ public class StaticRenderSystem : SystemBase {
   public const string PipelineName = "Static";
 
   public Node[] Cache { get; private set; } = [];
+  private Node[] _visibleCache = [];
 
   public ulong LastKnownElemSize { get; private set; } = 0;
   public int LastKnownElemCount { get; private set; } = 0;
@@ -38,6 +39,8 @@ public class StaticRenderSystem : SystemBase {
 
   private readonly Dictionary<uint, List<VkDrawIndexedIndirectCommand>> _visibleScratch = [];
   private readonly Dictionary<Node, CmdRef> _cmdMap = [];
+
+  private bool _invalid = false;
 
   public StaticRenderSystem(
    Application app,
@@ -95,8 +98,8 @@ public class StaticRenderSystem : SystemBase {
     staticOffset = 0;
     if (_objectDataScratch.Length == 0) return;
 
-    for (int i = 0; i < Cache.Length; i++) {
-      var node = Cache[i];
+    for (int i = 0; i < _visibleCache.Length; i++) {
+      var node = _visibleCache[i];
       var owner = node.ParentRenderer.Owner;
       if (owner.CanBeDisposed) continue;
 
@@ -128,20 +131,28 @@ public class StaticRenderSystem : SystemBase {
   }
 
   public void Render(
-    IRender3DElement[] renderables,
+    // IRender3DElement[] renderables,
     ConcurrentDictionary<Guid, Mesh> meshes,
     FrameInfo frameInfo,
     out ReadOnlySpan<Node> staticNodes
   ) {
-    CreateOrUpdateBuffers(renderables, meshes);
-    uint visible = RefillIndirectBuffersWithCulling(meshes, out staticNodes);
-
+    CreateOrUpdateBuffers(_renderablesCache, meshes);
+    uint visible = RefillIndirectBuffersWithCulling(meshes);
+    staticNodes = _visibleCache;
     if (visible < 1) return;
 
     RenderIndirect(frameInfo);
   }
 
   public void RenderIndirect(FrameInfo frameInfo) {
+    var canProceed =
+      frameInfo.CommandBuffer.IsNotNull &&
+      frameInfo.GlobalDescriptorSet.IsNotNull &&
+      frameInfo.StaticObjectDataDescriptorSet.IsNotNull &&
+      frameInfo.PointLightsDescriptorSet.IsNotNull;
+
+    if (!canProceed) return;
+
     BindPipeline(frameInfo.CommandBuffer, PipelineName);
 
     Descriptor.BindDescriptorSet(_device, _textureManager.AllTexturesDescriptor, frameInfo, _pipelines[PipelineName].PipelineLayout, 0, 1);
@@ -225,12 +236,18 @@ public class StaticRenderSystem : SystemBase {
     return true;
   }
 
+  public void Invalidate(IRender3DElement[] renderables) {
+    _invalid = true;
+    _renderablesCache = renderables;
+  }
+
   private void CreateOrUpdateBuffers(
     IRender3DElement[] renderables,
     ConcurrentDictionary<Guid, Mesh> meshes
   ) {
-    _cacheMatch = _renderablesCache.SequenceEqual(renderables);
-    if (_cacheMatch && _bufferPool != null) return;
+    _cacheMatch = _renderablesCache.SequenceEqual(renderables) && !_invalid;
+    // Logger.Warn($"STATIC STATE: {renderables.Length} | {_invalid}");
+    if (!_invalid && _bufferPool != null) return;
 
     _instanceIndex = 0;
 
@@ -246,7 +263,7 @@ public class StaticRenderSystem : SystemBase {
     nodeObjects.Sort(static (a, b) => a.CompareTo(b));
 
     Cache = [.. nodeObjects];
-
+    _invalid = false;
     int totalObjs = Cache.Length;
 
     _objectDataScratch = (totalObjs == 0) ? [] : new ObjectData[totalObjs];
@@ -258,7 +275,7 @@ public class StaticRenderSystem : SystemBase {
 
     _texIndexCache.Clear();
 
-    Logger.Info($"Total Objs: {totalObjs}");
+    Logger.Info($"Total Static Objs: {totalObjs}");
 
     if (totalObjs > 0) {
       CreateVertexIndexBuffer(Cache, meshes);
@@ -266,7 +283,7 @@ public class StaticRenderSystem : SystemBase {
 
     EnsureIndirectBuffers(_indirectData, ref _indirectBuffers);
 
-    _renderablesCache = (IRender3DElement[])renderables.Clone();
+    // _renderablesCache = (IRender3DElement[])renderables.Clone();
     _cacheMatch = true;
 
     for (int i = 0; i < Cache.Length; i++) {
@@ -583,16 +600,13 @@ public class StaticRenderSystem : SystemBase {
     return false;
   }
 
-  private uint RefillIndirectBuffersWithCulling(
-    ConcurrentDictionary<Guid, Mesh> meshes,
-    out ReadOnlySpan<Node> staticNodes
-  ) {
-    if (_indirectBuffers?.Length < 1) { staticNodes = []; return 0; }
+  private uint RefillIndirectBuffersWithCulling(ConcurrentDictionary<Guid, Mesh> meshes) {
+    // if (_indirectBuffers?.Length < 1) { staticNodes = []; return 0; }
 
     foreach (var s in _visibleScratch.Values) s.Clear();
 
     Frustum.FilterNodesByFog(Cache.ToArray(), out var visible);
-    staticNodes = visible;
+    _visibleCache = [.. visible];
 
     foreach (var n in visible) {
       var owner = n.ParentRenderer.Owner;
@@ -643,6 +657,7 @@ public class StaticRenderSystem : SystemBase {
   }
 
   public override void Dispose() {
+    Logger.Info("[--- Static Renderer Dispose Info ---]");
     _device.WaitQueue();
     foreach (var buff in _indirectBuffers) {
       buff.Dispose();

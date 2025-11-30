@@ -31,6 +31,7 @@ public class SkinnedRenderSystem : SystemBase {
   private readonly List<VertexBinding> _vertexBindings = [];
 
   private bool _cacheMatch = false;
+  private bool _invalid = false;
   private readonly Dictionary<Guid, float> _texIndexCache = [];
 
   private ObjectData[] _objectDataScratch = [];
@@ -100,7 +101,7 @@ public class SkinnedRenderSystem : SystemBase {
     LastKnownSkinnedElemCount = (ulong)len;
     LastKnownSkinnedElemJointsCount = (ulong)joints;
 
-    Logger.Info($"Recreating Renderer 3D [{LastKnownSkinnedElemCount}]");
+    Logger.Info($"Recreating Skinned Renderer [{LastKnownSkinnedElemCount}]");
 
     for (int i = 0; i < renderables.Length; i++) {
       LastKnownElemSize += renderables[i]!.CalculateBufferSize();
@@ -119,7 +120,8 @@ public class SkinnedRenderSystem : SystemBase {
       var owner = node.ParentRenderer.Owner;
       if (owner.CanBeDisposed) continue;
 
-      var transform = owner.GetTransform();
+      // var transform = owner.GetTransform();
+      var transform = _application.TransformComponents[owner.Id];
       var mesh = meshes[node.MeshGuid];
 
       int objIdx = _nodeToObjIndex[node];
@@ -159,12 +161,12 @@ public class SkinnedRenderSystem : SystemBase {
   }
 
   public void Render(
-    IRender3DElement[] renderables,
+    // IRender3DElement[] renderables,
     ConcurrentDictionary<Guid, Mesh> meshes,
     FrameInfo frameInfo,
     out ReadOnlySpan<Node> animatedNodes
   ) {
-    CreateOrUpdateBuffers(renderables, meshes);
+    CreateOrUpdateBuffers(_renderablesCache, meshes);
     uint visible = RefillIndirectBuffersWithCulling(meshes);
     animatedNodes = _visibleCache;
     if (visible < 1) return;
@@ -173,6 +175,15 @@ public class SkinnedRenderSystem : SystemBase {
   }
 
   public void RenderIndirect(FrameInfo frameInfo) {
+    var canProceed =
+      frameInfo.CommandBuffer.IsNotNull &&
+      frameInfo.GlobalDescriptorSet.IsNotNull &&
+      frameInfo.SkinnedObjectDataDescriptorSet.IsNotNull &&
+      frameInfo.PointLightsDescriptorSet.IsNotNull &&
+      frameInfo.JointsBufferDescriptorSet.IsNotNull;
+
+    if (!canProceed) return;
+
     BindPipeline(frameInfo.CommandBuffer, PipelineName);
 
     Descriptor.BindDescriptorSet(_device, _textureManager.AllTexturesDescriptor, frameInfo, _pipelines[PipelineName].PipelineLayout, 0, 1);
@@ -198,6 +209,11 @@ public class SkinnedRenderSystem : SystemBase {
         (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
       );
     }
+  }
+
+  public void Invalidate(IRender3DElement[] renderables) {
+    _invalid = true;
+    _renderablesCache = renderables;
   }
 
   private static int CalculateNodesLength(ReadOnlySpan<IRender3DElement> renderables) {
@@ -273,8 +289,8 @@ public class SkinnedRenderSystem : SystemBase {
     IRender3DElement[] renderables,
     ConcurrentDictionary<Guid, Mesh> meshes
   ) {
-    _cacheMatch = _renderablesCache.SequenceEqual(renderables);
-    if (_cacheMatch && _bufferPool != null) return;
+    _cacheMatch = _renderablesCache.SequenceEqual(renderables) && !_invalid;
+    if (!_invalid && _bufferPool != null) return;
 
     _instanceIndex = 0;
 
@@ -290,6 +306,7 @@ public class SkinnedRenderSystem : SystemBase {
     nodeObjectsSkinned.Sort(static (a, b) => a.CompareTo(b));
 
     Cache = [.. nodeObjectsSkinned];
+    _invalid = false;
     int skinCount = Cache.Length;
 
     _objectDataScratch = (skinCount == 0) ? [] : new ObjectData[skinCount];
@@ -314,13 +331,16 @@ public class SkinnedRenderSystem : SystemBase {
     _jointsScratch = (_totalJointCount == 0) ? [] : new Matrix4x4[_totalJointCount];
 
     _texIndexCache.Clear();
+
+    Logger.Info($"Total Skinned Objs: {skinCount}");
+
     if (skinCount > 0) {
       CreateVertexIndexBuffer(Cache, meshes);
     }
 
     EnsureIndirectBuffers(_indirectData, ref _indirectBuffers);
 
-    _renderablesCache = (IRender3DElement[])renderables.Clone();
+    // _renderablesCache = (IRender3DElement[])renderables.Clone();
     _cacheMatch = true;
 
     for (int i = 0; i < skinCount; i++) {
@@ -661,6 +681,7 @@ public class SkinnedRenderSystem : SystemBase {
   }
 
   public override void Dispose() {
+    Logger.Info("[--- Skinned Renderer Dispose Info ---]");
     _device.WaitQueue();
     foreach (var buff in _indirectBuffers) {
       buff.Dispose();

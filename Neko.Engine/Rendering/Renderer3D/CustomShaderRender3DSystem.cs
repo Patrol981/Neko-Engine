@@ -34,6 +34,8 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
   public int LastKnownElemCount { get; set; } = 0;
   private List<CustomShaderBuffer> _buffers = [];
   private Dictionary<Guid, ObjectData> _objectDataArray = [];
+  private IRender3DElement[] _renderablesCache = [];
+  private bool _invalid = false;
 
   public CustomShaderRender3DSystem(
     Application app,
@@ -78,12 +80,10 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
   [MethodImpl(MethodImplOptions.AggressiveOptimization)]
   public void Update(
     FrameInfo frameInfo,
-    ReadOnlySpan<IRender3DElement> renderablesWithCustomShaders,
+    // ReadOnlySpan<IRender3DElement> renderablesWithCustomShaders,
     in ConcurrentDictionary<Guid, Mesh> meshes,
     in HashSet<Entity> entities
   ) {
-    AddOrUpdateBuffers(renderablesWithCustomShaders, meshes);
-
     for (ushort i = 0; i < _buffers.Count; i++) {
       var entity = entities.Where(x => x.Id == _buffers[i].EntityId).First();
       var transform = entity.GetTransform();
@@ -134,7 +134,17 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
     }
   }
 
-  public void Render(FrameInfo frameInfo) {
+  public void Invalidate(IRender3DElement[] renderables) {
+    _invalid = true;
+    _renderablesCache = renderables;
+  }
+
+  public void Render(
+    FrameInfo frameInfo,
+    ConcurrentDictionary<Guid, Mesh> meshes
+  ) {
+    AddOrUpdateBuffers(_renderablesCache, meshes);
+
     string currentPipelineName = "";
     foreach (var buffer in _buffers) {
       if (currentPipelineName != buffer.PipelineName) {
@@ -165,6 +175,7 @@ public class CustomShaderRender3DSystem : SystemBase, IRenderSystem {
     ReadOnlySpan<IRender3DElement> renderablesWithCustomShaders,
     ConcurrentDictionary<Guid, Mesh> meshes
   ) {
+    if (!_invalid) return;
     if (LastKnownElemCount == renderablesWithCustomShaders.Length) {
       return;
     }
