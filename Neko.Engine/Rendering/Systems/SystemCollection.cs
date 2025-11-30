@@ -194,20 +194,6 @@ public class SystemCollection : IDisposable {
   }
 
   public void RenderSystems(Application app, FrameInfo frameInfo) {
-
-    // if (Render3DSystem != null) {
-    //   Render3DSystem.Render(
-    //     app.Drawables3D.Values.AsValueEnumerable()
-    //       .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
-    //       .ToArray(),
-    //     app.Meshes,
-    //     frameInfo,
-    //     out var animatedNodes
-    //   );
-    //   AnimationSystem?.Update(animatedNodes);
-    //   // _animationSystem?.Update(_render3DSystem.SkinnedNodesCache);
-    // }
-    // ReadOnlySpan<Node> staticNodes = [];
     StaticRenderSystem?.Render(
       app.Meshes,
       frameInfo,
