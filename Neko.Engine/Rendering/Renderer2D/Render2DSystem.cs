@@ -22,6 +22,8 @@ public class Render2DSystem : SystemBase {
 
   private BufferPool _bufferPool = null!;
   private List<VertexBinding> _vertexBindings = [];
+  private bool _invalid = false;
+  private SpritePushConstant140[] _spriteData = [];
 
   public int LastKnownElemCount { get; private set; } = 0;
 
@@ -116,9 +118,16 @@ public class Render2DSystem : SystemBase {
     // return drawables.Length;
   }
 
-  public void Update(ReadOnlySpan<IDrawable2D> drawables, out SpritePushConstant140[] spriteData) {
-    spriteData = new SpritePushConstant140[_drawableCache.Length];
+  public void Invalidate(ReadOnlySpan<IDrawable2D> drawables) {
+    _invalid = true;
+    _drawableCache = [.. drawables];
+    _spriteData = new SpritePushConstant140[drawables.Length];
+    for (int i = 0; i < _spriteData.Length; i++) {
+      _spriteData[i] = new();
+    }
+  }
 
+  public unsafe void Update(FrameInfo frameInfo) {
     for (int i = 0; i < _drawableCache.Length; i++) {
       var target = _drawableCache[i];
 
@@ -126,22 +135,55 @@ public class Render2DSystem : SystemBase {
       if (!myTexId.HasValue) throw new ArgumentException("", paramName: myTexId.ToString());
 
       if (target.LocalZDepth != 0) {
-        spriteData[i] = new() {
-          SpriteMatrix = target.Entity.GetTransform()?.Matrix().OverrideZDepth(target.LocalZDepth) ?? Matrix4x4.Identity,
-          SpriteSheetData = new(target.SpriteSheetSize.X, target.SpriteSheetSize.Y, target.SpriteIndex, target.FlipX ? 1.0f : 0.0f),
-          SpriteSheetData2 = new(target.FlipY ? 1.0f : 0.0f, myTexId.Value, -1, -1)
-        };
+        // spriteData[i] = new() {
+        //   SpriteMatrix = target.Entity.GetTransform()?.Matrix().OverrideZDepth(target.LocalZDepth) ?? Matrix4x4.Identity,
+        //   SpriteSheetData = new(target.SpriteSheetSize.X, target.SpriteSheetSize.Y, target.SpriteIndex, target.FlipX ? 1.0f : 0.0f),
+        //   SpriteSheetData2 = new(target.FlipY ? 1.0f : 0.0f, myTexId.Value, -1, -1)
+        // };
+        _spriteData[i].SpriteMatrix = target.Entity.GetTransform()?.Matrix().OverrideZDepth(target.LocalZDepth) ?? Matrix4x4.Identity;
+
+        _spriteData[i].SpriteSheetData.X = target.SpriteSheetSize.X;
+        _spriteData[i].SpriteSheetData.Y = target.SpriteSheetSize.Y;
+        _spriteData[i].SpriteSheetData.Z = target.SpriteIndex;
+        _spriteData[i].SpriteSheetData.W = target.FlipX ? 1.0f : 0.0f;
+
+        _spriteData[i].SpriteSheetData2.X = target.FlipY ? 1.0f : 0.0f;
+        _spriteData[i].SpriteSheetData2.Y = myTexId.Value;
+        _spriteData[i].SpriteSheetData2.Z = -1.0f;
+        _spriteData[i].SpriteSheetData2.W = -1.0f;
+
       } else {
-        spriteData[i] = new() {
-          SpriteMatrix = target.Entity.GetTransform()?.Matrix() ?? Matrix4x4.Identity,
-          SpriteSheetData = new(target.SpriteSheetSize.X, target.SpriteSheetSize.Y, target.SpriteIndex, target.FlipX ? 1.0f : 0.0f),
-          SpriteSheetData2 = new(target.FlipY ? 1.0f : 0.0f, myTexId.Value, -1, -1)
-        };
+        // spriteData[i] = new() {
+        //   SpriteMatrix = target.Entity.GetTransform()?.Matrix() ?? Matrix4x4.Identity,
+        //   SpriteSheetData = new(target.SpriteSheetSize.X, target.SpriteSheetSize.Y, target.SpriteIndex, target.FlipX ? 1.0f : 0.0f),
+        //   SpriteSheetData2 = new(target.FlipY ? 1.0f : 0.0f, myTexId.Value, -1, -1)
+        // };
+
+        _spriteData[i].SpriteMatrix = target.Entity.GetTransform()?.Matrix() ?? Matrix4x4.Identity;
+
+        _spriteData[i].SpriteSheetData.X = target.SpriteSheetSize.X;
+        _spriteData[i].SpriteSheetData.Y = target.SpriteSheetSize.Y;
+        _spriteData[i].SpriteSheetData.Z = target.SpriteIndex;
+        _spriteData[i].SpriteSheetData.W = target.FlipX ? 1.0f : 0.0f;
+
+        _spriteData[i].SpriteSheetData2.X = target.FlipY ? 1.0f : 0.0f;
+        _spriteData[i].SpriteSheetData2.Y = myTexId.Value;
+        _spriteData[i].SpriteSheetData2.Z = -1.0f;
+        _spriteData[i].SpriteSheetData2.W = -1.0f;
       }
+    }
+
+    fixed (SpritePushConstant140* pSpriteData = _spriteData) {
+      _application.StorageCollection.WriteBuffer(
+        "SpriteStorage",
+        frameInfo.FrameIndex,
+        (nint)pSpriteData,
+        (ulong)Unsafe.SizeOf<SpritePushConstant140>() * (ulong)_spriteData.Length
+      );
     }
   }
 
-  public unsafe void Render(FrameInfo frameInfo) {
+  public void Render(FrameInfo frameInfo) {
     if (_globalIndexBuffer == null) return;
 
     BindPipeline(frameInfo.CommandBuffer);
@@ -203,7 +245,6 @@ public class Render2DSystem : SystemBase {
       indexOffset += thisCount;
     }
   }
-
   private static int? GetIndexOfMyTexture(string texName) {
     return Application.Instance.TextureManager.PerSceneLoadedTextures.Where(x => x.Value.TextureName == texName).FirstOrDefault().Value.TextureManagerIndex;
   }
