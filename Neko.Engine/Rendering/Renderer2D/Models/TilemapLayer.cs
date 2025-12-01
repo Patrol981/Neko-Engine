@@ -34,6 +34,7 @@ public class TilemapLayer : IDrawable2D {
   public bool HasMultipleMeshes => false;
   public IDrawable2D[] Children => [];
   public float LocalZDepth { get; set; }
+  public Drawable2DType DrawableType => Drawable2DType.TilemapLayer;
 
   public ShaderInfo CustomShader { get; } = new() { Name = CommonConstants.SHADER_INFO_NAME_UNSET };
 

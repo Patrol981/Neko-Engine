@@ -69,6 +69,8 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
         PipelineName = pipelineName
       });
     }
+
+    LastKnownElemCount = CalculateLastKnownElemCount(spritesWithCustomShaders);
   }
 
   private static int GetIndexOfMyTexture(string texName) {
@@ -139,6 +141,28 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
     _invalid = true;
   }
 
+  public bool CheckSizes(ReadOnlySpan<IDrawable2D> drawables) {
+    var newCount = CalculateLastKnownElemCount(drawables);
+    if (newCount != LastKnownElemCount) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private static int CalculateLastKnownElemCount(ReadOnlySpan<IDrawable2D> drawables) {
+    int count = 0;
+    for (int i = 0; i < drawables.Length; i++) {
+      if (drawables[i].Children.Length > 0) {
+        count += drawables[i].Children.Length;
+      } else {
+        count++;
+      }
+    }
+
+    return count;
+  }
+
   public void Render(FrameInfo frameInfo) {
     AddOrUpdateBuffers(_drawablesCache);
     string currentPipelineName = "";
@@ -170,10 +194,10 @@ public class CustomShaderRender2DSystem : SystemBase, IRenderSystem {
     ReadOnlySpan<IDrawable2D> spritesWithCustomShaders
   ) {
     if (!_invalid) return;
-    if (LastKnownElemCount == spritesWithCustomShaders.Length) {
-      return;
-    }
-    LastKnownElemCount = spritesWithCustomShaders.Length;
+    // if (LastKnownElemCount == spritesWithCustomShaders.Length) {
+    //   return;
+    // }
+    // LastKnownElemCount = spritesWithCustomShaders.Length;
 
     foreach (var buff in _buffers) {
       buff.VertexBuffer?.Dispose();

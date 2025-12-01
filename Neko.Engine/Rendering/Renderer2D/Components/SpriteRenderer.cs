@@ -20,6 +20,7 @@ public class SpriteRenderer : IDrawable2D {
   public Mesh CollisionMesh => Sprites[CurrentSprite].SpriteMesh;
   public Mesh Mesh => Sprites[CurrentSprite].SpriteMesh;
   public IDrawable2D[] Children => [];
+  public Drawable2DType DrawableType => Drawable2DType.Sprite;
 
   public Entity Entity { get; private set; }
   public bool Active => Entity.Active;
