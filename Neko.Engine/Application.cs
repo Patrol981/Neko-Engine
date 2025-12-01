@@ -496,6 +496,7 @@ public partial class Application {
       _currentFrame.SkinnedObjectDataDescriptorSet = StorageCollection.GetDescriptor("SkinnedObjectStorage", frameIndex);
       _currentFrame.CustomShaderObjectDataDescriptorSet = StorageCollection.GetDescriptor("CustomShaderObjectStorage", frameIndex);
       _currentFrame.SpriteDataDescriptorSet = StorageCollection.GetDescriptor("SpriteStorage", frameIndex);
+      _currentFrame.TileLayerDataDescriptorSet = StorageCollection.GetDescriptor("TileLayerStorage", frameIndex);
       _currentFrame.CustomSpriteDataDescriptorSet = StorageCollection.GetDescriptor("CustomSpriteStorage", frameIndex);
       _currentFrame.JointsBufferDescriptorSet = StorageCollection.GetDescriptor("JointsStorage", frameIndex);
       _currentFrame.TextureManager = _textureManager;

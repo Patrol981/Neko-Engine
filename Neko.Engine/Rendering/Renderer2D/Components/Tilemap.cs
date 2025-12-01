@@ -24,6 +24,7 @@ public class Tilemap : IDrawable2D {
   public Mesh Mesh => throw new NotImplementedException();
   public ITexture[] SpriteSheet => [];
   public IDrawable2D[] Children => [.. Layers];
+  public Drawable2DType DrawableType => Drawable2DType.Tilemap;
 
   private VkPipelineLayout _pipelineLayout;
 

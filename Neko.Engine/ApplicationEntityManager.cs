@@ -42,7 +42,11 @@ public partial class Application {
   private readonly Queue<MeshRenderer> _reloadQueue = new();
   public readonly Lock EntitiesLock = new();
 
-  public void AddEntity(Entity entity, bool fenced = false) {
+  public void AddEntity(
+    Entity entity,
+    bool fenced = false,
+    bool emitEvent = true
+  ) {
     Mutex.WaitOne();
     var scripts = entity.GetScripts();
     MasterAwake(scripts);
@@ -53,7 +57,9 @@ public partial class Application {
     }
     Entities.Add(entity);
     Mutex.ReleaseMutex();
-    EntityChangedEvent?.Invoke();
+    if (emitEvent) {
+      EntityChangedEvent?.Invoke();
+    }
   }
 
   public void RemoveEntity(Guid id) {
@@ -93,7 +99,7 @@ public partial class Application {
 
   public void AddEntities(Entity[] entities) {
     foreach (var entity in entities) {
-      AddEntity(entity);
+      AddEntity(entity, default, false);
     }
     EntityChangedEvent?.Invoke();
   }
@@ -136,6 +142,7 @@ public partial class Application {
 
   private void Collect() {
     lock (EntitiesLock) {
+      uint removed = 0;
       ReadOnlySpan<Entity> entities = Entities.ToArray();
       foreach (var e in entities) {
         if (!e.CanBeDisposed) continue;
@@ -144,8 +151,11 @@ public partial class Application {
         e.Collected = true;
         e.Dispose(this);
         Entities.Remove(e);
+        removed += 1;
       }
-      // EntityChangedEvent?.Invoke();
+      if (removed > 0) {
+        EntityChangedEvent?.Invoke();
+      }
     }
   }
 

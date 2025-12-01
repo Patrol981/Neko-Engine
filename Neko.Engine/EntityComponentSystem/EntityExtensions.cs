@@ -251,6 +251,22 @@ public static class EntityExtensions {
     return flatMap.ToArray();
   }
 
+  public static ReadOnlySpan<IDrawable2D> RootDrawables2D(this ConcurrentDictionary<Guid, IDrawable2D> drawables) {
+    // var buffer = drawables.Values.ToList();
+    // var flatMap = new List<IDrawable2D>();
+
+    // foreach (var buff in buffer) {
+    //   flatMap.Add(buff);
+    // }
+
+    // return flatMap.ToArray();
+
+    return drawables.Values
+      .AsValueEnumerable()
+      .Where(x => x.DrawableType == Drawable2DType.Sprite)
+      .ToArray();
+  }
+
   public static ReadOnlySpan<IDrawable2D> FlattenDrawable2D(this HashSet<Entity> entities) {
     var buffer = new List<IDrawable2D>();
 

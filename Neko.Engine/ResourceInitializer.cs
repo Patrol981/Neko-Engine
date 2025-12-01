@@ -136,6 +136,10 @@ public class ResourceInitializer {
       .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.AllGraphics)
       .Build());
 
+    descriptorSetLayouts.TryAdd("TileLayerData", new VulkanDescriptorSetLayout.Builder((VulkanDevice)device)
+    .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.AllGraphics)
+    .Build());
+
     descriptorSetLayouts.TryAdd("CustomSpriteData", new VulkanDescriptorSetLayout.Builder((VulkanDevice)device)
       .AddBinding(0, DescriptorType.StorageBuffer, ShaderStageFlags.AllGraphics)
       .Build());
@@ -280,6 +284,22 @@ public class ResourceInitializer {
         (VulkanDescriptorSetLayout)descriptorSetLayouts["CustomSpriteData"],
         null!,
         "CustomSpriteStorage",
+        device.MinStorageBufferOffsetAlignment,
+        true
+      );
+    }
+
+    if (systems.TilemapRenderSystem != null) {
+      storageCollection.CreateStorage(
+        device,
+        DescriptorType.StorageBuffer,
+        BufferUsage.StorageBuffer,
+        renderer.MAX_FRAMES_IN_FLIGHT,
+        (ulong)Unsafe.SizeOf<SpritePushConstant140>(),
+        (ulong)systems.TilemapRenderSystem.LastKnownLayerCount,
+        (VulkanDescriptorSetLayout)descriptorSetLayouts["TileLayerData"],
+        null!,
+        "TileLayerStorage",
         device.MinStorageBufferOffsetAlignment,
         true
       );

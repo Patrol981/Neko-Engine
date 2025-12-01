@@ -23,7 +23,8 @@ public enum SystemCreationFlags {
   Physics2D = 1 << 10,
   DebugRenderer = 1 << 11,
   Networking = 1 << 12,
-  Animations = 1 << 13
+  Animations = 1 << 13,
+  TilemapRenderer = 1 << 14
 }
 
 public record SystemConfiguration {
@@ -75,6 +76,7 @@ public class SystemCreator {
     var hasDebugRenderer = flags.HasFlag(SystemCreationFlags.DebugRenderer);
     var hasNetworking = flags.HasFlag(SystemCreationFlags.Networking);
     var hasAnimations = flags.HasFlag(SystemCreationFlags.Animations);
+    var hasTilemapRenderer = flags.HasFlag(SystemCreationFlags.TilemapRenderer);
 
     if (hasRendererUI) {
       Logger.Info("[SYSTEM CREATOR] Creating UI Renderer");
@@ -109,7 +111,14 @@ public class SystemCreator {
       systemCollection.Render2DSystem =
         new(app, allocator, (VulkanDevice)device, renderer, textureManager, layouts, configInfo);
 
-      systemCollection.CustomShaderRender2DSystem =
+      // systemCollection.CustomShaderRender2DSystem =
+      //   new(app, allocator, (VulkanDevice)device, renderer, textureManager, layouts, configInfo);
+    }
+
+    if (hasTilemapRenderer) {
+      Logger.Info("[SYSTEM CREATOR] Creating Tilemap Renderer");
+
+      systemCollection.TilemapRenderSystem =
         new(app, allocator, (VulkanDevice)device, renderer, textureManager, layouts, configInfo);
     }
 

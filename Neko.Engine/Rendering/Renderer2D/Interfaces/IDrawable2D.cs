@@ -4,6 +4,12 @@ using Neko.Math;
 
 namespace Neko.Rendering.Renderer2D.Interfaces;
 
+public enum Drawable2DType {
+  Sprite,
+  Tilemap,
+  TilemapLayer
+}
+
 public interface IDrawable2D : IDrawable, ICloneable {
   Entity Entity { get; }
   bool Active { get; }
@@ -18,6 +24,7 @@ public interface IDrawable2D : IDrawable, ICloneable {
   Mesh CollisionMesh { get; }
   Mesh Mesh { get; }
   public IDrawable2D[] Children { get; }
+  public Drawable2DType DrawableType { get; }
 
   ShaderInfo CustomShader { get; }
   void SetCustomShader(ShaderInfo shaderInfo);
