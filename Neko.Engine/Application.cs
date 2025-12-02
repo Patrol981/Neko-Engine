@@ -296,6 +296,8 @@ public partial class Application {
         _onUpdate?.Invoke();
         MasterUpdate(Scripts.Values.ToArray());
       }
+
+      GC.Collect(2, GCCollectionMode.Optimized, false);
     }
 
     Logger.Info("[APPLICATION] Closing App");
