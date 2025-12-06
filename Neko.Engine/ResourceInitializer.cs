@@ -266,7 +266,7 @@ public class ResourceInitializer {
         BufferUsage.StorageBuffer,
         renderer.MAX_FRAMES_IN_FLIGHT,
         (ulong)Unsafe.SizeOf<SpritePushConstant140>(),
-        (ulong)systems.Render2DSystem.LastKnownElemCount,
+        (ulong)systems.Render2DSystem.LastKnownSpriteCount,
         (VulkanDescriptorSetLayout)descriptorSetLayouts["SpriteData"],
         null!,
         "SpriteStorage",

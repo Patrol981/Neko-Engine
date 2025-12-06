@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using Neko.AbstractionLayer;
@@ -11,21 +10,16 @@ using Vortice.Vulkan;
 
 namespace Neko.Rendering.Renderer2D;
 
-public class Render2DSystem : SystemBase {
-  private NekoBuffer? _globalVertexBuffer;
-  private NekoBuffer? _globalIndexBuffer;
-  private NekoBuffer[] _indirectBuffers = [];
-  private Dictionary<uint, IndirectData> _indirectData = [];
-  private List<VkDrawIndexedIndirectCommand> _indirectDrawCommands = [];
-  private IDrawable2D[] _drawableCache = [];
-  private uint _instanceIndex = 0;
-
-  private BufferPool _bufferPool = null!;
-  private List<VertexBinding> _vertexBindings = [];
-  private bool _invalid = false;
-  private SpritePushConstant140[] _spriteData = [];
-
-  public int LastKnownElemCount { get; private set; } = 0;
+public sealed class Render2DSystem : SystemBase {
+  public IDrawable2D[] SpriteCache { get; private set; } = [];
+  public int LastKnownSpriteCount { get; private set; } = 0;
+  private BufferPool? _spritePool;
+  private Dictionary<uint, IndirectData> _spriteIndirectData = [];
+  private List<VertexBinding> _spriteVertexBindings = [];
+  private uint _spriteInstnaceIndex;
+  private List<VkDrawIndexedIndirectCommand> _spriteDrawCommands = [];
+  private NekoBuffer[] _spriteIndirectBuffers = [];
+  private SpritePushConstant140[] _spriteShaderData = [];
 
   public Render2DSystem(
     Application app,
@@ -59,132 +53,68 @@ public class Render2DSystem : SystemBase {
       .AddPoolSize(DescriptorType.StorageBuffer, CommonConstants.MAX_SETS)
       .SetPoolFlags(DescriptorPoolCreateFlags.UpdateAfterBind)
       .Build();
-
-    _texturesCount = -1;
   }
 
-  public unsafe void Setup(ReadOnlySpan<IDrawable2D> drawables, ref TextureManager textures) {
-    if (drawables.Length < 1) {
-      Logger.Warn("Entities that are capable of using 2D renderer are less than 1, thus 2D Render System won't be recreated");
-      return;
-    }
-
-    Logger.Info($"Recreating Renderer 2D [{_texturesCount}]");
-
-    _texturesCount = CalculateTextureCount(drawables);
-    LastKnownElemCount = CalculateTextureCount(drawables);
-    _instanceIndex = 0;
-
-    CreateVertexBuffer(drawables);
-    CreateIndexBuffer(drawables);
-
-    CreateIndirectCommands(drawables);
-    CreateIndirectBuffer(ref _indirectData, ref _indirectBuffers);
+  public void Refresh(ReadOnlySpan<IDrawable2D> sprites) {
+    SpriteCache = [.. sprites];
   }
 
-  public bool CheckSizes(ReadOnlySpan<IDrawable2D> drawables) {
-    // if (_texturesCount == -1) {
-    //   var textureManager = Application.Instance.TextureManager;
-    //   // Setup(drawables, ref textureManager);
-    // }
-    var newCount = CalculateTextureCount(drawables);
-    if (newCount != LastKnownElemCount) {
-      LastKnownElemCount = newCount;
-      return false;
-    }
-
-    return true;
-  }
-  private static int CalculateTextureCount(ReadOnlySpan<IDrawable2D> drawables) {
-    int count = 0;
-    for (int i = 0; i < drawables.Length; i++) {
-      count += drawables[i].SpriteCount;
-    }
-    return count;
+  public void Update(FrameInfo frameInfo) {
+    UpdateSprites(frameInfo);
   }
 
-  private static int CalculateLastKnownElemCount(ReadOnlySpan<IDrawable2D> drawables) {
-    int count = 0;
-    for (int i = 0; i < drawables.Length; i++) {
-      if (drawables[i].Children.Length > 0) {
-        count += drawables[i].Children.Length;
-      } else {
-        count++;
-      }
-    }
+  private void UpdateSprites(FrameInfo frameInfo) {
+    if (_spriteShaderData.Length == 0) return;
+    if (_spriteShaderData.Length != SpriteCache.Length) return;
 
-    return count;
+    for (int i = 0; i < SpriteCache.Length; i++) {
+      var target = SpriteCache[i];
 
-    // return drawables.Length;
-  }
-
-  public void Invalidate(ReadOnlySpan<IDrawable2D> drawables) {
-    _invalid = true;
-    _drawableCache = [.. drawables];
-    _spriteData = new SpritePushConstant140[drawables.Length];
-    for (int i = 0; i < _spriteData.Length; i++) {
-      _spriteData[i] = new();
-    }
-  }
-
-  public unsafe void Update(FrameInfo frameInfo) {
-    for (int i = 0; i < _drawableCache.Length; i++) {
-      var target = _drawableCache[i];
-
-      var myTexId = GetIndexOfMyTexture(target.Texture.TextureName);
-      if (!myTexId.HasValue) throw new ArgumentException("", paramName: myTexId.ToString());
+      var texId = GetIndexOfMyTexture(target.Texture.TextureName);
+      if (!texId.HasValue) throw new ArgumentException("", paramName: texId.ToString());
 
       if (target.LocalZDepth != 0) {
-        // spriteData[i] = new() {
-        //   SpriteMatrix = target.Entity.GetTransform()?.Matrix().OverrideZDepth(target.LocalZDepth) ?? Matrix4x4.Identity,
-        //   SpriteSheetData = new(target.SpriteSheetSize.X, target.SpriteSheetSize.Y, target.SpriteIndex, target.FlipX ? 1.0f : 0.0f),
-        //   SpriteSheetData2 = new(target.FlipY ? 1.0f : 0.0f, myTexId.Value, -1, -1)
-        // };
-        _spriteData[i].SpriteMatrix = target.Entity.GetTransform()?.Matrix().OverrideZDepth(target.LocalZDepth) ?? Matrix4x4.Identity;
-
-        _spriteData[i].SpriteSheetData.X = target.SpriteSheetSize.X;
-        _spriteData[i].SpriteSheetData.Y = target.SpriteSheetSize.Y;
-        _spriteData[i].SpriteSheetData.Z = target.SpriteIndex;
-        _spriteData[i].SpriteSheetData.W = target.FlipX ? 1.0f : 0.0f;
-
-        _spriteData[i].SpriteSheetData2.X = target.FlipY ? 1.0f : 0.0f;
-        _spriteData[i].SpriteSheetData2.Y = myTexId.Value;
-        _spriteData[i].SpriteSheetData2.Z = -1.0f;
-        _spriteData[i].SpriteSheetData2.W = -1.0f;
-
+        _spriteShaderData[i].SpriteMatrix = target.Entity
+          .GetTransform()?
+          .Matrix()
+          .OverrideZDepth(target.LocalZDepth) ?? Matrix4x4.Identity;
       } else {
-        // spriteData[i] = new() {
-        //   SpriteMatrix = target.Entity.GetTransform()?.Matrix() ?? Matrix4x4.Identity,
-        //   SpriteSheetData = new(target.SpriteSheetSize.X, target.SpriteSheetSize.Y, target.SpriteIndex, target.FlipX ? 1.0f : 0.0f),
-        //   SpriteSheetData2 = new(target.FlipY ? 1.0f : 0.0f, myTexId.Value, -1, -1)
-        // };
-
-        _spriteData[i].SpriteMatrix = target.Entity.GetTransform()?.Matrix() ?? Matrix4x4.Identity;
-
-        _spriteData[i].SpriteSheetData.X = target.SpriteSheetSize.X;
-        _spriteData[i].SpriteSheetData.Y = target.SpriteSheetSize.Y;
-        _spriteData[i].SpriteSheetData.Z = target.SpriteIndex;
-        _spriteData[i].SpriteSheetData.W = target.FlipX ? 1.0f : 0.0f;
-
-        _spriteData[i].SpriteSheetData2.X = target.FlipY ? 1.0f : 0.0f;
-        _spriteData[i].SpriteSheetData2.Y = myTexId.Value;
-        _spriteData[i].SpriteSheetData2.Z = -1.0f;
-        _spriteData[i].SpriteSheetData2.W = -1.0f;
+        _spriteShaderData[i].SpriteMatrix = target.Entity
+          .GetTransform()?
+          .Matrix() ?? Matrix4x4.Identity;
       }
+
+      _spriteShaderData[i].SpriteSheetData.X = target.SpriteSheetSize.X;
+      _spriteShaderData[i].SpriteSheetData.Y = target.SpriteSheetSize.Y;
+      _spriteShaderData[i].SpriteSheetData.Z = target.SpriteIndex;
+      _spriteShaderData[i].SpriteSheetData.W = target.FlipX ? 1.0f : 0.0f;
+
+      _spriteShaderData[i].SpriteSheetData2.X = target.FlipY ? 1.0f : 0.0f;
+      _spriteShaderData[i].SpriteSheetData2.Y = texId.Value;
+      _spriteShaderData[i].SpriteSheetData2.Z = -1.0f;
+      _spriteShaderData[i].SpriteSheetData2.W = -1.0f;
     }
 
-    fixed (SpritePushConstant140* pSpriteData = _spriteData) {
-      _application.StorageCollection.WriteBuffer(
+    unsafe {
+      fixed (SpritePushConstant140* pSpriteData = _spriteShaderData) {
+        _application.StorageCollection.WriteBuffer(
         "SpriteStorage",
         frameInfo.FrameIndex,
         (nint)pSpriteData,
-        (ulong)Unsafe.SizeOf<SpritePushConstant140>() * (ulong)_spriteData.Length
+        (ulong)Unsafe.SizeOf<SpritePushConstant140>() * (ulong)_spriteShaderData.Length
       );
+      }
     }
   }
 
   public void Render(FrameInfo frameInfo) {
-    if (_globalIndexBuffer == null) return;
+    RenderSprites(frameInfo);
+  }
+
+  private void RenderSprites(FrameInfo frameInfo) {
+    CreateOrUpdateBuffers(SpriteCache);
+
+    if (_spritePool == null) return;
 
     BindPipeline(frameInfo.CommandBuffer);
 
@@ -192,86 +122,47 @@ public class Render2DSystem : SystemBase {
     Descriptor.BindDescriptorSet(_device, _textureManager.AllTexturesDescriptor, frameInfo, PipelineLayout, 2, 1);
     Descriptor.BindDescriptorSet(_device, frameInfo.SpriteDataDescriptorSet, frameInfo, PipelineLayout, 1, 1);
 
-    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer, 0);
+    foreach (var spriteContainer in _spriteIndirectData) {
+      var targetVertex = _spritePool.GetVertexBuffer(spriteContainer.Key);
+      var targetIndex = _spritePool.GetIndexBuffer(spriteContainer.Key);
 
-    foreach (var container in _indirectData) {
-      var targetVertex = _bufferPool.GetVertexBuffer(container.Key);
+      if (targetIndex == null || targetVertex == null) continue;
+
+      _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, targetIndex, 0);
       _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, targetVertex, 0);
 
       _renderer.CommandList.DrawIndexedIndirect(
         frameInfo.CommandBuffer,
-        _indirectBuffers[container.Key].GetBuffer(),
+        _spriteIndirectBuffers[spriteContainer.Key].GetBuffer(),
         0,
-        (uint)container.Value.Commands.Count,
+        (uint)spriteContainer.Value.Commands.Count,
         (uint)Unsafe.SizeOf<VkDrawIndexedIndirectCommand>()
       );
     }
   }
 
-  public unsafe void Render_(FrameInfo frameInfo, ReadOnlySpan<IDrawable2D> drawables) {
-    BindPipeline(frameInfo.CommandBuffer);
-    Descriptor.BindDescriptorSet(_device, frameInfo.GlobalDescriptorSet, frameInfo, PipelineLayout, 0, 1);
-    Descriptor.BindDescriptorSet(_device, _textureManager.AllTexturesDescriptor, frameInfo, PipelineLayout, 2, 1);
-    Descriptor.BindDescriptorSet(_device, frameInfo.SpriteDataDescriptorSet, frameInfo, PipelineLayout, 1, 1);
-    // _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, _globalVertexBuffer, 0);
-    _renderer.CommandList.BindIndex(frameInfo.CommandBuffer, _globalIndexBuffer!, 0);
-
-    uint indexOffset = 0;
-
-    for (uint instance = 0; instance < (uint)_drawableCache.Length; instance++) {
-      var d = _drawableCache[(int)instance];
-      var mesh = d.Mesh;
-
-      var bindInfo = _vertexBindings[(int)instance];
-      var buffer = _bufferPool.GetVertexBuffer(bindInfo.BufferIndex);
-      _renderer.CommandList.BindVertex(frameInfo.CommandBuffer, buffer, 0);
-
-      uint thisCount = (uint)mesh.Indices.Length;
-
-      if (!d.Active || d.Entity.CanBeDisposed || mesh.IndexCount < 1) {
-        indexOffset += thisCount;
-        continue;
-      }
-
-      _renderer.CommandList.DrawIndexed(
-        frameInfo.CommandBuffer,
-        indexCount: thisCount,
-        instanceCount: 1,
-        firstIndex: bindInfo.FirstIndexOffset,
-        vertexOffset: (int)bindInfo.FirstVertexOffset,
-        firstInstance: instance
+  private void CreateOrUpdateBuffers(ReadOnlySpan<IDrawable2D> sprites) {
+    if (LastKnownSpriteCount != sprites.Length) {
+      Logger.Info($"Recreating Sprite Buffers [{LastKnownSpriteCount}] != [{sprites.Length}]");
+      CreateVertexIndexBuffers(
+        ref _spritePool,
+        SpriteCache,
+        ref _spriteIndirectData,
+        ref _spriteVertexBindings,
+        ref _spriteInstnaceIndex
       );
-
-      indexOffset += thisCount;
-    }
-  }
-  private static int? GetIndexOfMyTexture(string texName) {
-    return Application.Instance.TextureManager.PerSceneLoadedTextures.Where(x => x.Value.TextureName == texName).FirstOrDefault().Value.TextureManagerIndex;
-  }
-
-  private void CreateIndirectCommands(ReadOnlySpan<IDrawable2D> drawables) {
-    _indirectDrawCommands.Clear();
-    uint indexOffset = 0;
-
-    for (int i = 0; i < drawables.Length; i++) {
-      var mesh = drawables[i].Mesh;
-      if (mesh.IndexCount < 1)
-        continue;
-
-      var cmd = new VkDrawIndexedIndirectCommand {
-        indexCount = (uint)mesh.Indices.Length,
-        instanceCount = 1,
-        firstIndex = indexOffset,
-        vertexOffset = 0,
-        firstInstance = (uint)i
-      };
-
-      _indirectDrawCommands.Add(cmd);
-      indexOffset += (uint)mesh.Indices.Length;
+      CreateIndirectBuffer(ref _spriteIndirectData, ref _spriteIndirectBuffers);
+      CreateIndirectCommands(SpriteCache, ref _spriteDrawCommands);
+      _spriteShaderData = new SpritePushConstant140[SpriteCache.Length];
+      Array.Fill(_spriteShaderData, new());
+      LastKnownSpriteCount = sprites.Length;
     }
   }
 
-  private unsafe void CreateIndirectBuffer(ref Dictionary<uint, IndirectData> pair, ref NekoBuffer[] buffArray) {
+  private unsafe void CreateIndirectBuffer(
+    ref Dictionary<uint, IndirectData> pair,
+    ref NekoBuffer[] buffArray
+  ) {
     foreach (var buff in buffArray) {
       buff?.Dispose();
     }
@@ -313,7 +204,100 @@ public class Render2DSystem : SystemBase {
     }
   }
 
-  private void AddIndirectCommand(
+  private void CreateIndirectCommands(
+    ReadOnlySpan<IDrawable2D> drawables,
+    ref List<VkDrawIndexedIndirectCommand> drawCommands
+  ) {
+    drawCommands.Clear();
+    uint indexOffset = 0;
+
+    for (int i = 0; i < drawables.Length; i++) {
+      var mesh = drawables[i].Mesh;
+      if (mesh.IndexCount < 1)
+        continue;
+
+      var cmd = new VkDrawIndexedIndirectCommand {
+        indexCount = (uint)mesh.Indices.Length,
+        instanceCount = 1,
+        firstIndex = indexOffset,
+        vertexOffset = 0,
+        firstInstance = (uint)i
+      };
+
+      drawCommands.Add(cmd);
+      indexOffset += (uint)mesh.Indices.Length;
+    }
+  }
+
+  private void CreateVertexIndexBuffers(
+    ref BufferPool? dstPool,
+    in ReadOnlySpan<IDrawable2D> drawables,
+    ref Dictionary<uint, IndirectData> indirectData,
+    ref List<VertexBinding> vertexBindings,
+    ref uint instanceIndex
+  ) {
+    dstPool?.Dispose();
+    dstPool = new BufferPool(_device, _allocator);
+    indirectData.Clear();
+    vertexBindings.Clear();
+    instanceIndex = 0;
+
+    var indexOffset = 0u;
+    var vertexOffset = 0u;
+
+    var accumulatedIndexSize = 0u;
+    var accumulatedVertexSize = 0ul;
+
+    var currentPool = 0u;
+    dstPool.CreateNewBakeData(currentPool);
+
+    foreach (var drawable in drawables) {
+      var mesh = drawable.Mesh;
+      var verts = mesh.Vertices;
+      var indices = mesh.Indices;
+
+      var vertexByteSize = (ulong)verts.Length * (ulong)Unsafe.SizeOf<Vertex>();
+      var indexByteSize = (uint)indices.Length * sizeof(uint);
+
+      accumulatedVertexSize += vertexByteSize;
+      accumulatedIndexSize += indexByteSize;
+
+      var canAddVertex = dstPool.CanBakeMoreVertex(currentPool, accumulatedVertexSize);
+      var canAddIndex = dstPool.CanBakeMoreIndex(currentPool, accumulatedIndexSize);
+
+      if (!canAddIndex || !canAddVertex) {
+        currentPool++;
+        dstPool.CreateNewBakeData(currentPool);
+        indexOffset = 0;
+        vertexOffset = 0;
+        accumulatedIndexSize = 0;
+        accumulatedVertexSize = 0;
+      }
+
+      dstPool.AddIndexToBake(currentPool, [.. indices]);
+      dstPool.AddVertexToBake(currentPool, [.. verts]);
+
+      vertexBindings.Add(new VertexBinding {
+        BufferIndex = currentPool,
+        FirstVertexOffset = vertexOffset,
+        FirstIndexOffset = indexOffset
+      });
+
+      AddIndirectCommand(
+        currentPool,
+        drawable, vertexBindings.Last(),
+        ref indirectData,
+        ref instanceIndex
+      );
+
+      indexOffset += (uint)indices.Length;
+      vertexOffset += (uint)verts.Length;
+    }
+
+    dstPool.BakeAll();
+  }
+
+  private static int AddIndirectCommand(
     uint index,
     IDrawable2D drawable,
     VertexBinding vertexBinding,
@@ -321,12 +305,10 @@ public class Render2DSystem : SystemBase {
     ref uint instanceIndex,
     in uint additionalIndexOffset = 0
   ) {
-    if (!pair.ContainsKey(index)) {
-      var id = pair.Keys.Count;
-      pair.Add((uint)id, new());
+    if (!pair.TryGetValue(index, out var data)) {
+      data = new IndirectData();
+      pair[index] = data;
     }
-
-    var data = pair[index];
 
     var mesh = drawable.Mesh;
     if (mesh.IndexCount < 1) throw new ArgumentNullException("mesh does not have indices", nameof(mesh));
@@ -339,127 +321,24 @@ public class Render2DSystem : SystemBase {
       firstInstance = instanceIndex + additionalIndexOffset
     };
 
-    pair[index].Commands.Add(cmd);
+    data.Commands.Add(cmd);
+    int cmdIdx = data.Commands.Count - 1;
 
     instanceIndex++;
     data.CurrentIndexOffset += vertexBinding.FirstIndexOffset;
+
+    return cmdIdx;
   }
 
-  private unsafe void CreateIndexBuffer(ReadOnlySpan<IDrawable2D> drawables) {
-    _globalIndexBuffer?.Dispose();
-
-    var adjustedIndices = new List<uint>();
-    uint vertexOffset = 0;
-
-    for (int i = 0; i < drawables.Length; i++) {
-      var mesh = drawables[i].Mesh;
-      if (mesh.IndexCount < 1) continue;
-
-      foreach (var idx in mesh.Indices) {
-        adjustedIndices.Add(idx + vertexOffset);
-      }
-
-      vertexOffset += (uint)mesh.Vertices.Length;
-    }
-
-    var indexByteSize = (ulong)adjustedIndices.Count * sizeof(uint);
-
-    var stagingBuffer = new NekoBuffer(
-      _allocator,
-      _device,
-      indexByteSize,
-      BufferUsage.TransferSrc,
-      MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-      stagingBuffer: true,
-      cpuAccessible: true
-    );
-
-    stagingBuffer.Map(indexByteSize);
-    fixed (uint* pSrc = adjustedIndices.ToArray()) {
-      stagingBuffer.WriteToBuffer((nint)pSrc, indexByteSize);
-    }
-
-    _globalIndexBuffer = new NekoBuffer(
-      _allocator,
-      _device,
-      (ulong)Unsafe.SizeOf<uint>(),
-      (uint)adjustedIndices.Count,
-      BufferUsage.IndexBuffer | BufferUsage.TransferDst,
-      MemoryProperty.DeviceLocal
-    );
-
-    _device.CopyBuffer(
-      stagingBuffer.GetBuffer(),
-      _globalIndexBuffer.GetBuffer(),
-      indexByteSize
-    );
-    stagingBuffer.Dispose();
-  }
-  private unsafe void CreateVertexBuffer(ReadOnlySpan<IDrawable2D> drawables) {
-    _vertexBindings.Clear();
-    // _bufferPool?.Dispose();
-    _bufferPool?.Flush();
-    _bufferPool ??= new BufferPool(_device, _allocator);
-    _indirectData.Clear();
-    _indirectData = [];
-
-    uint currentPool = 0;
-    uint indexOffset = 0;
-    uint vertexOffset = 0;
-
-    var previousSize = 0ul;
-
-    _drawableCache = drawables.ToArray();
-    foreach (var drawable in drawables) {
-      var verts = drawable.Mesh!.Vertices;
-      var byteSize = (ulong)verts.Length * (ulong)Unsafe.SizeOf<Vertex>();
-
-      var indices = drawable.Mesh!.Indices;
-      var byteSizeIndices = (ulong)indices.Length * sizeof(uint);
-
-      var staging = new NekoBuffer(
-                _allocator, _device, byteSize,
-                BufferUsage.TransferSrc,
-                MemoryProperty.HostVisible | MemoryProperty.HostCoherent,
-                stagingBuffer: true, cpuAccessible: true
-              );
-      staging.Map(byteSize);
-
-      fixed (Vertex* p = verts) {
-        staging.WriteToBuffer((nint)p, byteSize);
-
-        if (!_bufferPool.AddToBuffer(currentPool, (nint)p, byteSize, previousSize, out var byteOffset, out var reason)) {
-          var r = reason;
-          currentPool = (uint)_bufferPool.AddToPool();
-          _bufferPool.AddToBuffer(currentPool, (nint)p, byteSize, previousSize, out byteOffset, out reason);
-        }
-        previousSize += byteSize;
-
-        _vertexBindings.Add(new VertexBinding {
-          BufferIndex = currentPool,
-          // FirstVertexOffset = (uint)(byteSize / (ulong)Unsafe.SizeOf<Vertex>()),
-          // FirstIndexOffset = (uint)(indexByteOffset / (ulong)Unsafe.SizeOf<uint>()),
-          FirstVertexOffset = (uint)(byteOffset / (ulong)Unsafe.SizeOf<Vertex>()),
-          FirstIndexOffset = indexOffset
-        });
-
-        AddIndirectCommand(currentPool, drawable, _vertexBindings.Last(), ref _indirectData, ref _instanceIndex);
-
-        indexOffset += (uint)indices.Length;
-        vertexOffset += (uint)verts.Length;
-
-        staging.Dispose();
-      }
-    }
+  private static int? GetIndexOfMyTexture(string texName) {
+    return Application.Instance.TextureManager.PerSceneLoadedTextures
+      .Where(x => x.Value.TextureName == texName)
+      .FirstOrDefault()
+      .Value.TextureManagerIndex;
   }
 
-  public override unsafe void Dispose() {
+  public override void Dispose() {
     _device.WaitQueue();
-    _globalVertexBuffer?.Dispose();
-    _globalIndexBuffer?.Dispose();
-    foreach (var buff in _indirectBuffers) {
-      buff.Dispose();
-    }
     base.Dispose();
   }
 }

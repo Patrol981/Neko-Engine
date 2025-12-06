@@ -150,6 +150,11 @@ public class Rigidbody2D : IDisposable, ICloneable {
 
   public void Translate(Vector2 vec2) {
     if (Owner == null || Owner.CanBeDisposed) return;
+    PhysicsBody2D.LinearVelocity = vec2;
+  }
+
+  public void Translate(Vector2 vec2, float dt) {
+    if (Owner == null || Owner.CanBeDisposed) return;
     PhysicsBody2D.AddLinearVelocity(vec2);
   }
 

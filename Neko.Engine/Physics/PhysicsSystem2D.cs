@@ -1,5 +1,6 @@
 using Neko.EntityComponentSystem;
 using Neko.Physics.Backends;
+using Neko.Physics.Backends.Box2D;
 using Neko.Physics.Backends.Hammer;
 
 namespace Neko.Physics;
@@ -10,6 +11,7 @@ public class PhysicsSystem2D : IDisposable {
   public PhysicsSystem2D(BackendKind backendKind) {
     PhysicsProgram = backendKind switch {
       BackendKind.Hammer => new HammerProgram(),
+      BackendKind.Box2D => new Box2DProgram(),
       _ => new HammerProgram()
     };
   }

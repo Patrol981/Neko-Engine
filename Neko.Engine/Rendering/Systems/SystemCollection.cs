@@ -95,8 +95,10 @@ public class SystemCollection : IDisposable {
 
       // Render2DSystem.Dispose(true);
       // Render2DSystem.Setup(sprites, ref textureManager);
-      Render2DSystem.Invalidate(sprites);
+      // Render2DSystem.Invalidate(sprites);
       // Render2DSystem.Setup(sprites, ref textureManager);
+
+      Render2DSystem.Refresh(sprites);
     }
 
     if (TilemapRenderSystem != null) {
@@ -197,7 +199,7 @@ public class SystemCollection : IDisposable {
       app.StorageCollection.CheckSize(
         "SpriteStorage",
         frameInfo.FrameIndex,
-        Render2DSystem.LastKnownElemCount,
+        Render2DSystem.LastKnownSpriteCount,
         _descriptorSetLayouts["SpriteData"],
         default
       );
@@ -346,32 +348,32 @@ public class SystemCollection : IDisposable {
       Reload3DRenderSystem = false;
     }
 
-    if (Render2DSystem != null) {
-      var spriteEntities = app.Sprites.RootDrawables2D()
-        .AsValueEnumerable()
-        .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
-        .ToArray();
-      // var spriteEntities = app.Sprites
-      //     .RootDrawables2D()
-      //     .AsValueEnumerable()
-      //     .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
-      //     .ToArray();
-      // if (spriteEntities.Length < 1) return;
-      var sizes = Render2DSystem.CheckSizes(spriteEntities);
-      // var textures = _render2DSystem.CheckTextures(spriteEntities);
-      if (!sizes || Reload2DRenderSystem) {
-        Reload2DRenderer(
-          app,
-          allocator,
-          device,
-          renderer,
-          layouts,
-          ref textureManager,
-          pipelineConfigInfo,
-          spriteEntities
-        );
-      }
-    }
+    // if (Render2DSystem != null) {
+    //   var spriteEntities = app.Sprites.RootDrawables2D()
+    //     .AsValueEnumerable()
+    //     .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+    //     .ToArray();
+    //   // var spriteEntities = app.Sprites
+    //   //     .RootDrawables2D()
+    //   //     .AsValueEnumerable()
+    //   //     .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+    //   //     .ToArray();
+    //   // if (spriteEntities.Length < 1) return;
+    //   var sizes = Render2DSystem.CheckSizes(spriteEntities);
+    //   // var textures = _render2DSystem.CheckTextures(spriteEntities);
+    //   if (!sizes || Reload2DRenderSystem) {
+    //     Reload2DRenderer(
+    //       app,
+    //       allocator,
+    //       device,
+    //       renderer,
+    //       layouts,
+    //       ref textureManager,
+    //       pipelineConfigInfo,
+    //       spriteEntities
+    //     );
+    //   }
+    // }
 
     if (CustomShaderRender2DSystem != null) {
       var customSprites = app.Sprites
@@ -474,12 +476,12 @@ public class SystemCollection : IDisposable {
 
     // var drawables_old = app.Entities.RootDrawables2D();
     var drawables = app.Sprites.RootDrawables2D().ToArray();
-    Render2DSystem?.Setup(
-      drawables.AsValueEnumerable()
-        .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
-        .ToArray(),
-      ref textureManager
-    );
+    // Render2DSystem?.Setup(
+    //   drawables.AsValueEnumerable()
+    //     .Where(x => x.CustomShader.Name == CommonConstants.SHADER_INFO_NAME_UNSET)
+    //     .ToArray(),
+    //   ref textureManager
+    // );
     CustomShaderRender2DSystem?.Setup(
       drawables.AsValueEnumerable()
         .Where(x => x.CustomShader.Name != CommonConstants.SHADER_INFO_NAME_UNSET)
@@ -614,12 +616,12 @@ public class SystemCollection : IDisposable {
     //   externalLayouts,
     //   pipelineConfig
     // );
-    Logger.Info("2D Renderer reload");
-    Render2DSystem?.Setup(
-      drawables,
-      ref textureManager
-    );
-    Render2DSystem?.Invalidate([.. drawables]);
+    // Logger.Info("2D Renderer reload");
+    // Render2DSystem?.Setup(
+    //   drawables,
+    //   ref textureManager
+    // );
+    // Render2DSystem?.Invalidate([.. drawables]);
   }
 
   public void ReloadCustom2DRenderer(
