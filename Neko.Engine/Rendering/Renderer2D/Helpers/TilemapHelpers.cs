@@ -82,11 +82,6 @@ public static class TilemapHelpers {
     int width = tiles.GetLength(0);
     int height = tiles.GetLength(1);
 
-    // World size of a single tile in the same space as the mesh vertices.
-    // Use the same value you use for tile vertices. In your GenerateMesh this is 0.10f.
-    // float tileSize = Sprite.VERTEX_SIZE; // or 0.10f if VERTEX_SIZE is not what you use
-    // float tileSize = 0.10f;
-
     var tilemapTransform = tilemap.Entity.GetTransform();
     float pixelsPerUnit = tilemap.TileSize * 10;
     float tileSize = (float)tilemap.TileSize / pixelsPerUnit * tilemapTransform!.Scale.X;
@@ -98,11 +93,9 @@ public static class TilemapHelpers {
       for (int x = 0; x < width; x++) {
         var tile = tiles[x, y];
 
-        // Decide what marks a tile as collidable; here I assume IsNotEmpty for your collision layer.
         if (!tile.IsNotEmpty || used[x, y])
           continue;
 
-        // Expand horizontally
         int maxX = x;
         while (maxX + 1 < width &&
                tiles[maxX + 1, y].IsNotEmpty &&
@@ -110,7 +103,6 @@ public static class TilemapHelpers {
           maxX++;
         }
 
-        // Expand vertically as long as the full horizontal band is solid and unused
         int maxY = y;
         bool canGrow = true;
         while (canGrow && maxY + 1 < height) {
@@ -125,14 +117,12 @@ public static class TilemapHelpers {
             maxY++;
         }
 
-        // Mark all tiles in this rectangle as used
         for (int yy = y; yy <= maxY; yy++) {
           for (int xx = x; xx <= maxX; xx++) {
             used[xx, yy] = true;
           }
         }
 
-        // Compute world space rectangle in tilemap local coordinates.
         int tilesWide = maxX - x + 1;
         int tilesHigh = maxY - y + 1;
 
