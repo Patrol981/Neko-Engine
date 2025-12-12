@@ -11,6 +11,7 @@ using static Box2D.NET.B2Shapes;
 using static Box2D.NET.B2Worlds;
 using static Box2D.NET.B2BodyDef;
 using Neko.Extensions.Logging;
+using Neko.Globals;
 
 namespace Neko.Physics.Backends.Box2D;
 
@@ -33,7 +34,9 @@ public sealed class Box2DProgram : IPhysicsProgram {
 
   public Box2DProgram(bool createGround = true) {
     var def = b2DefaultWorldDef();
-    def.gravity = new(0, -0.000000000010f);
+    // def.gravity = new(0, 1f);
+    def.gravity *= -1;
+    def.workerCount = 16;
 
     _worldId = b2CreateWorld(ref def);
     _world = b2GetWorldFromId(_worldId);
@@ -60,12 +63,21 @@ public sealed class Box2DProgram : IPhysicsProgram {
 
   public void Update() {
     b2World_Step(_worldId, DeltaTime, SubstepCount);
-    var worldEvents = b2World_GetContactEvents(_worldId);
-    foreach (var body in Bodies.Values) {
-      body.Update();
-    }
-    if (worldEvents.hitCount != 0)
-      Logger.Info($"{worldEvents.hitCount}");
+    // var worldEvents = b2World_GetContactEvents(_worldId);
+    // foreach (var body in Bodies.Values) {
+    //   body.Update();
+    // }
+
+    // var len = worldEvents.beginEvents.Length;
+    // Logger.Info($"{worldEvents.beginCount} | {worldEvents.hitEvents.Length} | {len}");
+
+    // for (int i = 0; i < worldEvents.hitEvents.Length; i++) {
+    //   var evnt = worldEvents.hitEvents[i];
+    //   Logger.Info($"{evnt.shapeIdA.index1} | {evnt.shapeIdB.index1}");
+    // }
+
+    // if (worldEvents.beginCount != 0)
+
   }
 
   public void Dispose() {
@@ -74,6 +86,7 @@ public sealed class Box2DProgram : IPhysicsProgram {
     //   body.Value.Dispose();
     //   // body.Key.GetRigidbody2D()?.Dispose();
     // }
+    Logger.Info("Disposing Box 2D Program");
     Bodies = [];
     b2DestroyBody(_groundBodyId);
     _world = default!;

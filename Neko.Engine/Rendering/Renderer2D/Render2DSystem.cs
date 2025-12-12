@@ -67,7 +67,7 @@ public sealed class Render2DSystem : SystemBase {
     if (_spriteShaderData.Length == 0) return;
     if (_spriteShaderData.Length != SpriteCache.Length) return;
 
-    for (int i = 0; i < SpriteCache.Length; i++) {
+    for (int i = 0; i < _spriteShaderData.Length; i++) {
       var target = SpriteCache[i];
 
       var texId = GetIndexOfMyTexture(target.Texture.TextureName);

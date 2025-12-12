@@ -8,6 +8,7 @@ public class PerformanceTester {
   public static void KeyHandler(SDL_Keycode key) {
     if (key == SDL_Keycode.P) CreateNewModel(Application.Instance, false);
     if (key == SDL_Keycode.LeftBracket) CreateNewModel(Application.Instance, true);
+    if (key == SDL_Keycode.RightBracket) ToggleModel(Application.Instance);
     if (key == SDL_Keycode.O) RemoveModel(Application.Instance);
     if (key == SDL_Keycode.M) Application.Instance.Systems.OnEntityChanged();
   }
@@ -24,6 +25,11 @@ public class PerformanceTester {
     // entity.GetComponent<Rigidbody>().Init(Application.Instance.Systems.PhysicsSystem.BodyInterface);
     app.AddEntity(entity);
     return Task.CompletedTask;
+  }
+
+  public static void ToggleModel(Application app) {
+    var last = app.GetEntitiesEnumerable().Where(x => x.Name == "test").FirstOrDefault();
+    last?.Active = !last.Active;
   }
 
   public static void RemoveModel(Application app) {

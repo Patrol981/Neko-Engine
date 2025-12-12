@@ -94,15 +94,8 @@ public sealed class Box2DBodyWrapper : IPhysicsBody2D {
     var drawable = entity.GetDrawable2D();
     if (drawable?.DrawableType == Drawable2DType.Tilemap) {
       var tilemap = (drawable as Tilemap)!;
-      var aabbs = tilemap.ExtractAABBs();
-
       var rects = tilemap.BuildCollisionRectangles();
       var polygons = new List<B2Polygon>(rects.Count);
-
-      // int separator = 0;
-      // foreach(var aabb in aabbs) {
-      //   var hull = b2ComputeHull()
-      // }
 
       foreach (var (center, halfExtents) in rects) {
         var poly = b2MakeBox(halfExtents.X, halfExtents.Y);
@@ -134,8 +127,10 @@ public sealed class Box2DBodyWrapper : IPhysicsBody2D {
     bodyDef.type = B2BodyType.b2_staticBody;
 
     var shapeDef = b2DefaultShapeDef();
-    shapeDef.density = 1;
-    shapeDef.material.friction = 0.3f;
+    shapeDef.density = 0f;
+    shapeDef.material.friction = 0f;
+    shapeDef.enableContactEvents = true;
+    shapeDef.enableHitEvents = true;
 
     var polygon = (B2Polygon)settings;
 
@@ -147,24 +142,33 @@ public sealed class Box2DBodyWrapper : IPhysicsBody2D {
 
   public void CreateAndAddBody(MotionType motionType, object shapeSettings, Vector2 position, bool isTrigger) {
     var bodyDef = b2DefaultBodyDef();
+    var shapeDef = b2DefaultShapeDef();
+
+    bodyDef.position = position.FromVec2;
+    bodyDef.fixedRotation = true;
+
     switch (motionType) {
       case MotionType.Dynamic:
         bodyDef.type = B2BodyType.b2_dynamicBody;
+        bodyDef.gravityScale = 0.0010f;
         break;
       case MotionType.Static:
         bodyDef.type = B2BodyType.b2_staticBody;
         break;
       case MotionType.Kinematic:
-        bodyDef.type = B2BodyType.b2_kinematicBody;
+        bodyDef.type = B2BodyType.b2_dynamicBody;
+        bodyDef.gravityScale = 0.0f;
+        bodyDef.linearDamping = 0;
+        bodyDef.angularDamping = 0;
         break;
       default:
         break;
     }
-    bodyDef.position = position.FromVec2;
 
-    var shapeDef = b2DefaultShapeDef();
-    shapeDef.density = 1;
-    shapeDef.material.friction = 1.0f;
+    shapeDef.density = 1f;
+    shapeDef.material.friction = 0f;
+    shapeDef.enableContactEvents = true;
+    shapeDef.enableHitEvents = true;
 
     _bodyId = b2CreateBody(_worldId, ref bodyDef);
 
@@ -189,6 +193,13 @@ public sealed class Box2DBodyWrapper : IPhysicsBody2D {
   }
 
   public void RemoveBody() {
+    if (_shapeIndices.Count > 0) {
+      foreach (var shape in _shapeIndices) {
+        b2DestroyShape(shape, false);
+      }
+    } else {
+      b2DestroyShape(_shapeId, false);
+    }
     b2DestroyBody(_bodyId);
   }
 

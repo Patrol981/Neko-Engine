@@ -83,7 +83,7 @@ public class Rigidbody2D : IDisposable, ICloneable {
     var pos = Owner.GetTransform()!.Position;
     var shapeSettings = PhysicsBody2D.ColldierMeshToPhysicsShape(Owner, _collisionShape);
     PhysicsBody2D.CreateAndAddBody(MotionType, shapeSettings, pos.ToVector2(), IsTrigger);
-    PhysicsBody2D.GravityFactor = 0.1f;
+    // PhysicsBody2D.GravityFactor = 0.0f;
   }
 
   public void InitBase(bool scaleMinMax = true) {
